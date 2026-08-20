@@ -90,7 +90,7 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=${{ matrix.component }}
       - name: Attest image provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ghcr.io/${{ steps.image.outputs.owner }}/assetflow-${{ matrix.image }}
           subject-digest: ${{ steps.build.outputs.digest }}
