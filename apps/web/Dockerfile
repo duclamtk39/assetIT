@@ -12,7 +12,7 @@ ENV VITE_API_URL=${VITE_API_URL} \
     VITE_DEMO_MODE=${VITE_DEMO_MODE}
 RUN npm run build --workspace @assetflow/web
 
-FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
+FROM nginxinc/nginx-unprivileged:1.30-alpine AS runtime
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 USER 101
