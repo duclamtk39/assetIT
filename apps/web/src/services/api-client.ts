@@ -15,7 +15,10 @@ async function request<T>(path:string,options:RequestOptions={}):Promise<T>{
   })
   const contentType=response.headers.get('content-type')||''
   const payload=contentType.includes('application/json')?await response.json():undefined
-  if(!response.ok)throw new ApiError(response.status,payload?.code||'HTTP_ERROR',payload?.message||`HTTP ${response.status}`,payload?.details)
+  if(!response.ok){
+    if(response.status===401&&path!=='/auth/login'&&typeof window!=='undefined')window.dispatchEvent(new Event('assetflow:session-expired'))
+    throw new ApiError(response.status,payload?.code||'HTTP_ERROR',payload?.message||`HTTP ${response.status}`,payload?.details)
+  }
   return payload as T
 }
 
