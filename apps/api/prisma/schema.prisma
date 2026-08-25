@@ -201,6 +201,71 @@ enum DiscoveryStatus {
   IGNORED
 }
 
+enum RiskAssessmentStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  TREATMENT
+  MONITORING
+  CLOSED
+  CANCELLED
+}
+
+enum RiskItemStatus {
+  IDENTIFIED
+  ASSESSED
+  TREATMENT_PLANNED
+  TREATING
+  MONITORING
+  ACCEPTED
+  CLOSED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RiskTreatmentStrategy {
+  AVOID
+  MITIGATE
+  TRANSFER
+  ACCEPT
+}
+
+enum RiskTreatmentStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum RiskControlStatus {
+  PLANNED
+  PARTIAL
+  IMPLEMENTED
+  INEFFECTIVE
+  NOT_APPLICABLE
+}
+
+enum RiskReviewDecision {
+  SUBMIT
+  RETURN_FOR_CHANGES
+  APPROVE
+  ACCEPT_RESIDUAL
+  CLOSE
+}
+
+enum RiskSource {
+  MANUAL
+  INCIDENT
+  DISCOVERY
+  AUDIT
+  VENDOR
+}
+
 model Department {
   id                     String               @id @default(uuid()) @db.Uuid
   code                   String               @unique @db.VarChar(50)
@@ -220,6 +285,8 @@ model Department {
   incidentAssignments    IncidentAssignment[]
   digitalEntitlements    DigitalEntitlement[]
   digitalAssignments     DigitalAssignment[]
+  riskAssessments        RiskAssessment[]       @relation("RiskAssessmentDepartment")
+  riskItems              RiskItem[]             @relation("RiskAffectedDepartment")
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
 
@@ -270,6 +337,14 @@ model User {
   importBatches               AssetImportBatch[]     @relation("ImportCreator")
   agentEnrollmentTokens       AgentEnrollmentToken[] @relation("AgentTokenCreator")
   discoveryResolutions        DiscoveryInboxItem[]   @relation("DiscoveryResolver")
+  riskAssessmentsOwned        RiskAssessment[]        @relation("RiskAssessmentOwner")
+  riskAssessmentsApproved     RiskAssessment[]        @relation("RiskAssessmentApprover")
+  riskAssessmentsCreated      RiskAssessment[]        @relation("RiskAssessmentCreator")
+  riskItemsOwned              RiskItem[]              @relation("RiskItemOwner")
+  riskItemsCreated            RiskItem[]              @relation("RiskItemCreator")
+  riskTreatmentsAssigned      RiskTreatmentAction[]   @relation("RiskTreatmentAssignee")
+  riskTreatmentsCreated       RiskTreatmentAction[]   @relation("RiskTreatmentCreator")
+  riskReviews                 RiskReview[]            @relation("RiskReviewer")
   authSessions                AuthSession[]
   person                      Person?
   createdAt                   DateTime               @default(now())
@@ -539,6 +614,7 @@ model Asset {
   suggestedDiscoveries DiscoveryInboxItem[] @relation("DiscoverySuggestedAsset")
   resolvedDiscoveries  DiscoveryInboxItem[] @relation("DiscoveryResolvedAsset")
   digitalAssignments   DigitalAssignment[]
+  riskLinks            RiskAsset[]
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 
@@ -787,6 +863,7 @@ model Incident {
   asset                     Asset?               @relation(fields: [assetId], references: [id], onDelete: Restrict)
   activities                IncidentActivity[]
   assignments               IncidentAssignment[]
+  riskLinks                 RiskIncident[]
   createdAt                 DateTime             @default(now())
   updatedAt                 DateTime             @updatedAt
 
@@ -985,6 +1062,169 @@ model AuditLog {
 
   @@index([entityType, entityId, createdAt])
   @@map("audit_logs")
+}
+
+model RiskAssessment {
+  id             String               @id @default(uuid()) @db.Uuid
+  assessmentNo   String               @unique @db.VarChar(50)
+  title          String               @db.VarChar(250)
+  description    String?
+  scope          String
+  methodology    String               @default("ISO_27005_NIST_800_30") @db.VarChar(80)
+  status         RiskAssessmentStatus @default(DRAFT)
+  ownerId        String               @db.Uuid
+  approverId     String?              @db.Uuid
+  departmentId   String?              @db.Uuid
+  startDate      DateTime             @db.Date
+  targetDate     DateTime?            @db.Date
+  nextReviewAt   DateTime?            @db.Date
+  submittedAt    DateTime?
+  approvedAt     DateTime?
+  closedAt       DateTime?
+  createdBy      String               @db.Uuid
+  owner          User                 @relation("RiskAssessmentOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  approver       User?                @relation("RiskAssessmentApprover", fields: [approverId], references: [id], onDelete: Restrict)
+  creator        User                 @relation("RiskAssessmentCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  department     Department?          @relation("RiskAssessmentDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
+  risks          RiskItem[]
+  reviews        RiskReview[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([status, targetDate])
+  @@index([ownerId, status])
+  @@index([departmentId, status])
+  @@map("risk_assessments")
+}
+
+model RiskItem {
+  id                   String                @id @default(uuid()) @db.Uuid
+  riskNo               String                @unique @db.VarChar(50)
+  assessmentId         String                @db.Uuid
+  title                String                @db.VarChar(250)
+  category             String                @db.VarChar(100)
+  scenario             String
+  threat               String
+  vulnerability        String
+  existingControls     String?
+  source               RiskSource            @default(MANUAL)
+  status               RiskItemStatus        @default(IDENTIFIED)
+  likelihood           Int
+  impact               Int
+  inherentScore        Int
+  inherentLevel        RiskLevel
+  residualLikelihood   Int?
+  residualImpact       Int?
+  residualScore        Int?
+  residualLevel        RiskLevel?
+  treatmentStrategy    RiskTreatmentStrategy @default(MITIGATE)
+  acceptanceRationale  String?
+  ownerId              String                @db.Uuid
+  departmentId         String?               @db.Uuid
+  dueDate              DateTime?             @db.Date
+  nextReviewAt         DateTime?             @db.Date
+  createdBy            String                @db.Uuid
+  assessment           RiskAssessment        @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  owner                User                  @relation("RiskItemOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  creator              User                  @relation("RiskItemCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  department           Department?           @relation("RiskAffectedDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
+  assets               RiskAsset[]
+  incidents            RiskIncident[]
+  controls             RiskControl[]
+  treatments           RiskTreatmentAction[]
+  reviews              RiskReview[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@index([assessmentId, status])
+  @@index([inherentLevel, residualLevel])
+  @@index([ownerId, dueDate])
+  @@index([departmentId, status])
+  @@map("risk_items")
+}
+
+model RiskAsset {
+  riskId    String   @db.Uuid
+  assetId   String   @db.Uuid
+  note      String?
+  risk      RiskItem @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+
+  @@id([riskId, assetId])
+  @@index([assetId])
+  @@map("risk_assets")
+}
+
+model RiskIncident {
+  riskId     String   @db.Uuid
+  incidentId String   @db.Uuid
+  note       String?
+  risk       RiskItem @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now())
+
+  @@id([riskId, incidentId])
+  @@index([incidentId])
+  @@map("risk_incidents")
+}
+
+model RiskControl {
+  id            String            @id @default(uuid()) @db.Uuid
+  riskId        String            @db.Uuid
+  controlCode   String?           @db.VarChar(80)
+  title         String            @db.VarChar(250)
+  description   String?
+  framework     String?           @db.VarChar(100)
+  status        RiskControlStatus @default(PLANNED)
+  effectiveness Int?
+  evidence      String?
+  risk          RiskItem          @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([riskId, status])
+  @@map("risk_controls")
+}
+
+model RiskTreatmentAction {
+  id          String              @id @default(uuid()) @db.Uuid
+  riskId      String              @db.Uuid
+  title       String              @db.VarChar(250)
+  description String?
+  status      RiskTreatmentStatus @default(PLANNED)
+  assigneeId  String              @db.Uuid
+  dueDate     DateTime             @db.Date
+  completedAt DateTime?
+  progress    Int                 @default(0)
+  outcome     String?
+  createdBy   String              @db.Uuid
+  risk        RiskItem            @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  assignee    User                @relation("RiskTreatmentAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  creator     User                @relation("RiskTreatmentCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([riskId, status])
+  @@index([assigneeId, dueDate, status])
+  @@map("risk_treatment_actions")
+}
+
+model RiskReview {
+  id           String             @id @default(uuid()) @db.Uuid
+  assessmentId String?            @db.Uuid
+  riskId       String?            @db.Uuid
+  decision     RiskReviewDecision
+  note         String
+  reviewedBy   String             @db.Uuid
+  assessment   RiskAssessment?    @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  risk         RiskItem?          @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  reviewer     User               @relation("RiskReviewer", fields: [reviewedBy], references: [id], onDelete: Restrict)
+  createdAt    DateTime           @default(now())
+
+  @@index([assessmentId, createdAt])
+  @@index([riskId, createdAt])
+  @@map("risk_reviews")
 }
 
 model ApplicationSetting {

@@ -13,6 +13,7 @@ test('VI/EN catalog covers every primary business module',()=>{
     'Kiểm kê tài sản':'Asset inventory audit',
     'Danh bạ người nhận tài sản':'Asset recipient directory',
     'Người dùng hệ thống':'System users',
+    'Đánh giá rủi ro CNTT':'IT Risk Assessment',
   }
   for(const [source,target] of Object.entries(expected))assert.equal(translateUiText(source,'en-US'),target)
 })

@@ -20,6 +20,7 @@ import { ObservabilityModule } from './observability/observability.module'
 import { DiscoveryModule } from './modules/discovery/discovery.module'
 import { IncidentsModule } from './modules/incidents/incidents.module'
 import { RenewalsModule } from './modules/renewals/renewals.module'
+import { RisksModule } from './modules/risks/risks.module'
 
-@Module({imports:[ConfigModule.forRoot({isGlobal:true}),DatabaseModule,ObservabilityModule,AuthModule,AssetsModule,LookupsModule,DirectoryModule,UsersModule,PeopleModule,CategoriesModule,LifecycleModule,SettingsModule,MasterDataModule,VendorsModule,InventoryModule,AssetImportsModule,DiscoveryModule,IncidentsModule,RenewalsModule],controllers:[HealthController]})
+@Module({imports:[ConfigModule.forRoot({isGlobal:true}),DatabaseModule,ObservabilityModule,AuthModule,AssetsModule,LookupsModule,DirectoryModule,UsersModule,PeopleModule,CategoriesModule,LifecycleModule,SettingsModule,MasterDataModule,VendorsModule,InventoryModule,AssetImportsModule,DiscoveryModule,IncidentsModule,RenewalsModule,RisksModule],controllers:[HealthController]})
 export class AppModule implements NestModule{configure(consumer:MiddlewareConsumer){consumer.apply(RequestLoggerMiddleware).forRoutes('*')}}

@@ -13,6 +13,7 @@ export const pageRoutes: Record<string,string> = {
   'Nhà cung cấp':'/vendors',
   'License & Gia hạn':'/renewals',
   'Bảo trì & Sự cố':'/maintenance',
+  'Đánh giá rủi ro CNTT':'/it-risk-assessment',
   'Báo cáo':'/reports',
   'Cấu hình hệ thống':'/settings',
   'Tùy chỉnh thương hiệu':'/settings/branding',
