@@ -784,6 +784,7 @@ export default function App() {
   const {page,setPage}=useAppRoute()
   const [currentUser,setCurrentUser]=useState<AppUser|undefined>(()=>{if(!env.demoMode)return undefined;const username=localStorage.getItem('assetflow-session');const user=seedUsers.find(u=>u.username===username);if(!user)return undefined;try{const credential=JSON.parse(localStorage.getItem('assetflow-local-admin-credential-v3')||'null');return {...user,mustChangePassword:credential?.mustChangePassword!==false}}catch{return {...user,mustChangePassword:true}}})
   const [authReady,setAuthReady]=useState(env.demoMode)
+  const [identityReady,setIdentityReady]=useState(env.demoMode)
   const [menuOpen, setMenuOpen] = useState(false)
   const [modal, setModal] = useState<Asset | null | undefined>(undefined)
   const [assignmentAsset, setAssignmentAsset] = useState<Asset | undefined>()
@@ -805,17 +806,18 @@ export default function App() {
   useEffect(()=>{if(env.demoMode)return;const controller=new AbortController();api.get<{user:Omit<AppUser,'password'>}>('/auth/me',controller.signal).then(response=>setCurrentUser({...response.user,password:''})).catch(()=>setCurrentUser(undefined)).finally(()=>setAuthReady(true));return()=>controller.abort()},[])
   useEffect(()=>{if(env.demoMode)return;const expire=()=>{setCurrentUser(undefined);setPage('Tổng quan')};window.addEventListener('assetflow:session-expired',expire);return()=>window.removeEventListener('assetflow:session-expired',expire)},[setPage])
   const refreshServerData=async(signal?:AbortSignal)=>{
-    const [assetResult,historyResult,categoriesResult,departmentsResult,locationsResult,warehousesResult,peopleResult,settingsResult]=await Promise.all([
-      api.get<{data:any[];meta:{page:number;limit:number;total:number;totalPages:number}}>('/assets?page=1&limit=100',signal),api.get<{data:any[]}>('/asset-history',signal),api.get<ApiLookup[]>('/categories',signal),api.get<ApiLookup[]>('/departments',signal),api.get<ApiLookup[]>('/locations',signal),api.get<ApiLookup[]>('/warehouses',signal),api.get<{items:ApiPerson[]}>('/people?limit=200',signal),api.get<{branding?:Partial<BrandingSettings>;email?:Partial<EmailSettings>;regional?:Partial<RegionalSettings>}>('/settings',signal),
+    const settingsResult=await api.get<{branding?:Partial<BrandingSettings>;email?:Partial<EmailSettings>;regional?:Partial<RegionalSettings>}>('/settings',signal)
+    setBranding({...seedBrandingSettings,...settingsResult.branding})
+    setEmailSettings({...seedEmailSettings,...settingsResult.email})
+    setRegional({...seedRegionalSettings,...settingsResult.regional})
+    const [assetResult,historyResult,categoriesResult,departmentsResult,locationsResult,warehousesResult,peopleResult]=await Promise.all([
+      api.get<{data:any[];meta:{page:number;limit:number;total:number;totalPages:number}}>('/assets?page=1&limit=100',signal),api.get<{data:any[]}>('/asset-history',signal),api.get<ApiLookup[]>('/categories',signal),api.get<ApiLookup[]>('/departments',signal),api.get<ApiLookup[]>('/locations',signal),api.get<ApiLookup[]>('/warehouses',signal),api.get<{items:ApiPerson[]}>('/people?limit=200',signal),
     ])
     const remainingPages=assetResult.meta.totalPages>1?await Promise.all(Array.from({length:assetResult.meta.totalPages-1},(_,index)=>api.get<{data:any[]}>(`/assets?page=${index+2}&limit=100`,signal))):[]
     setAssets([assetResult,...remainingPages].flatMap(result=>result.data).map(fromApiAsset))
     setReferenceData({categories:categoriesResult,departments:departmentsResult,locations:locationsResult,warehouses:warehousesResult,people:peopleResult.items})
     setDepartmentList(departmentsResult.map(item=>({id:numericId(item.id),name:item.name,code:item.code,manager:'',isIncidentResponseTeam:item.isIncidentResponseTeam})))
     setSiteList(locationsResult.map(item=>({id:numericId(item.id),name:item.name,code:item.code,address:''})))
-    setBranding({...seedBrandingSettings,...settingsResult.branding})
-    setEmailSettings({...seedEmailSettings,...settingsResult.email})
-    setRegional({...seedRegionalSettings,...settingsResult.regional})
     const actionType:Record<string,TransactionType>={CREATED:'Nhập kho',ASSIGNED:'Cấp phát',RETURNED:'Thu hồi',TRANSFERRED:'Điều chuyển'}
     setTransactions(historyResult.data.filter(item=>actionType[item.action]).map(item=>({id:numericId(item.id),assetId:numericId(item.asset.id),assetCode:item.asset.assetTag,assetName:item.asset.name,type:item.action==='ASSIGNED'&&String(item.description).toLocaleLowerCase('vi').includes('mượn')?'Cho mượn':actionType[item.action],from:item.fromLocation?.name||'Hệ thống',to:item.toLocation?.name||item.description,performedBy:item.actor?.fullName||'Hệ thống',date:item.createdAt,note:item.description})))
   }
@@ -829,6 +831,7 @@ export default function App() {
   const [emailSettings,setEmailSettings]=useState<EmailSettings>(()=>{if(!env.demoMode)return seedEmailSettings;try{return {...seedEmailSettings,...JSON.parse(localStorage.getItem('assetflow-email-settings')||'{}')}}catch{return seedEmailSettings}})
   const [branding,setBranding]=useState<BrandingSettings>(()=>{if(!env.demoMode)return seedBrandingSettings;try{return {...seedBrandingSettings,...JSON.parse(localStorage.getItem('assetflow-branding')||'{}')}}catch{return seedBrandingSettings}})
   const [regional,setRegional]=useState<RegionalSettings>(()=>{if(!env.demoMode)return seedRegionalSettings;try{return {...seedRegionalSettings,...JSON.parse(localStorage.getItem('assetflow-regional-settings')||'{}')}}catch{return seedRegionalSettings}})
+  useEffect(()=>{if(env.demoMode)return;const controller=new AbortController();api.get<{branding?:Partial<BrandingSettings>;regional?:Partial<RegionalSettings>}>('/settings/public',controller.signal).then(settings=>{setBranding({...seedBrandingSettings,...settings.branding});setRegional({...seedRegionalSettings,...settings.regional})}).catch(error=>{if((error as any)?.name!=='AbortError')console.error('Không thể tải nhận diện hệ thống',error)}).finally(()=>setIdentityReady(true));return()=>controller.abort()},[])
   useRuntimeI18n(regional.language)
   useEffect(() => {if(env.demoMode)localStorage.setItem('assetflow-assets', JSON.stringify(assets))}, [assets])
   useEffect(() => {if(env.demoMode)localStorage.setItem('assetflow-transactions', JSON.stringify(transactions))}, [transactions])
@@ -902,7 +905,7 @@ export default function App() {
   const departmentOptions=env.demoMode?(currentUser?.role==='HCNS'?['Hành chính']:departmentList.map(x=>x.name)):referenceData.departments.map(x=>x.name)
   const siteOptions=env.demoMode?siteList.map(x=>x.name):Array.from(new Set([...referenceData.warehouses.map(x=>x.name),...referenceData.locations.map(x=>x.name)]))
   const detailAsset = scopedAssets.find(a=>a.id===detailAssetId)
-  if(!authReady)return <div className="auth-loading" aria-live="polite">Đang kiểm tra phiên đăng nhập…</div>
+  if(!authReady||!identityReady)return <div className="auth-loading" aria-live="polite">Đang tải nhận diện và kiểm tra phiên đăng nhập…</div>
   if(!currentUser)return <LoginScreen onLogin={login} branding={branding}/>
   if(currentUser.mustChangePassword)return <ChangePasswordScreen user={currentUser} branding={branding} onChange={changeInitialPassword}/>
   const isAdmin=currentUser.role==='Admin'
