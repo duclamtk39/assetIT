@@ -120,33 +120,52 @@ const assetGroups=[
   {id:'accessory',label:'Phụ kiện',icon:Mouse,categories:['Tai nghe','Bàn phím','Chuột','Webcam','Dock chuyển đổi','Sạc & Adapter','Hub & Cáp kết nối','Ổ lưu trữ ngoài']},
   {id:'other',label:'Nhóm khác',icon:Archive,categories:[]},
 ]
-interface AssetCategoryCatalogItem{id:string;code:string;name:string;parentId?:string|null;description?:string|null;status?:string}
+interface AssetCategoryCatalogItem{id:string;code:string;name:string;parentId?:string|null;description?:string|null;status?:string;_count?:{assets:number;children:number;models:number;inventorySessions?:number}}
 const customCategoryStorageKey='assetflow-custom-asset-categories-v1'
 const categoryCode=(name:string)=>name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'D').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,50)||'ASSET_GROUP'
 const seedCategoryCatalog=():AssetCategoryCatalogItem[]=>categories.map((name,index)=>({id:`seed-${index}`,code:categoryCode(name),name,status:'ACTIVE'}))
-const mergeCategoryCatalog=(items:AssetCategoryCatalogItem[])=>Array.from(new Map(items.filter(item=>item.status!=='INACTIVE').map(item=>[item.name.toLocaleLowerCase('vi'),item])).values()).sort((a,b)=>a.name.localeCompare(b.name,'vi'))
-function useAssetCategoryCatalog(){
-  const [items,setItems]=useState<AssetCategoryCatalogItem[]>(()=>env.demoMode?seedCategoryCatalog():[])
-  const synchronize=(incoming:AssetCategoryCatalogItem[])=>{const merged=mergeCategoryCatalog([...(env.demoMode?seedCategoryCatalog():[]),...incoming]);merged.forEach(item=>{if(!categories.includes(item.name))categories.push(item.name)});setItems(merged);return merged}
+const mergeCategoryCatalog=(items:AssetCategoryCatalogItem[])=>Array.from(new Map(items.map(item=>[item.id,item])).values()).sort((a,b)=>a.name.localeCompare(b.name,'vi'))
+function useAssetCategoryCatalog(manage=false){
+  const [allItems,setAllItems]=useState<AssetCategoryCatalogItem[]>(()=>env.demoMode?seedCategoryCatalog():[])
+  const items=useMemo(()=>allItems.filter(item=>item.status!=='INACTIVE'),[allItems])
+  const synchronize=(incoming:AssetCategoryCatalogItem[])=>{const merged=mergeCategoryCatalog([...(env.demoMode?seedCategoryCatalog():[]),...incoming]);merged.filter(item=>item.status!=='INACTIVE').forEach(item=>{if(!categories.includes(item.name))categories.push(item.name)});setAllItems(merged);return merged}
   useEffect(()=>{
     let active=true
-    const load=async()=>{try{const incoming=env.demoMode?JSON.parse(localStorage.getItem(customCategoryStorageKey)||'[]') as AssetCategoryCatalogItem[]:await api.get<AssetCategoryCatalogItem[]>('/categories');if(active)synchronize(incoming)}catch{if(active)synchronize([])}}
-    const changed=(event:Event)=>{const item=(event as CustomEvent<AssetCategoryCatalogItem>).detail;if(item)setItems(current=>mergeCategoryCatalog([...current,item]))}
+    const load=async()=>{try{const incoming=env.demoMode?JSON.parse(localStorage.getItem(customCategoryStorageKey)||'[]') as AssetCategoryCatalogItem[]:await api.get<AssetCategoryCatalogItem[]>(manage?'/admin/categories':'/categories');if(active)synchronize(incoming)}catch{if(active)synchronize([])}}
+    const changed=(event:Event)=>{const item=(event as CustomEvent<AssetCategoryCatalogItem>).detail;if(item)setAllItems(current=>mergeCategoryCatalog([...current,item]))}
     void load();window.addEventListener('assetflow-category-changed',changed)
     return()=>{active=false;window.removeEventListener('assetflow-category-changed',changed)}
-  },[])
+  },[manage])
+  const storeDemo=(next:AssetCategoryCatalogItem[])=>localStorage.setItem(customCategoryStorageKey,JSON.stringify(next.filter(item=>item.id.startsWith('local-')||item.status==='INACTIVE'||seedCategoryCatalog().some(seed=>seed.id===item.id&&JSON.stringify(seed)!==JSON.stringify(item)))))
+  const publish=(item:AssetCategoryCatalogItem)=>{setAllItems(current=>mergeCategoryCatalog([...current,item]));window.dispatchEvent(new CustomEvent('assetflow-category-changed',{detail:item}));return item}
   const create=async(input:{name:string;code:string;description?:string})=>{
     let created:AssetCategoryCatalogItem
     if(env.demoMode){
       const custom=JSON.parse(localStorage.getItem(customCategoryStorageKey)||'[]') as AssetCategoryCatalogItem[]
       if([...items,...custom].some(item=>item.name.toLocaleLowerCase('vi')===input.name.toLocaleLowerCase('vi')||item.code.toUpperCase()===input.code.toUpperCase()))throw new Error('Mã hoặc tên nhóm tài sản đã tồn tại')
-      created={id:`local-${Date.now()}`,code:input.code.toUpperCase(),name:input.name,description:input.description,status:'ACTIVE'}
+      created={id:`local-${Date.now()}`,code:input.code.toUpperCase(),name:input.name,description:input.description,status:'ACTIVE',_count:{assets:0,children:0,models:0,inventorySessions:0}}
       localStorage.setItem(customCategoryStorageKey,JSON.stringify([...custom,created]))
     }else created=await api.post<AssetCategoryCatalogItem>('/admin/categories',input)
     if(!categories.includes(created.name))categories.push(created.name)
-    setItems(current=>mergeCategoryCatalog([...current,created]));window.dispatchEvent(new CustomEvent('assetflow-category-changed',{detail:created}));return created
+    return publish(created)
   }
-  return {items,create}
+  const update=async(id:string,input:{name?:string;code?:string;description?:string;status?:string})=>{
+    let updated:AssetCategoryCatalogItem
+    if(env.demoMode){
+      const current=allItems.find(item=>item.id===id);if(!current)throw new Error('Không tìm thấy nhóm tài sản')
+      if(allItems.some(item=>item.id!==id&&((input.name&&item.name.toLocaleLowerCase('vi')===input.name.toLocaleLowerCase('vi'))||(input.code&&item.code.toUpperCase()===input.code.toUpperCase()))))throw new Error('Mã hoặc tên nhóm tài sản đã tồn tại')
+      updated={...current,...input};const next=mergeCategoryCatalog([...allItems.filter(item=>item.id!==id),updated]);storeDemo(next)
+    }else updated=await api.patch<AssetCategoryCatalogItem>(`/admin/categories/${id}`,input)
+    return publish(updated)
+  }
+  const remove=async(id:string)=>{
+    const current=allItems.find(item=>item.id===id);if(!current)throw new Error('Không tìm thấy nhóm tài sản')
+    if(env.demoMode){
+      const references=Object.values(current._count||{}).reduce((sum,value)=>sum+(value||0),0);if(references)throw new Error('Nhóm đã phát sinh dữ liệu nên không thể xóa. Hãy chọn Ngừng sử dụng.')
+      const next=allItems.filter(item=>item.id!==id);storeDemo(next);setAllItems(next);window.dispatchEvent(new CustomEvent('assetflow-category-removed',{detail:id}))
+    }else{await api.delete(`/admin/categories/${id}`);setAllItems(existing=>existing.filter(item=>item.id!==id));window.dispatchEvent(new CustomEvent('assetflow-category-removed',{detail:id}))}
+  }
+  return {items,allItems,create,update,remove}
 }
 const matchesAssetGroup=(asset:Asset,groupId:string,customNames:string[]=[])=>groupId==='all'||(groupId.startsWith('category:')?asset.category===decodeURIComponent(groupId.slice(9)):groupId==='other'?!assetGroups.some(group=>!['all','other'].includes(group.id)&&group.categories.includes(asset.category))&&!customNames.includes(asset.category):assetGroups.find(group=>group.id===groupId)?.categories.includes(asset.category)||false)
 const assetIconForCategory=(category:string)=>({Laptop:'laptop','PC / Desktop':'desktop','Màn hình':'monitor',Mobile:'phone',Tablet:'tablet',Server:'server',Switch:'switch',Firewall:'firewall','Router / Wi-Fi':'router',UPS:'ups','NAS / Storage':'nas','Máy in':'printer','Tai nghe':'headphones','Bàn phím':'keyboard','Chuột':'mouse',Webcam:'webcam','Dock chuyển đổi':'dock','Sạc & Adapter':'charger','Hub & Cáp kết nối':'hub','Ổ lưu trữ ngoài':'drive','Phần mềm & Bản quyền':'software','Tài sản số & Dữ liệu':'digital','Thiết bị BYOD':'byod','Nội thất':'chair'} as Record<string,string>)[category]||'box'
@@ -410,39 +429,43 @@ function BarcodeCenter({ assets, initialMode, departmentOptions, warehouseOption
   </main>
 }
 
-function CategoryQuickAdd({create,onClose,onCreated}:{create:(input:{name:string;code:string;description?:string})=>Promise<AssetCategoryCatalogItem>;onClose:()=>void;onCreated:(item:AssetCategoryCatalogItem)=>void}){
-  const [name,setName]=useState(''),[code,setCode]=useState(''),[description,setDescription]=useState(''),[saving,setSaving]=useState(false),[error,setError]=useState('')
-  const updateName=(value:string)=>{setName(value);setCode(current=>current&&current!==categoryCode(name)?current:categoryCode(value))}
-  const submit=async(event:React.FormEvent)=>{event.preventDefault();setSaving(true);setError('');try{const created=await create({name:name.trim(),code:code.trim().toUpperCase(),description:description.trim()||undefined});onCreated(created);onClose()}catch(reason:any){setError(reason?.message||'Không thể tạo nhóm tài sản')}finally{setSaving(false)}}
-  return <div className="modal-backdrop"><form className="modal category-quick-add" onSubmit={submit}><div className="modal-header"><div><h2>Thêm nhóm tài sản</h2><p>Nhóm mới được dùng chung cho sổ tài sản và phiếu nhập kho.</p></div><button type="button" onClick={onClose}><X/></button></div><div className="form-grid"><label>Tên nhóm tài sản<input autoFocus required minLength={2} maxLength={150} value={name} onChange={e=>updateName(e.target.value)} placeholder="Ví dụ: Máy chấm công"/></label><label>Mã danh mục<input required minLength={2} maxLength={50} pattern="[A-Z0-9._-]+" value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="MAY_CHAM_CONG"/></label><label className="span-2">Mô tả<input maxLength={500} value={description} onChange={e=>setDescription(e.target.value)} placeholder="Phạm vi thiết bị thuộc nhóm này"/></label></div>{error&&<div className="form-error">{error}</div>}<div className="modal-actions"><button type="button" className="btn secondary" onClick={onClose}>Hủy</button><button className="btn primary" disabled={saving}><Plus size={17}/>{saving?'Đang tạo...':'Tạo nhóm'}</button></div></form></div>
+function CategoryManager({catalog,assets,onClose,onSelected,onCatalogChanged}:{catalog:ReturnType<typeof useAssetCategoryCatalog>;assets:Asset[];onClose:()=>void;onSelected:(item:AssetCategoryCatalogItem)=>void;onCatalogChanged:(previousName?:string,nextName?:string)=>Promise<void>}){
+  const [editing,setEditing]=useState<AssetCategoryCatalogItem|null>(null),[name,setName]=useState(''),[code,setCode]=useState(''),[description,setDescription]=useState(''),[saving,setSaving]=useState(false),[error,setError]=useState('')
+  const reset=()=>{setEditing(null);setName('');setCode('');setDescription('');setError('')}
+  const edit=(item:AssetCategoryCatalogItem)=>{setEditing(item);setName(item.name);setCode(item.code);setDescription(item.description||'');setError('')}
+  const updateName=(value:string)=>{setName(value);if(!editing)setCode(current=>current&&current!==categoryCode(name)?current:categoryCode(value))}
+  const submit=async(event:React.FormEvent)=>{event.preventDefault();setSaving(true);setError('');try{const input={name:name.trim(),code:code.trim().toUpperCase(),description:description.trim()};const previousName=editing?.name;const saved=editing?await catalog.update(editing.id,input):await catalog.create(input);await onCatalogChanged(previousName,saved.name);onSelected(saved);reset()}catch(reason:any){setError(reason?.message||'Không thể lưu nhóm tài sản')}finally{setSaving(false)}}
+  const toggle=async(item:AssetCategoryCatalogItem)=>{setSaving(true);setError('');try{await catalog.update(item.id,{status:item.status==='INACTIVE'?'ACTIVE':'INACTIVE'});await onCatalogChanged()}catch(reason:any){setError(reason?.message||'Không thể cập nhật trạng thái nhóm')}finally{setSaving(false)}}
+  const remove=async(item:AssetCategoryCatalogItem)=>{if(!window.confirm(`Xóa nhóm “${item.name}”? Thao tác này chỉ được phép khi nhóm chưa phát sinh dữ liệu.`))return;setSaving(true);setError('');try{await catalog.remove(item.id);await onCatalogChanged();if(editing?.id===item.id)reset()}catch(reason:any){setError(reason?.message||'Không thể xóa nhóm tài sản')}finally{setSaving(false)}}
+  const usage=(item:AssetCategoryCatalogItem)=>item._count?.assets??assets.filter(asset=>asset.category===item.name).length
+  return <div className="modal-backdrop"><div className="modal category-manager"><div className="modal-header"><div><h2>Quản lý nhóm tài sản</h2><p>Danh mục dùng chung cho sổ tài sản, nhập kho, import và báo cáo.</p></div><button type="button" onClick={onClose}><X/></button></div><form className="category-editor" onSubmit={submit}><label>Tên nhóm<input autoFocus required minLength={2} maxLength={150} value={name} onChange={e=>updateName(e.target.value)} placeholder="Ví dụ: Máy chấm công"/></label><label>Mã danh mục<input required minLength={2} maxLength={50} pattern="[A-Z0-9._-]+" value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="MAY_CHAM_CONG"/></label><label>Mô tả<input maxLength={500} value={description} onChange={e=>setDescription(e.target.value)} placeholder="Phạm vi thiết bị thuộc nhóm"/></label><div className="category-editor-actions">{editing&&<button type="button" className="btn secondary" onClick={reset}>Hủy sửa</button>}<button className="btn primary" disabled={saving}><Check size={17}/>{saving?'Đang lưu...':editing?'Lưu thay đổi':'Thêm nhóm'}</button></div></form>{error&&<div className="form-error category-manager-error">{error}</div>}<div className="category-manager-table"><table><thead><tr><th>NHÓM TÀI SẢN</th><th>MÃ</th><th>SỬ DỤNG</th><th>TRẠNG THÁI</th><th>THAO TÁC</th></tr></thead><tbody>{catalog.allItems.map(item=><tr key={item.id} className={item.status==='INACTIVE'?'inactive':''}><td><b>{item.name}</b><small>{item.description||'Chưa có mô tả'}</small></td><td><code>{item.code}</code></td><td>{usage(item)} tài sản</td><td><span className={`status ${item.status==='INACTIVE'?'broken':'using'}`}><i/>{item.status==='INACTIVE'?'Ngừng sử dụng':'Đang dùng'}</span></td><td><div className="row-actions"><button type="button" onClick={()=>edit(item)} title="Sửa nhóm"><Pencil size={16}/></button><button type="button" onClick={()=>void toggle(item)} title={item.status==='INACTIVE'?'Kích hoạt lại':'Ngừng sử dụng'}><RotateCcw size={16}/></button><button type="button" onClick={()=>void remove(item)} title="Xóa nhóm"><Trash2 size={16}/></button></div></td></tr>)}</tbody></table></div><div className="category-manager-note"><ShieldCheck size={17}/><span>Nhóm đã phát sinh tài sản không được xóa hẳn; hãy ngừng sử dụng để giữ nguyên lịch sử và báo cáo.</span></div></div></div>
 }
 
-function AssetBook({ assets, departmentOptions, canManageCategories, onOpenImport, onAdd, onEdit, onDelete, onAssign, onBarcode, onView }: { assets: Asset[]; departmentOptions: string[]; canManageCategories:boolean; onOpenImport:()=>void; onAdd: () => void; onEdit: (a: Asset) => void; onDelete: (id: number) => void; onAssign: (a: Asset) => void; onBarcode: (a: Asset) => void; onView: (a: Asset) => void }) {
+function AssetBook({ assets, departmentOptions, canManageCategories, onOpenImport, onCategoriesChanged, onAdd, onEdit, onDelete, onAssign, onBarcode, onView }: { assets: Asset[]; departmentOptions: string[]; canManageCategories:boolean; onOpenImport:()=>void; onCategoriesChanged:(previousName?:string,nextName?:string)=>Promise<void>; onAdd: () => void; onEdit: (a: Asset) => void; onDelete: (id: number) => void; onAssign: (a: Asset) => void; onBarcode: (a: Asset) => void; onView: (a: Asset) => void }) {
   const [query, setQuery] = useState('')
   const [department, setDepartment] = useState('Tất cả phòng ban')
   const [status, setStatus] = useState('Tất cả trạng thái')
   const [assetGroup,setAssetGroup]=useState('all')
   const [exportOpen,setExportOpen]=useState(false)
   const [categoryOpen,setCategoryOpen]=useState(false)
-  const categoryCatalog=useAssetCategoryCatalog()
-  const customCategoryItems=useMemo(()=>categoryCatalog.items.filter(item=>item.name!=='Khác'&&!assetGroups.some(group=>!['all','other'].includes(group.id)&&group.categories.includes(item.name))),[categoryCatalog.items])
-  const customCategoryNames=useMemo(()=>customCategoryItems.map(item=>item.name),[customCategoryItems])
-  const visibleAssetGroups=useMemo(()=>[...assetGroups.slice(0,-1),...customCategoryItems.map(item=>({id:`category:${encodeURIComponent(item.name)}`,label:item.name,icon:Box,categories:[item.name]})),assetGroups[assetGroups.length-1]],[customCategoryItems])
+  const categoryCatalog=useAssetCategoryCatalog(canManageCategories)
+  const visibleAssetGroups=useMemo(()=>[{id:'all',label:'Tất cả',icon:Box,categories:[]} as typeof assetGroups[number],...categoryCatalog.items.map(item=>({id:`category:${encodeURIComponent(item.name)}`,label:item.name,icon:assetGroups.find(group=>group.categories.includes(item.name))?.icon||Box,categories:[item.name]}))],[categoryCatalog.items])
+  useEffect(()=>{if(!visibleAssetGroups.some(group=>group.id===assetGroup))setAssetGroup('all')},[assetGroup,visibleAssetGroups])
   const filtered = useMemo(() => assets.filter(a => {
     const matches = matchesAssetSearch(a,query)
-    return matches && matchesAssetGroup(a,assetGroup,customCategoryNames) && (department === 'Tất cả phòng ban' || a.department === department) && matchesOperationalStatus(a,status)
-  }), [assets, query, department, status, assetGroup,customCategoryNames])
+    return matches && matchesAssetGroup(a,assetGroup) && (department === 'Tất cả phòng ban' || a.department === department) && matchesOperationalStatus(a,status)
+  }), [assets, query, department, status, assetGroup])
   return <><main className="page">
     <section className="page-heading"><div><h1>Sổ tài sản</h1><p>Quản lý và theo dõi toàn bộ tài sản trong công ty.</p></div><div className="heading-actions"><button className="btn secondary" onClick={onOpenImport}><Upload size={17}/>Nhập Excel</button><button className="btn secondary" onClick={()=>setExportOpen(true)}><Download size={17}/>Xuất Excel</button><button className="btn primary" onClick={onAdd}><Plus size={18}/>Thêm tài sản</button></div></section>
     <div className="asset-summary"><span><b>{assets.length}</b> tài sản</span><span><i className="green-bg"/>{assets.filter(a => a.status === 'Đang sử dụng').length} đang sử dụng</span><span><i className="amber-bg"/>{assets.filter(a => a.status === 'Bảo trì').length} bảo trì</span><span><i className="red-bg"/>{assets.filter(a => a.status === 'Hỏng').length} hỏng</span></div>
-    <section className="asset-group-filter">{visibleAssetGroups.map(group=>{const count=assets.filter(asset=>matchesAssetGroup(asset,group.id,customCategoryNames)).length;return <button className={assetGroup===group.id?'active':''} onClick={()=>setAssetGroup(group.id)} key={group.id}><span><group.icon size={19}/></span><div><b>{group.label}</b><small>{count} tài sản</small></div></button>})}{canManageCategories&&<button className="asset-group-add" onClick={()=>setCategoryOpen(true)}><span><Plus size={18}/></span><div><b>Thêm nhóm</b><small>Danh mục tài sản</small></div></button>}</section>
+    <section className="asset-group-filter">{visibleAssetGroups.map(group=>{const count=assets.filter(asset=>matchesAssetGroup(asset,group.id)).length;return <button className={assetGroup===group.id?'active':''} onClick={()=>setAssetGroup(group.id)} key={group.id}><span><group.icon size={19}/></span><div><b>{group.label}</b><small>{count} tài sản</small></div></button>})}{canManageCategories&&<button className="asset-group-add" onClick={()=>setCategoryOpen(true)}><span><Settings size={18}/></span><div><b>Quản lý nhóm</b><small>Thêm · Sửa · Xóa</small></div></button>}</section>
     <section className="card asset-list-card">
       <div className="filters"><label className="search-box"><Search size={18}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Tìm mã, tên, serial, người sử dụng..."/></label><label className="filter-select"><Building2 size={17}/><select value={department} onChange={e => setDepartment(e.target.value)}>{['Tất cả phòng ban',...departmentOptions].map(d => <option key={d}>{d}</option>)}</select><ChevronDown size={15}/></label><label className="filter-select"><Filter size={17}/><select value={status} onChange={e => setStatus(e.target.value)}>{operationalStatusOptions.map(s => <option key={s}>{s}</option>)}</select><ChevronDown size={15}/></label></div>
       <div className="table-scroll"><table><thead><tr><th>TÀI SẢN</th><th>PHÒNG BAN / VỊ TRÍ</th><th>NGƯỜI SỬ DỤNG</th><th>NGUYÊN GIÁ</th><th>TRẠNG THÁI</th><th></th></tr></thead><tbody>{filtered.map(a => <tr key={a.id}><td><div className="asset-cell"><span className={`asset-icon ${a.imageDataUrl?'has-image':''}`}>{a.imageDataUrl?<img src={a.imageDataUrl} alt={a.name}/>:iconFor(a.icon)}</span><div><button className="asset-name-link" onClick={()=>onView(a)}>{a.name}</button><small><em className="asset-category-tag">{a.category}</em>{a.code} · {a.serial}</small></div></div></td><td><b className="cell-main">{a.department}</b><small className="cell-sub"><MapPin size={12}/>{a.location}</small></td><td><span className="user-cell"><span>{a.assignedTo.split(' ').slice(-2).map(x => x[0]).join('')}</span>{a.assignedTo}</span></td><td><b className="cell-main">{money(a.purchaseCost)}</b><small className="cell-sub">Mua {new Date(a.purchaseDate).toLocaleDateString('vi-VN')}</small></td><td><span className={`status ${statusClass[a.status]}`}><i/>{a.status}</span></td><td><div className="row-actions"><button onClick={() => onAssign(a)} title="Cấp phát / Thu hồi"><UserPlus size={16}/></button><button onClick={() => onBarcode(a)} title="In Barcode / QR"><QrCode size={16}/></button><button onClick={() => onEdit(a)} title="Sửa"><Pencil size={16}/></button><button onClick={() => onDelete(a.id)} title="Xóa"><Trash2 size={16}/></button></div></td></tr>)}</tbody></table></div>
       {filtered.length === 0 && <div className="empty"><Search size={30}/><h3>Không tìm thấy tài sản</h3><p>Thử thay đổi từ khóa hoặc bộ lọc.</p></div>}
       <div className="pagination"><span>Hiển thị <b>{filtered.length}</b> trên <b>{assets.length}</b> tài sản</span><div><button disabled><ChevronLeft size={16}/></button><button className="active">1</button><button disabled><ChevronRight size={16}/></button></div></div>
     </section>
-  </main>{exportOpen&&<ExportExcelModal assets={filtered} onClose={()=>setExportOpen(false)}/>} {categoryOpen&&<CategoryQuickAdd create={categoryCatalog.create} onClose={()=>setCategoryOpen(false)} onCreated={item=>setAssetGroup(`category:${encodeURIComponent(item.name)}`)}/>}</>
+  </main>{exportOpen&&<ExportExcelModal assets={filtered} onClose={()=>setExportOpen(false)}/>} {categoryOpen&&<CategoryManager catalog={categoryCatalog} assets={assets} onClose={()=>setCategoryOpen(false)} onCatalogChanged={onCategoriesChanged} onSelected={item=>setAssetGroup(`category:${encodeURIComponent(item.name)}`)}/>}</>
 }
 
 function ITAssets({ assets, openBook }: { assets: Asset[]; openBook: () => void }) {
@@ -924,7 +947,7 @@ export default function App() {
   let content:React.ReactNode
   if(detailAsset) content=<AssetDetail asset={detailAsset} transactions={scopedTransactions} emailSettings={emailSettings} branding={branding} onClose={()=>setDetailAssetId(undefined)} onAssign={()=>{setDetailAssetId(undefined);setAssignmentAsset(detailAsset)}} onBarcode={()=>{setDetailAssetId(undefined);setBarcodeAsset(detailAsset)}} onEdit={()=>{setDetailAssetId(undefined);setModal(detailAsset)}}/>
   else if(page==='Tổng quan') content=<Dashboard assets={scopedAssets} transactions={scopedTransactions} goAssets={()=>setPage('Sổ tài sản')} addAsset={()=>openScanner('intake')} goPage={setPage} onView={asset=>setDetailAssetId(asset.id)} language={regional.language} userName={currentUser.name}/>
-  else if(page==='Sổ tài sản') content=<AssetBook assets={scopedAssets} departmentOptions={departmentOptions} canManageCategories={isAdmin} onOpenImport={()=>{setIntakeMode('import');setPage('Nhập kho')}} onAdd={()=>setModal(null)} onEdit={setModal} onDelete={remove} onAssign={setAssignmentAsset} onBarcode={setBarcodeAsset} onView={a=>setDetailAssetId(a.id)}/>
+  else if(page==='Sổ tài sản') content=<AssetBook assets={scopedAssets} departmentOptions={departmentOptions} canManageCategories={isAdmin} onOpenImport={()=>{setIntakeMode('import');setPage('Nhập kho')}} onCategoriesChanged={async(previousName,nextName)=>{if(env.demoMode){if(previousName&&nextName&&previousName!==nextName)setAssets(current=>current.map(asset=>asset.category===previousName?{...asset,category:nextName}:asset));return}await refreshServerData()}} onAdd={()=>setModal(null)} onEdit={setModal} onDelete={remove} onAssign={setAssignmentAsset} onBarcode={setBarcodeAsset} onView={a=>setDetailAssetId(a.id)}/>
   else if(page==='Cấp phát & Thu hồi') content=operations
   else if(page==='Kiểm kê') content=<InventoryManagement assets={scopedAssets} onScan={()=>openScanner('lookup')}/>
   else if(page==='Lịch sử / Audit') content=<TransactionHistory transactions={scopedTransactions}/>
