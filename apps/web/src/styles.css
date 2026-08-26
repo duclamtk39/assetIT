@@ -6606,7 +6606,7 @@ select {
 }
 .intake-import-steps {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   border-bottom: 1px solid #d5dde7;
 }
 .intake-import-steps > div {
@@ -6671,6 +6671,34 @@ select {
   font-size: 12px;
   font-weight: 400;
   color: #475467;
+}
+.intake-import-ready,
+.intake-import-success {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 20px 16px;
+  padding: 11px 13px;
+  border: 1px solid #a9d5bd;
+  background: #edf8f1;
+  color: #17643a;
+  font-size: 12px;
+}
+.intake-import-ready > svg,
+.intake-import-success > svg {
+  flex: 0 0 auto;
+}
+.intake-import-ready > div {
+  display: grid;
+  gap: 3px;
+}
+.intake-import-ready strong {
+  font-size: 13px;
+}
+.intake-import-ready small {
+  color: #47705a;
+  font-size: 12px;
+  font-weight: 400;
 }
 .intake-import-panel > footer {
   padding: 11px 20px;
