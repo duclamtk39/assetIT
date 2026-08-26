@@ -270,13 +270,15 @@ model Department {
   id                     String               @id @default(uuid()) @db.Uuid
   code                   String               @unique @db.VarChar(50)
   name                   String               @db.VarChar(150)
+  managerPersonId        String?              @db.Uuid
+  manager                Person?              @relation("DepartmentManager", fields: [managerPersonId], references: [id], onDelete: SetNull)
   parentId               String?              @db.Uuid
   parent                 Department?          @relation("DepartmentTree", fields: [parentId], references: [id])
   children               Department[]         @relation("DepartmentTree")
   status                 RecordStatus         @default(ACTIVE)
   isIncidentResponseTeam Boolean              @default(false)
   users                  User[]
-  people                 Person[]
+  people                 Person[]             @relation("DepartmentMembers")
   assets                 Asset[]
   assignments            AssetAssignment[]
   inventorySessions      InventorySession[]
@@ -290,6 +292,7 @@ model Department {
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
 
+  @@index([managerPersonId])
   @@map("departments")
 }
 
@@ -434,7 +437,8 @@ model Person {
   source                 AuthSource        @default(LOCAL)
   externalId             String?           @db.VarChar(255)
   status                 RecordStatus      @default(ACTIVE)
-  department             Department        @relation(fields: [departmentId], references: [id])
+  department             Department        @relation("DepartmentMembers", fields: [departmentId], references: [id])
+  managedDepartments     Department[]      @relation("DepartmentManager")
   location               Location?         @relation(fields: [locationId], references: [id])
   linkedUser             User?             @relation(fields: [linkedUserId], references: [id], onDelete: SetNull)
   currentAssets          Asset[]           @relation("CurrentCustodian")

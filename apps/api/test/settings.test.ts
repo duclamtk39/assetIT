@@ -24,3 +24,17 @@ test('only administrators can modify master data',async()=>{
   const service=new MasterDataService({} as never)
   await assert.rejects(()=>service.createDepartment({code:'IT',name:'IT'},{id:'user',role:'IT'}),/Chỉ Admin/)
 })
+
+test('department manager must be an active person in the same department',async()=>{
+  let saved:any
+  const db={department:{findUnique:async()=>({id:'department-id'}),update:async({data}:any)=>{saved=data;return {id:'department-id',...data}}},person:{findFirst:async({where}:any)=>where.departmentId==='department-id'?{id:where.id}:null}}
+  const service=new MasterDataService(db as never)
+  await service.updateDepartment('department-id',{code:'HTTT',name:'Hệ thống Thông tin',managerPersonId:'dba25daa-d09d-4ce1-a229-981d69057b24'},{role:'ADMIN'})
+  assert.equal(saved.managerPersonId,'dba25daa-d09d-4ce1-a229-981d69057b24')
+})
+
+test('department manager from another department is rejected',async()=>{
+  const db={department:{findUnique:async()=>({id:'department-id'})},person:{findFirst:async()=>null}}
+  const service=new MasterDataService(db as never)
+  await assert.rejects(()=>service.updateDepartment('department-id',{code:'HTTT',name:'Hệ thống Thông tin',managerPersonId:'dba25daa-d09d-4ce1-a229-981d69057b24'},{role:'ADMIN'}),/thuộc chính phòng ban/)
+})

@@ -54,6 +54,7 @@ export interface Department {
   name: string
   code: string
   manager: string
+  managerId?: string
   isIncidentResponseTeam?: boolean
 }
 
