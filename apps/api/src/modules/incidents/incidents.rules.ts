@@ -31,7 +31,38 @@ export function assertIncidentTransition(from:IncidentStatus,to:IncidentStatus){
   if(!transitions[from].includes(to))throw new Error('INCIDENT_TRANSITION_NOT_ALLOWED')
 }
 
-export const incidentStatusRequiresAssignee=(status:IncidentStatus)=>['ACKNOWLEDGED','IN_PROGRESS'].includes(status)
+export const incidentStatusRequiresAssignee=(status:IncidentStatus)=>
+  ['ACKNOWLEDGED','IN_PROGRESS','MONITORING','RESOLVED','CLOSED'].includes(status)
+
+type IncidentWorkflowRecord={
+  assignedToId?:string|null
+  initialAssessment?:string|null
+  containmentAction?:string|null
+  resolution?:string|null
+  rootCause?:string|null
+  correctiveAction?:string|null
+  preventiveAction?:string|null
+  lessonsLearned?:string|null
+}
+
+const hasText=(value?:string|null)=>Boolean(value?.trim())
+
+export const incidentMissingFields=(status:IncidentStatus,incident:IncidentWorkflowRecord)=>{
+  const missing:string[]=[]
+  if(incidentStatusRequiresAssignee(status)&&!incident.assignedToId)missing.push('assignedToId')
+  if(['IN_PROGRESS','MONITORING','RESOLVED','CLOSED'].includes(status)&&!hasText(incident.initialAssessment))missing.push('initialAssessment')
+  if(['MONITORING','RESOLVED','CLOSED'].includes(status)&&!hasText(incident.containmentAction))missing.push('containmentAction')
+  if(['RESOLVED','CLOSED'].includes(status)){
+    if(!hasText(incident.resolution))missing.push('resolution')
+    if(!hasText(incident.rootCause))missing.push('rootCause')
+    if(!hasText(incident.correctiveAction))missing.push('correctiveAction')
+  }
+  if(status==='CLOSED'){
+    if(!hasText(incident.preventiveAction))missing.push('preventiveAction')
+    if(!hasText(incident.lessonsLearned))missing.push('lessonsLearned')
+  }
+  return missing
+}
 
 export const isEligibleIncidentOperator=(user:{role:UserRole;status:RecordStatus;department?:{status:RecordStatus;isIncidentResponseTeam:boolean}|null})=>
   Boolean(['ADMIN','IT'].includes(user.role)&&user.status==='ACTIVE'&&user.department?.status==='ACTIVE'&&user.department.isIncidentResponseTeam)
