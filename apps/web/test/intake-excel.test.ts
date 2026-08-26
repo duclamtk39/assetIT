@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { IntakeExcelValidationError, parseIntakeExcelRows, resolveIntakeLookup } from '../src/features/intake/intake-excel'
+import { inferIntakeCategory, IntakeExcelValidationError, parseIntakeExcelRows, resolveIntakeLookup } from '../src/features/intake/intake-excel'
 
 const categories = [{ id: 'cat-laptop', code: 'LAPTOP', name: 'Laptop' }]
 const warehouses = [{ id: 'warehouse-hn', code: 'KHO-HN', name: 'Kho Tổng Hà Nội' }]
@@ -8,6 +8,19 @@ const warehouses = [{ id: 'warehouse-hn', code: 'KHO-HN', name: 'Kho Tổng Hà 
 test('intake lookup ignores case, accents and redundant spaces', () => {
   assert.equal(resolveIntakeLookup('  kho tong HA NOI ', warehouses)?.id, 'warehouse-hn')
   assert.equal(resolveIntakeLookup('laptop', categories)?.id, 'cat-laptop')
+})
+
+test('blank category infers PC from the asset name before using the first default', () => {
+  const options = [
+    { id: '1', code: 'LAPTOP', name: 'Laptop' },
+    { id: '2', code: 'PC_DESKTOP', name: 'PC / Desktop' },
+  ]
+  assert.equal(inferIntakeCategory('PC', options)?.id, '2')
+  const parsed = parseIntakeExcelRows([
+    ['Mã tài sản', 'Tên tài sản', 'Nhóm tài sản', '', '', 'Kho Tổng'],
+    ['PC-001', 'PC', '', '', '', 'Kho Tổng'],
+  ], options, [{ id: 'warehouse', code: 'KHO', name: 'Kho Tổng' }])
+  assert.equal(parsed[0].category.name, 'PC / Desktop')
 })
 
 test('intake rows use configured defaults when optional master-data cells are blank', () => {

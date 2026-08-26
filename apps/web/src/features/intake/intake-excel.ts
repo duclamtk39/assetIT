@@ -47,6 +47,16 @@ export function resolveIntakeLookup(value: unknown, options: IntakeLookup[]) {
     .some(candidate => normalizeIntakeLookup(candidate) === needle))
 }
 
+export function inferIntakeCategory(assetName: unknown, options: IntakeLookup[]) {
+  const needle = normalizeIntakeLookup(assetName)
+  if (!needle) return options[0]
+  const exact = resolveIntakeLookup(assetName, options)
+  if (exact) return exact
+  return options.find(option => [option.name, option.code].some(candidate => normalizeIntakeLookup(candidate)
+    .split(/\s*[\/_-]\s*/)
+    .includes(needle))) || options[0]
+}
+
 const cellText = (value: unknown) => value instanceof Date
   ? value.toISOString().slice(0, 10)
   : String(value ?? '').trim()
@@ -105,7 +115,9 @@ export function parseIntakeExcelRows(
     if (priorRow) issues.push(`Dòng ${rowNumber}: Mã tài sản trùng với dòng ${priorRow}.`)
     else if (identity) seenTags.set(identity, rowNumber)
 
-    const category = resolveIntakeLookup(row[2], categories)
+    const category = cellText(row[2])
+      ? resolveIntakeLookup(row[2], categories)
+      : inferIntakeCategory(name, categories)
     const warehouse = resolveIntakeLookup(row[5], warehouses)
     if (!category) issues.push(`Dòng ${rowNumber}: Nhóm tài sản “${text(3)}” không tồn tại hoặc đã ngừng hoạt động.`)
     if (!warehouse) issues.push(`Dòng ${rowNumber}: Kho nhập “${text(6)}” không tồn tại hoặc đã ngừng hoạt động.`)
