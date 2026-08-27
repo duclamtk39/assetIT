@@ -38,7 +38,8 @@ FROM node:22-alpine AS runtime
 ENV NODE_ENV=production \
     PORT=3000
 WORKDIR /app
-RUN apk add --no-cache tini \
+RUN apk upgrade --no-cache \
+    && apk add --no-cache tini \
     && addgroup -S assetflow \
     && adduser -S -G assetflow assetflow \
     && mkdir -p /var/lib/assetflow/documents \
