@@ -18,5 +18,6 @@ export function assertMaintenanceOpenAllowed(currentStatus:string){
 }
 export function maintenanceTarget(currentStatus:string,outcome:LifecycleMaintenanceOutcome){
   if(currentStatus!=='MAINTENANCE')throw new Error('ASSET_NOT_IN_MAINTENANCE')
+  if(outcome==='DISPOSED')throw new Error('DISPOSAL_WORKFLOW_REQUIRED')
   return outcome
 }

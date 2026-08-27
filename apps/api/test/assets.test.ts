@@ -20,3 +20,26 @@ test('HCNS scan cannot resolve assets outside its department',async()=>{
   await assert.rejects(()=>service.scan('TS-OTHER-001',{id:'hr',role:'HCNS',departmentId:'department-hr'}),/Không tìm thấy tài sản/)
   assert.equal(captured.departmentId,'department-hr')
 })
+
+test('soft delete archives and releases all active asset identifiers',async()=>{
+  let updated:any,oldValues:any
+  const asset={id:'10000000-0000-4000-8000-000000000099',assetTag:'TS-001',barcode:'BC-001',serialNumber:'SN-001',systemUuid:'UUID-001',currentCustodianId:null,departmentId:null,status:{code:'READY'}}
+  const tx={
+    assetHistory:{create:async()=>({})},
+    auditLog:{create:async({data}:any)=>{oldValues=data.oldValues;return{}}},
+    asset:{update:async({data}:any)=>{updated=data;return{}}},
+  }
+  const db={asset:{findFirst:async()=>asset},assetAssignment:{count:async()=>0},$transaction:(work:any)=>work(tx)}
+  const service=new AssetsService(db as any)
+  assert.deepEqual(await service.remove(asset.id,{id:'admin',role:'ADMIN',departmentId:null}),{success:true})
+  assert.deepEqual(oldValues,{assetTag:'TS-001',barcode:'BC-001',serialNumber:'SN-001',systemUuid:'UUID-001'})
+  assert.equal(updated.archivedAssetTag,'TS-001')
+  assert.equal(updated.archivedBarcode,'BC-001')
+  assert.equal(updated.archivedSerialNumber,'SN-001')
+  assert.equal(updated.archivedSystemUuid,'UUID-001')
+  assert.equal(updated.assetTag,`DELETED-${asset.id}`)
+  assert.equal(updated.barcode,`DELETED-${asset.id}`)
+  assert.equal(updated.serialNumber,null)
+  assert.equal(updated.systemUuid,null)
+  assert.ok(updated.deletedAt instanceof Date)
+})

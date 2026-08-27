@@ -76,6 +76,42 @@ enum MaintenanceOutcome {
   DISPOSED
 }
 
+enum DisposalType {
+  SALE
+  DONATION
+  RETURN_TO_VENDOR
+  RECYCLE
+  DESTRUCTION
+  OTHER
+}
+
+enum DisposalStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  IN_EXECUTION
+  COMPLETED
+  CANCELLED
+}
+
+enum DataSanitizationStatus {
+  NOT_REQUIRED
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+enum DisposalEvidenceType {
+  APPROVAL_DOCUMENT
+  DATA_ERASURE_CERTIFICATE
+  DESTRUCTION_CERTIFICATE
+  SALE_CONTRACT
+  HANDOVER_MINUTES
+  PHOTO
+  OTHER
+}
+
 enum IncidentCategory {
   POWER
   NETWORK
@@ -319,6 +355,12 @@ model User {
   returnsPerformed            AssetReturn[]          @relation("ReturnActor")
   transfersPerformed          AssetTransfer[]        @relation("TransferActor")
   maintenancePerformed        MaintenanceRecord[]    @relation("MaintenanceActor")
+  disposalRequests            DisposalCase[]         @relation("DisposalRequester")
+  disposalApprovals           DisposalCase[]         @relation("DisposalApprover")
+  disposalExecutions          DisposalCase[]         @relation("DisposalExecutor")
+  disposalSanitizations       DisposalItem[]         @relation("DisposalSanitizer")
+  disposalEvidenceUploaded    DisposalEvidence[]     @relation("DisposalEvidenceUploader")
+  disposalActivities          DisposalActivity[]     @relation("DisposalActivityActor")
   incidentsReported           Incident[]             @relation("IncidentReporter")
   incidentsAssigned           Incident[]             @relation("IncidentAssignee")
   incidentsCreated            Incident[]             @relation("IncidentCreator")
@@ -605,12 +647,17 @@ model Asset {
   ipAddress            String?              @db.VarChar(64)
   macAddress           String?              @db.VarChar(64)
   notes                String?
+  archivedAssetTag     String?              @db.VarChar(100)
+  archivedBarcode      String?              @db.VarChar(150)
+  archivedSerialNumber String?              @db.VarChar(150)
+  archivedSystemUuid   String?              @db.VarChar(100)
   deletedAt            DateTime?
   histories            AssetHistory[]
   assignments          AssetAssignment[]
   returns              AssetReturn[]
   transfers            AssetTransfer[]
   maintenanceRecords   MaintenanceRecord[]
+  disposalItems        DisposalItem[]
   incidents            Incident[]
   inventoryItems       InventoryItem[]
   importRows           AssetImportRow[]
@@ -815,6 +862,100 @@ model MaintenanceRecord {
 
   @@index([assetId, status])
   @@map("maintenance_records")
+}
+
+model DisposalCase {
+  id                String          @id @default(uuid()) @db.Uuid
+  disposalNo        String          @unique @db.VarChar(50)
+  title             String          @db.VarChar(250)
+  type              DisposalType
+  status            DisposalStatus  @default(DRAFT)
+  reason            String
+  policyReference   String          @db.VarChar(1000)
+  recipient         String?         @db.VarChar(250)
+  vendorReference   String?         @db.VarChar(250)
+  estimatedProceeds Decimal?        @db.Decimal(18, 2)
+  actualProceeds    Decimal?        @db.Decimal(18, 2)
+  currency          String          @default("VND") @db.VarChar(3)
+  requestedBy       String          @db.Uuid
+  submittedAt       DateTime?
+  approvedBy        String?         @db.Uuid
+  approvedAt        DateTime?
+  approvalNote      String?
+  rejectionReason   String?
+  executedBy        String?         @db.Uuid
+  executionStartedAt DateTime?
+  completedAt       DateTime?
+  completionNote    String?
+  cancelledAt       DateTime?
+  cancellationReason String?
+  requester         User            @relation("DisposalRequester", fields: [requestedBy], references: [id], onDelete: Restrict)
+  approver          User?           @relation("DisposalApprover", fields: [approvedBy], references: [id], onDelete: Restrict)
+  executor          User?           @relation("DisposalExecutor", fields: [executedBy], references: [id], onDelete: Restrict)
+  items             DisposalItem[]
+  evidence          DisposalEvidence[]
+  activities        DisposalActivity[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([status, createdAt])
+  @@index([type, status])
+  @@map("disposal_cases")
+}
+
+model DisposalItem {
+  id                       String                   @id @default(uuid()) @db.Uuid
+  disposalId               String                   @db.Uuid
+  assetId                  String                   @db.Uuid
+  conditionAssessment      String                   @db.VarChar(2000)
+  requiresDataSanitization Boolean                  @default(false)
+  sanitizationStatus       DataSanitizationStatus   @default(NOT_REQUIRED)
+  sanitizationMethod       String?                  @db.VarChar(1000)
+  sanitizedBy              String?                  @db.Uuid
+  sanitizedAt              DateTime?
+  assetSnapshot            Json
+  disposal                 DisposalCase             @relation(fields: [disposalId], references: [id], onDelete: Restrict)
+  asset                    Asset                    @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  sanitizer                User?                    @relation("DisposalSanitizer", fields: [sanitizedBy], references: [id], onDelete: Restrict)
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+
+  @@unique([disposalId, assetId])
+  @@index([assetId, createdAt])
+  @@map("disposal_items")
+}
+
+model DisposalEvidence {
+  id             String               @id @default(uuid()) @db.Uuid
+  disposalId     String               @db.Uuid
+  type           DisposalEvidenceType
+  title          String               @db.VarChar(250)
+  documentNo     String?              @db.VarChar(150)
+  documentDate   DateTime?            @db.Date
+  storagePath    String               @db.VarChar(2000)
+  checksumSha256 String?              @db.VarChar(64)
+  note           String?
+  uploadedBy     String               @db.Uuid
+  disposal       DisposalCase         @relation(fields: [disposalId], references: [id], onDelete: Restrict)
+  uploader       User                 @relation("DisposalEvidenceUploader", fields: [uploadedBy], references: [id], onDelete: Restrict)
+  createdAt      DateTime             @default(now())
+
+  @@index([disposalId, type])
+  @@map("disposal_evidence")
+}
+
+model DisposalActivity {
+  id         String       @id @default(uuid()) @db.Uuid
+  disposalId String       @db.Uuid
+  action     String       @db.VarChar(80)
+  note       String?
+  actorId    String       @db.Uuid
+  disposal   DisposalCase @relation(fields: [disposalId], references: [id], onDelete: Restrict)
+  actor      User         @relation("DisposalActivityActor", fields: [actorId], references: [id], onDelete: Restrict)
+  createdAt  DateTime     @default(now())
+
+  @@index([disposalId, createdAt])
+  @@map("disposal_activities")
 }
 
 model Incident {

@@ -21,6 +21,6 @@ test('disposed assets are terminal and maintenance transitions are constrained',
   assert.doesNotThrow(()=>assertMaintenanceOpenAllowed('BROKEN'))
   assert.throws(()=>assertMaintenanceOpenAllowed('IN_USE'),/MAINTENANCE_NOT_ALLOWED/)
   assert.equal(maintenanceTarget('MAINTENANCE','READY'),'READY')
-  assert.equal(maintenanceTarget('MAINTENANCE','DISPOSED'),'DISPOSED')
+  assert.throws(()=>maintenanceTarget('MAINTENANCE','DISPOSED'),/DISPOSAL_WORKFLOW_REQUIRED/)
   assert.throws(()=>maintenanceTarget('READY','DISPOSED'),/ASSET_NOT_IN_MAINTENANCE/)
 })

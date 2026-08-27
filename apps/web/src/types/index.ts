@@ -1,4 +1,4 @@
-export type AssetStatus = 'Đang sử dụng' | 'Sẵn sàng' | 'Bảo trì' | 'Hỏng'
+export type AssetStatus = 'Đang sử dụng' | 'Sẵn sàng' | 'Đã giữ chỗ' | 'Đã thu hồi' | 'Bảo trì' | 'Hỏng' | 'Đã thanh lý'
 
 export interface Asset {
   id: number
