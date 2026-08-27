@@ -66,6 +66,12 @@ export class LifecycleService{
       include:{asset:{select:{id:true,assetTag:true,name:true}},actor:{select:{fullName:true}},fromLocation:{select:{name:true}},toLocation:{select:{name:true}}},
       orderBy:{createdAt:'desc'},take:1000,
     })
-    return {data}
+    const assignmentIds=data.filter(item=>item.referenceType==='AssetAssignment'&&item.referenceId).map(item=>item.referenceId!)
+    const assignments=assignmentIds.length?await this.db.assetAssignment.findMany({
+      where:{id:{in:assignmentIds}},
+      include:{assignedTo:{include:{department:true}},department:true,location:true},
+    }):[]
+    const assignmentById=new Map(assignments.map(item=>[item.id,item]))
+    return {data:data.map(item=>({...item,assignment:item.referenceType==='AssetAssignment'&&item.referenceId?assignmentById.get(item.referenceId)||null:null}))}
   }
 }

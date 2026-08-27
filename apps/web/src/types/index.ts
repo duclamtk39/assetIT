@@ -47,6 +47,8 @@ export interface AssetTransaction {
   condition?: string
   dueDate?: string
   recipientEmail?: string
+  recipientDepartment?: string
+  handoverLocation?: string
 }
 
 export interface Department {
