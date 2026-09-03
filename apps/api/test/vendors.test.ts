@@ -10,6 +10,7 @@ const vendorBody = {
   name: 'Hà Nội Computer',
   taxCode: '',
   category: 'Máy tính & máy chủ',
+  lifecycleStatus: 'ACTIVE',
   contact: 'Anh Long',
   email: 'longnv2@tinhvan.com',
   phone: '098999789',
@@ -38,10 +39,22 @@ test('new vendor cannot be approved before an ISO evaluation exists', async () =
   await controller.create({ ...vendorBody, status: 'Đã phê duyệt', lastEvaluation: undefined } as VendorDto, { authUser: { id: 'admin', role: 'ADMIN' } } as any)
 
   assert.equal(saved.code, 'NCC-5501')
+  assert.equal(saved.lifecycleStatus, 'ACTIVE')
   assert.equal(saved.status, 'Chưa đánh giá')
   assert.equal(saved.lastEvaluation, null)
   assert.equal(saved.score, 0)
   assert.deepEqual(saved.scores, {})
+})
+
+test('vendor lifecycle is independent from the calculated evaluation result', async () => {
+  let saved: any
+  const db = { vendor: { create: async ({ data }: any) => { saved = data; return data } } }
+  const controller = new VendorsController(db as any)
+
+  await controller.create({ ...vendorBody, lifecycleStatus: 'SUSPENDED', lastEvaluation: '2026-09-03', scores: { quality: 90, delivery: 85, security: 90, compliance: 90, continuity: 80, sustainability: 80 } } as VendorDto, { authUser: { id: 'admin', role: 'ADMIN' } } as any)
+
+  assert.equal(saved.lifecycleStatus, 'SUSPENDED')
+  assert.equal(saved.status, 'Đã phê duyệt')
 })
 
 test('evaluated vendor score and approval are calculated on the server', async () => {

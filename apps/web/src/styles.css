@@ -4594,6 +4594,17 @@ td {
 .supplier-form-modal {
   width: min(760px, 100%);
 }
+.supplier-workflow-note {
+  margin: 0 16px 12px;
+  padding: 10px 12px;
+  border: 1px solid #bfd0e3;
+  background: #f3f7fb;
+  color: #40566d;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+}
 .supplier-evaluation-modal {
   width: min(820px, 100%);
 }

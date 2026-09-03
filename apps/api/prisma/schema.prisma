@@ -1393,6 +1393,7 @@ model Vendor {
   phone          String?   @db.VarChar(30)
   address        String?
   certifications String?
+  lifecycleStatus String    @default("ACTIVE") @db.VarChar(20)
   status         String    @db.VarChar(30)
   lastEvaluation DateTime? @db.Date
   score          Int       @default(0)
