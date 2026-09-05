@@ -10,5 +10,9 @@ test('asset register delegates Excel intake to the single staged warehouse workf
   assert.match(source, /setPendingItems\(items\)/)
   assert.match(source, /await onImport\(pendingItems\)/)
   assert.match(source, /Tải lên & nhập kho/)
-  assert.match(source, /onOpenImport=\{\(\)=>\{setIntakeMode\('import'\);setPage\('Nhập kho'\)\}\}/)
+  // Matched on structure, not on formatting, so Prettier cannot break the contract.
+  assert.match(
+    source,
+    /onOpenImport=\{\(\)\s*=>\s*\{\s*setIntakeMode\('import'\)\s*;?\s*setPage\('Nhập kho'\)\s*;?\s*\}\}/,
+  )
 })

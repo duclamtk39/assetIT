@@ -2,25 +2,105 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import JsBarcode from 'jsbarcode'
 import QRCode from 'qrcode'
 import {
-  AlertTriangle, Archive, ArchiveX, ArrowDownRight, ArrowUpRight, BarChart3, Bell, Box,
-  Building2, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight,
-  CircleDollarSign, ClipboardCheck, Download, FileText, Filter, HelpCircle,
-  LayoutDashboard, Laptop, MapPin, Menu, Monitor, MoreHorizontal, PackageCheck,
-  Pencil, Plus, Printer, QrCode, Search, Server, Settings, Smartphone, Trash2,
-  Warehouse, Wrench, X, Armchair, Tablet, ShieldCheck, Cloud, Database,
-  ShoppingCart, PlayCircle, Recycle, BadgeCheck, WalletCards, LockKeyhole,
-  Barcode, ScanLine, History, UserPlus, UserRound, RotateCcw,
-  FileSpreadsheet, Upload, Mail, Send,
-  LogOut, Eye, EyeOff,
-  Headphones, Keyboard, Mouse, Video, PlugZap, Usb, HardDrive,
-  Palette, Image as ImageIcon, Wifi, Languages, Clock3,
+  AlertTriangle,
+  Archive,
+  ArchiveX,
+  ArrowDownRight,
+  ArrowUpRight,
+  BarChart3,
+  Bell,
+  Box,
+  Building2,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleDollarSign,
+  ClipboardCheck,
+  Download,
+  FileText,
+  Filter,
+  HelpCircle,
+  LayoutDashboard,
+  Laptop,
+  MapPin,
+  Menu,
+  Monitor,
+  MoreHorizontal,
+  PackageCheck,
+  Pencil,
+  Plus,
+  Printer,
+  QrCode,
+  Search,
+  Server,
+  Settings,
+  Smartphone,
+  Trash2,
+  Warehouse,
+  Wrench,
+  X,
+  Armchair,
+  Tablet,
+  ShieldCheck,
+  Cloud,
+  Database,
+  ShoppingCart,
+  BadgeCheck,
+  LockKeyhole,
+  Barcode,
+  ScanLine,
+  History,
+  UserPlus,
+  UserRound,
+  RotateCcw,
+  FileSpreadsheet,
+  Upload,
+  Mail,
+  Send,
+  LogOut,
+  Eye,
+  EyeOff,
+  Headphones,
+  Keyboard,
+  Mouse,
+  Video,
+  PlugZap,
+  Usb,
+  HardDrive,
+  Palette,
+  Image as ImageIcon,
+  Wifi,
+  Languages,
+  Clock3,
   KeyRound,
   ShieldAlert,
 } from 'lucide-react'
-import { categories, seedAssets, seedBrandingSettings, seedDepartments, seedEmailSettings, seedSites, seedTransactions, seedUsers } from './data'
-import type { AppUser, Asset, AssetStatus, AssetTransaction, BrandingSettings, Department, EmailSettings, RegionalSettings, Site, TransactionType } from './types'
+import {
+  categories,
+  seedAssets,
+  seedBrandingSettings,
+  seedDepartments,
+  seedEmailSettings,
+  seedSites,
+  seedTransactions,
+  seedUsers,
+} from './data'
+import type {
+  AppUser,
+  Asset,
+  AssetStatus,
+  AssetTransaction,
+  BrandingSettings,
+  Department,
+  EmailSettings,
+  RegionalSettings,
+  Site,
+  TransactionType,
+} from './types'
 import { useAppRoute } from './hooks/useAppRoute'
-import { api,ApiError } from './services/api-client'
+import { api, ApiError } from './services/api-client'
 import { readApiCollection, type ApiCollectionResponse } from './services/api-response'
 import { env } from './config/env'
 import { translateUiText, useRuntimeI18n } from './i18n/runtime'
@@ -32,656 +112,5954 @@ import { RenewalManagement } from './features/renewals/RenewalManagement'
 import { RiskManagement } from './features/risks/RiskManagement'
 import { DisposalManagement } from './features/disposals/DisposalManagement'
 import { InventoryManagement } from './features/inventory/InventoryManagement'
-import { IntakeExcelValidationError, normalizeIntakeLookup, parseIntakeExcelRows, resolveIntakeLookup, type IntakeLookup } from './features/intake/intake-excel'
+import {
+  IntakeExcelValidationError,
+  normalizeIntakeLookup,
+  parseIntakeExcelRows,
+  resolveIntakeLookup,
+  type IntakeLookup,
+} from './features/intake/intake-excel'
 import { createIntakeTemplateSheets, intakeTemplateFileName } from './features/intake/intake-template'
 import { historyToTransaction } from './features/handover/history-transaction'
 
-const money = (value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value)
-const compactMoney = (value: number) => value >= 1_000_000_000 ? `${(value / 1_000_000_000).toFixed(1)} tỷ` : `${Math.round(value / 1_000_000)} tr`
-const seedRegionalSettings:RegionalSettings={language:'vi-VN',timezone:'Asia/Ho_Chi_Minh',dateFormat:'DD/MM/YYYY',timeFormat:'24h',firstDayOfWeek:'monday'}
-const supportedLanguages=[
-  ['vi-VN','Tiếng Việt'],['en-US','English'],['zh-CN','中文（简体）'],['ja-JP','日本語'],['ko-KR','한국어'],
-  ['fr-FR','Français'],['de-DE','Deutsch'],['es-ES','Español'],['pt-BR','Português'],['it-IT','Italiano'],
-  ['ru-RU','Русский'],['ar-SA','العربية'],['hi-IN','हिन्दी'],['th-TH','ไทย'],['id-ID','Bahasa Indonesia'],
-  ['ms-MY','Bahasa Melayu'],['nl-NL','Nederlands'],['pl-PL','Polski'],['tr-TR','Türkçe'],['cs-CZ','Čeština'],
+const money = (value: number) =>
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value)
+const compactMoney = (value: number) =>
+  value >= 1_000_000_000 ? `${(value / 1_000_000_000).toFixed(1)} tỷ` : `${Math.round(value / 1_000_000)} tr`
+const seedRegionalSettings: RegionalSettings = {
+  language: 'vi-VN',
+  timezone: 'Asia/Ho_Chi_Minh',
+  dateFormat: 'DD/MM/YYYY',
+  timeFormat: '24h',
+  firstDayOfWeek: 'monday',
+}
+const supportedLanguages = [
+  ['vi-VN', 'Tiếng Việt'],
+  ['en-US', 'English'],
+  ['zh-CN', '中文（简体）'],
+  ['ja-JP', '日本語'],
+  ['ko-KR', '한국어'],
+  ['fr-FR', 'Français'],
+  ['de-DE', 'Deutsch'],
+  ['es-ES', 'Español'],
+  ['pt-BR', 'Português'],
+  ['it-IT', 'Italiano'],
+  ['ru-RU', 'Русский'],
+  ['ar-SA', 'العربية'],
+  ['hi-IN', 'हिन्दी'],
+  ['th-TH', 'ไทย'],
+  ['id-ID', 'Bahasa Indonesia'],
+  ['ms-MY', 'Bahasa Melayu'],
+  ['nl-NL', 'Nederlands'],
+  ['pl-PL', 'Polski'],
+  ['tr-TR', 'Türkçe'],
+  ['cs-CZ', 'Čeština'],
 ] as const
-const supportedTimezones=[['Asia/Ho_Chi_Minh','Việt Nam (UTC+07:00)'],['Asia/Bangkok','Bangkok (UTC+07:00)'],['Asia/Singapore','Singapore (UTC+08:00)'],['Asia/Tokyo','Tokyo (UTC+09:00)'],['Asia/Seoul','Seoul (UTC+09:00)'],['Asia/Shanghai','Shanghai (UTC+08:00)'],['Asia/Kolkata','India (UTC+05:30)'],['Europe/London','London'],['Europe/Paris','Paris'],['Europe/Berlin','Berlin'],['America/New_York','New York'],['America/Los_Angeles','Los Angeles'],['Australia/Sydney','Sydney'],['UTC','UTC']] as const
-const englishLabels:Record<string,string>={
-  'Tổng quan':'Overview','Sổ tài sản':'Asset register','Cấp phát & Thu hồi':'Issue & Return','Điều chuyển':'Transfer','Nhập kho':'Stock receipt','Kho & Vị trí':'Warehouses & Locations','Kiểm kê':'Inventory audit','Mua sắm & PO':'Purchasing & PO','Nhà cung cấp':'Suppliers','Bảo trì & Sự cố':'Maintenance & Incidents','Thanh lý & Hủy bỏ':'Disposal & Destruction','Báo cáo':'Reports','Lịch sử / Audit':'History / Audit','Barcode / QR':'Barcode / QR','Cài đặt':'Settings','Trợ giúp':'Help','Chi tiết tài sản':'Asset details',
-  'TÀI SẢN':'ASSETS','NGHIỆP VỤ':'OPERATIONS','BÁO CÁO':'REPORTING','CÔNG CỤ':'TOOLS',
-  'Đang sử dụng':'In use','Sẵn sàng':'Available','Bảo trì':'Maintenance','Hỏng':'Broken','Cho mượn':'On loan','Quá hạn':'Overdue',
-  'Khám phá & Agent':'Discovery & Agent',
-  'License & Gia hạn':'Licenses & Renewals',
-  'Đánh giá rủi ro CNTT':'IT Risk Assessment',
-  'QUẢN TRỊ RỦI RO':'RISK MANAGEMENT',
+const supportedTimezones = [
+  ['Asia/Ho_Chi_Minh', 'Việt Nam (UTC+07:00)'],
+  ['Asia/Bangkok', 'Bangkok (UTC+07:00)'],
+  ['Asia/Singapore', 'Singapore (UTC+08:00)'],
+  ['Asia/Tokyo', 'Tokyo (UTC+09:00)'],
+  ['Asia/Seoul', 'Seoul (UTC+09:00)'],
+  ['Asia/Shanghai', 'Shanghai (UTC+08:00)'],
+  ['Asia/Kolkata', 'India (UTC+05:30)'],
+  ['Europe/London', 'London'],
+  ['Europe/Paris', 'Paris'],
+  ['Europe/Berlin', 'Berlin'],
+  ['America/New_York', 'New York'],
+  ['America/Los_Angeles', 'Los Angeles'],
+  ['Australia/Sydney', 'Sydney'],
+  ['UTC', 'UTC'],
+] as const
+const englishLabels: Record<string, string> = {
+  'Tổng quan': 'Overview',
+  'Sổ tài sản': 'Asset register',
+  'Cấp phát & Thu hồi': 'Issue & Return',
+  'Điều chuyển': 'Transfer',
+  'Nhập kho': 'Stock receipt',
+  'Kho & Vị trí': 'Warehouses & Locations',
+  'Kiểm kê': 'Inventory audit',
+  'Mua sắm & PO': 'Purchasing & PO',
+  'Nhà cung cấp': 'Suppliers',
+  'Bảo trì & Sự cố': 'Maintenance & Incidents',
+  'Thanh lý & Hủy bỏ': 'Disposal & Destruction',
+  'Báo cáo': 'Reports',
+  'Lịch sử / Audit': 'History / Audit',
+  'Barcode / QR': 'Barcode / QR',
+  'Cài đặt': 'Settings',
+  'Trợ giúp': 'Help',
+  'Chi tiết tài sản': 'Asset details',
+  'TÀI SẢN': 'ASSETS',
+  'NGHIỆP VỤ': 'OPERATIONS',
+  'BÁO CÁO': 'REPORTING',
+  'CÔNG CỤ': 'TOOLS',
+  'Đang sử dụng': 'In use',
+  'Sẵn sàng': 'Available',
+  'Bảo trì': 'Maintenance',
+  Hỏng: 'Broken',
+  'Cho mượn': 'On loan',
+  'Quá hạn': 'Overdue',
+  'Khám phá & Agent': 'Discovery & Agent',
+  'License & Gia hạn': 'Licenses & Renewals',
+  'Đánh giá rủi ro CNTT': 'IT Risk Assessment',
+  'QUẢN TRỊ RỦI RO': 'RISK MANAGEMENT',
 }
-const uiLabel=(value:string,language:string)=>language==='en-US'?(englishLabels[value]||value):value
-const localizedDefault=(value:string,language:string)=>translateUiText(value,language)
-const normalizeSearchText=(value:unknown)=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase().replace(/[^a-z0-9@.]+/g,' ').trim()
-const createInternalDepartmentCode=(name:string,departments:Department[])=>{const base=(normalizeSearchText(name).replace(/\s+/g,'-').toUpperCase()||'DEPARTMENT').slice(0,40);const existing=new Set(departments.map(item=>item.code.toUpperCase()));let code=base,index=2;while(existing.has(code)){const suffix=`-${index++}`;code=`${base.slice(0,50-suffix.length)}${suffix}`}return code}
-const assetSearchValues=(asset:Asset)=>[
-  asset.code,asset.barcode||asset.code,asset.qrCode||asset.code,asset.serial,asset.name,asset.category,
-  asset.manufacturer,asset.model,asset.assignedTo,asset.department,asset.location,asset.status,asset.condition,
-  asset.assignmentType,asset.purchaseDate,asset.purchaseCost,asset.dueDate,asset.recipientEmail,
-  asset.cpu,asset.ram,asset.storage,asset.operatingSystem,asset.ipAddress,asset.macAddress,
-]
-const matchesAssetSearch=(asset:Asset,query:string)=>{
-  const normalizedQuery=normalizeSearchText(query)
-  if(!normalizedQuery)return true
-  const searchable=normalizeSearchText(assetSearchValues(asset).join(' '))
-  const compact=searchable.replace(/\s/g,'')
-  return normalizedQuery.split(/\s+/).every(token=>searchable.includes(token)||compact.includes(token.replace(/\s/g,'')))
-}
-const downloadBlob = (blob: Blob, name: string) => { const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000) }
-const passwordDigest=async(value:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(byte=>byte.toString(16).padStart(2,'0')).join('')
-type AssetCodeFormat='none'|'barcode'|'qr'|'both'
-const canvasBlob=(canvas:HTMLCanvasElement)=>new Promise<Blob>((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Không thể tạo ảnh mã')),'image/png'))
-const barcodeBlob=async(value:string)=>{const canvas=document.createElement('canvas');JsBarcode(canvas,value,{format:'CODE128',width:2,height:50,displayValue:true,fontSize:13,margin:6});return canvasBlob(canvas)}
-const qrBlob=async(value:string)=>{const canvas=document.createElement('canvas');await QRCode.toCanvas(canvas,value,{width:120,margin:1,errorCorrectionLevel:'M'});return canvasBlob(canvas)}
-const exportAssetsExcel = async (assets: Asset[],codeFormat:AssetCodeFormat='none',outputName?:string) => {
-  const writeXlsxFile=(await import('write-excel-file/browser')).default
-  const fields:Array<[string,keyof Asset,'text'|'number']>=[['Mã tài sản','code','text'],['Tên tài sản','name','text'],['Nhóm tài sản','category','text'],['Serial','serial','text'],['Phòng ban','department','text'],['Site / Vị trí','location','text'],['Người sử dụng','assignedTo','text'],['Trạng thái','status','text'],['Ngày mua','purchaseDate','text'],['Nguyên giá','purchaseCost','number'],['Hãng','manufacturer','text'],['Model','model','text'],['CPU','cpu','text'],['RAM','ram','text'],['Ổ đĩa','storage','text'],['Hệ điều hành','operatingSystem','text'],['IP','ipAddress','text'],['MAC','macAddress','text'],['Ảnh tài sản (URL)','imageDataUrl','text']]
-  const includeBarcode=codeFormat==='barcode'||codeFormat==='both',includeQr=codeFormat==='qr'||codeFormat==='both'
-  const schema:any[]=fields.map(([column,key,type])=>({column,type:type==='number'?Number:String,value:(asset:Asset)=>type==='number'?Number(asset[key]||0):String(asset[key]||''),width:Math.max(14,column.length+4),height:codeFormat==='none'?undefined:82}))
-  if(includeBarcode)schema.push({column:'Barcode',type:String,value:()=>'',width:28,height:82})
-  if(includeQr)schema.push({column:'QR',type:String,value:()=>'',width:18,height:82})
-  const images:any[]=[]
-  for(let index=0;index<assets.length;index++){
-    let column=fields.length+1
-    if(includeBarcode){images.push({content:await barcodeBlob(assets[index].code),contentType:'image/png',width:190,height:64,dpi:96,anchor:{row:index+2,column},offsetX:4,offsetY:4,title:`Barcode ${assets[index].code}`});column++}
-    if(includeQr)images.push({content:await qrBlob(assets[index].code),contentType:'image/png',width:72,height:72,dpi:96,anchor:{row:index+2,column},offsetX:4,offsetY:4,title:`QR ${assets[index].code}`})
+const uiLabel = (value: string, language: string) => (language === 'en-US' ? englishLabels[value] || value : value)
+const localizedDefault = (value: string, language: string) => translateUiText(value, language)
+const normalizeSearchText = (value: unknown) =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9@.]+/g, ' ')
+    .trim()
+const createInternalDepartmentCode = (name: string, departments: Department[]) => {
+  const base = (normalizeSearchText(name).replace(/\s+/g, '-').toUpperCase() || 'DEPARTMENT').slice(0, 40)
+  const existing = new Set(departments.map(item => item.code.toUpperCase()))
+  let code = base,
+    index = 2
+  while (existing.has(code)) {
+    const suffix = `-${index++}`
+    code = `${base.slice(0, 50 - suffix.length)}${suffix}`
   }
-  await writeXlsxFile(assets,{schema,images}).toFile(outputName||`so-tai-san-${new Date().toISOString().slice(0,10)}.xlsx`)
+  return code
 }
-const escapeHtml = (value: string | number | undefined) => String(value ?? '').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]||c))
-const handoverHtml = (asset: Asset, transaction: AssetTransaction, email: EmailSettings, branding: BrandingSettings) => {
-  const occurred=new Date(transaction.date),date=occurred.toLocaleDateString('vi-VN'),documentNo=`BB-${occurred.getFullYear()}-${String(transaction.id).slice(-6)}`
-  const configuration=[asset.manufacturer&&`Hãng: ${asset.manufacturer}`,asset.model&&`Model: ${asset.model}`,asset.cpu&&`CPU: ${asset.cpu}`,asset.ram&&`RAM: ${asset.ram}`,asset.storage&&`Ổ đĩa: ${asset.storage}`,asset.operatingSystem&&`HĐH: ${asset.operatingSystem}`].filter(Boolean).join(' · ')||'Không áp dụng / Chưa cập nhật'
-  const logo=branding.logoDataUrl?`<img src="${escapeHtml(branding.logoDataUrl)}" alt="Logo">`:'<span class="logo-placeholder">AF</span>'
-  return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Biên bản ${escapeHtml(asset.code)}</title><style>@page{size:A4;margin:0}*{box-sizing:border-box}body{margin:0;background:#e8ebef;color:#111;font:12.5px "Times New Roman",serif;line-height:1.4}.sheet{width:210mm;min-height:297mm;margin:12px auto;padding:15mm 17mm 13mm;background:#fff;box-shadow:0 3px 18px #0002}.toolbar{position:fixed;right:20px;top:20px}.toolbar button{border:0;background:#174f91;color:#fff;padding:10px 16px;font:600 13px Arial;cursor:pointer}.document-head{display:grid;grid-template-columns:1.35fr .65fr;gap:20px;padding-bottom:10px;border-bottom:2px solid #222}.company{display:grid;grid-template-columns:48px 1fr;gap:10px;align-items:center}.company img,.logo-placeholder{width:44px;height:44px;object-fit:contain;border:1px solid #777;display:grid;place-items:center;font:bold 16px Arial}.company b{display:block;font:700 14px Arial;text-transform:uppercase}.company small{display:block;margin-top:4px;font-size:11px}.form-meta{text-align:right;font:11px Arial}.form-meta b{display:block;font-size:12px;margin-bottom:4px}.title{text-align:center;margin:20px 0 17px}.title h1{font-size:20px;margin:0 0 5px}.title p{margin:0;font-style:italic}.section-title{margin:14px 0 7px;padding:5px 7px;background:#edf1f5;border-left:3px solid #174f91;font:bold 12px Arial}.info{display:grid;grid-template-columns:145px 1fr;border:1px solid #555;border-bottom:0}.info div{min-height:29px;padding:6px 8px;border-bottom:1px solid #777}.info div:nth-child(odd){font-weight:bold;background:#f7f7f7;border-right:1px solid #777}.device-table{width:100%;border-collapse:collapse}.device-table th,.device-table td{border:1px solid #555;padding:7px 6px;vertical-align:top}.device-table th{background:#edf1f5;font:700 10.5px Arial;text-align:center}.device-table .center{text-align:center}.notes{min-height:48px;border:1px solid #555;padding:7px}.commitment{margin:14px 0 0;text-align:justify}.signatures{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:24px;text-align:center}.signatures b{font:700 11px Arial}.signatures small{display:block;font-style:italic;margin-top:3px}.signature-space{height:74px}.signature-name{font-weight:bold}.document-footer{margin-top:16px;padding-top:6px;border-top:1px solid #aaa;display:flex;justify-content:space-between;color:#666;font:9.5px Arial}@media print{body{background:#fff}.sheet{margin:0;box-shadow:none}.toolbar{display:none}}</style></head><body><div class="toolbar"><button onclick="window.print()">In / Lưu PDF</button></div><main class="sheet"><header class="document-head"><div class="company">${logo}<div><b>${escapeHtml(branding.companyName)}</b><small>${escapeHtml(branding.companyAddress)}</small></div></div><div class="form-meta"><b>MẪU: ${escapeHtml(branding.handoverFormCode)}</b><span>Số biên bản: ${escapeHtml(documentNo)}</span><br><span>Ngày lập: ${escapeHtml(date)}</span></div></header><section class="title"><h1>BIÊN BẢN ${escapeHtml(transaction.type.toUpperCase())} TÀI SẢN</h1><p>Ngày ${occurred.getDate()} tháng ${occurred.getMonth()+1} năm ${occurred.getFullYear()}</p></section><h2 class="section-title">I. THÔNG TIN BÀN GIAO</h2><div class="info"><div>Đơn vị / Công ty</div><div>${escapeHtml(branding.companyName)}</div><div>Bộ phận quản lý tài sản</div><div>${escapeHtml(branding.handoverDepartment)}</div><div>Người giao / Người thực hiện</div><div>${escapeHtml(transaction.performedBy)}</div><div>Người nhận bàn giao</div><div>${escapeHtml(transaction.to)}</div><div>Bộ phận người nhận</div><div>${escapeHtml(transaction.recipientDepartment||asset.department)}</div><div>Email người nhận</div><div>${escapeHtml(transaction.recipientEmail||'Chưa cập nhật')}</div><div>Địa điểm bàn giao</div><div>${escapeHtml(transaction.handoverLocation||asset.location)}</div><div>Ngày giờ bàn giao</div><div>${escapeHtml(occurred.toLocaleString('vi-VN'))}</div><div>Ngày dự kiến trả</div><div>${transaction.dueDate?escapeHtml(new Date(transaction.dueDate).toLocaleDateString('vi-VN')):'Không giới hạn'}</div></div><h2 class="section-title">II. DANH SÁCH THIẾT BỊ</h2><table class="device-table"><thead><tr><th style="width:28px">STT</th><th style="width:88px">Mã tài sản</th><th>Tên / Loại tài sản</th><th style="width:105px">Serial / Service Tag</th><th>Cấu hình kỹ thuật</th><th style="width:75px">Tình trạng</th><th style="width:34px">SL</th></tr></thead><tbody><tr><td class="center">1</td><td>${escapeHtml(asset.code)}</td><td><b>${escapeHtml(asset.name)}</b><br>${escapeHtml(asset.category)}</td><td>${escapeHtml(asset.serial||'—')}</td><td>${escapeHtml(configuration)}</td><td>${escapeHtml(transaction.condition||asset.condition||'Tốt')}</td><td class="center">1</td></tr></tbody></table><h2 class="section-title">III. GHI CHÚ VÀ CAM KẾT</h2><div class="notes"><b>Ghi chú:</b> ${escapeHtml(transaction.note||'Không có')}<br><b>Phạm vi bàn giao:</b> ${escapeHtml(transaction.from)} → ${escapeHtml(transaction.to)}</div><p class="commitment">Hai bên đã kiểm tra tài sản, cấu hình và tình trạng thực tế. Người nhận xác nhận tiếp nhận đúng thông tin nêu trên, cam kết sử dụng đúng mục đích, bảo quản tài sản và thông báo kịp thời cho ${escapeHtml(branding.handoverDepartment)} khi phát sinh hư hỏng, mất mát hoặc nhu cầu thu hồi.</p><section class="signatures"><div><b>ĐẠI DIỆN BỘ PHẬN</b><small>(Ký, ghi rõ họ tên)</small><div class="signature-space"></div><span>${escapeHtml(branding.handoverDepartment)}</span></div><div><b>NGƯỜI GIAO</b><small>(Ký, ghi rõ họ tên)</small><div class="signature-space"></div><span class="signature-name">${escapeHtml(transaction.performedBy)}</span></div><div><b>NGƯỜI NHẬN</b><small>(Ký, ghi rõ họ tên)</small><div class="signature-space"></div><span class="signature-name">${escapeHtml(transaction.to)}</span></div></section><footer class="document-footer"><span>Tạo bởi ${escapeHtml(branding.appName)} · ${escapeHtml(email.senderName)}</span><span>${escapeHtml(email.replyTo)}</span></footer></main></body></html>`
+const assetSearchValues = (asset: Asset) => [
+  asset.code,
+  asset.barcode || asset.code,
+  asset.qrCode || asset.code,
+  asset.serial,
+  asset.name,
+  asset.category,
+  asset.manufacturer,
+  asset.model,
+  asset.assignedTo,
+  asset.department,
+  asset.location,
+  asset.status,
+  asset.condition,
+  asset.assignmentType,
+  asset.purchaseDate,
+  asset.purchaseCost,
+  asset.dueDate,
+  asset.recipientEmail,
+  asset.cpu,
+  asset.ram,
+  asset.storage,
+  asset.operatingSystem,
+  asset.ipAddress,
+  asset.macAddress,
+]
+const matchesAssetSearch = (asset: Asset, query: string) => {
+  const normalizedQuery = normalizeSearchText(query)
+  if (!normalizedQuery) return true
+  const searchable = normalizeSearchText(assetSearchValues(asset).join(' '))
+  const compact = searchable.replace(/\s/g, '')
+  return normalizedQuery
+    .split(/\s+/)
+    .every(token => searchable.includes(token) || compact.includes(token.replace(/\s/g, '')))
 }
-const printHandover = (asset: Asset, transaction: AssetTransaction, email: EmailSettings, branding: BrandingSettings) => { const w=window.open('','_blank','width=1100,height=900');if(!w)return;w.document.write(handoverHtml(asset,transaction,email,branding));w.document.close() }
-const downloadHandover = (asset: Asset, transaction: AssetTransaction, email: EmailSettings, branding: BrandingSettings) => downloadBlob(new Blob([handoverHtml(asset,transaction,email,branding)],{type:'text/html;charset=utf-8'}),`bien-ban-A4-${asset.code}-${transaction.id}.html`)
-const emailHandover = (asset: Asset, transaction: AssetTransaction, email: EmailSettings) => { const subject=email.subjectTemplate.replace('{{asset_code}}',asset.code);const body=`Kính gửi ${transaction.to},\n\n${email.senderName} gửi biên bản ${transaction.type.toLowerCase()} tài sản ${asset.name} (${asset.code}).\nTình trạng: ${transaction.condition||'Tốt'}\nNgày bàn giao: ${new Date(transaction.date).toLocaleString('vi-VN')}\n\nVui lòng xác nhận đã nhận tài sản.\nLiên hệ: ${email.replyTo}`;window.location.href=`mailto:${encodeURIComponent(transaction.recipientEmail||'')}?cc=${encodeURIComponent(email.cc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}` }
+const downloadBlob = (blob: Blob, name: string) => {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+const passwordDigest = async (value: string) =>
+  Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))))
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('')
+type AssetCodeFormat = 'none' | 'barcode' | 'qr' | 'both'
+const canvasBlob = (canvas: HTMLCanvasElement) =>
+  new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error('Không thể tạo ảnh mã'))), 'image/png'),
+  )
+const barcodeBlob = async (value: string) => {
+  const canvas = document.createElement('canvas')
+  JsBarcode(canvas, value, { format: 'CODE128', width: 2, height: 50, displayValue: true, fontSize: 13, margin: 6 })
+  return canvasBlob(canvas)
+}
+const qrBlob = async (value: string) => {
+  const canvas = document.createElement('canvas')
+  await QRCode.toCanvas(canvas, value, { width: 120, margin: 1, errorCorrectionLevel: 'M' })
+  return canvasBlob(canvas)
+}
+const exportAssetsExcel = async (assets: Asset[], codeFormat: AssetCodeFormat = 'none', outputName?: string) => {
+  const writeXlsxFile = (await import('write-excel-file/browser')).default
+  const fields: Array<[string, keyof Asset, 'text' | 'number']> = [
+    ['Mã tài sản', 'code', 'text'],
+    ['Tên tài sản', 'name', 'text'],
+    ['Nhóm tài sản', 'category', 'text'],
+    ['Serial', 'serial', 'text'],
+    ['Phòng ban', 'department', 'text'],
+    ['Site / Vị trí', 'location', 'text'],
+    ['Người sử dụng', 'assignedTo', 'text'],
+    ['Trạng thái', 'status', 'text'],
+    ['Ngày mua', 'purchaseDate', 'text'],
+    ['Nguyên giá', 'purchaseCost', 'number'],
+    ['Hãng', 'manufacturer', 'text'],
+    ['Model', 'model', 'text'],
+    ['CPU', 'cpu', 'text'],
+    ['RAM', 'ram', 'text'],
+    ['Ổ đĩa', 'storage', 'text'],
+    ['Hệ điều hành', 'operatingSystem', 'text'],
+    ['IP', 'ipAddress', 'text'],
+    ['MAC', 'macAddress', 'text'],
+    ['Ảnh tài sản (URL)', 'imageDataUrl', 'text'],
+  ]
+  const includeBarcode = codeFormat === 'barcode' || codeFormat === 'both',
+    includeQr = codeFormat === 'qr' || codeFormat === 'both'
+  const schema: any[] = fields.map(([column, key, type]) => ({
+    column,
+    type: type === 'number' ? Number : String,
+    value: (asset: Asset) => (type === 'number' ? Number(asset[key] || 0) : String(asset[key] || '')),
+    width: Math.max(14, column.length + 4),
+    height: codeFormat === 'none' ? undefined : 82,
+  }))
+  if (includeBarcode) schema.push({ column: 'Barcode', type: String, value: () => '', width: 28, height: 82 })
+  if (includeQr) schema.push({ column: 'QR', type: String, value: () => '', width: 18, height: 82 })
+  const images: any[] = []
+  for (let index = 0; index < assets.length; index++) {
+    let column = fields.length + 1
+    if (includeBarcode) {
+      images.push({
+        content: await barcodeBlob(assets[index].code),
+        contentType: 'image/png',
+        width: 190,
+        height: 64,
+        dpi: 96,
+        anchor: { row: index + 2, column },
+        offsetX: 4,
+        offsetY: 4,
+        title: `Barcode ${assets[index].code}`,
+      })
+      column++
+    }
+    if (includeQr)
+      images.push({
+        content: await qrBlob(assets[index].code),
+        contentType: 'image/png',
+        width: 72,
+        height: 72,
+        dpi: 96,
+        anchor: { row: index + 2, column },
+        offsetX: 4,
+        offsetY: 4,
+        title: `QR ${assets[index].code}`,
+      })
+  }
+  await writeXlsxFile(assets, { schema, images }).toFile(
+    outputName || `so-tai-san-${new Date().toISOString().slice(0, 10)}.xlsx`,
+  )
+}
+const escapeHtml = (value: string | number | undefined) =>
+  String(value ?? '').replace(
+    /[&<>'"]/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[c] || c,
+  )
+const handoverHtml = (
+  asset: Asset,
+  transaction: AssetTransaction,
+  email: EmailSettings,
+  branding: BrandingSettings,
+) => {
+  const occurred = new Date(transaction.date),
+    date = occurred.toLocaleDateString('vi-VN'),
+    documentNo = `BB-${occurred.getFullYear()}-${String(transaction.id).slice(-6)}`
+  const configuration =
+    [
+      asset.manufacturer && `Hãng: ${asset.manufacturer}`,
+      asset.model && `Model: ${asset.model}`,
+      asset.cpu && `CPU: ${asset.cpu}`,
+      asset.ram && `RAM: ${asset.ram}`,
+      asset.storage && `Ổ đĩa: ${asset.storage}`,
+      asset.operatingSystem && `HĐH: ${asset.operatingSystem}`,
+    ]
+      .filter(Boolean)
+      .join(' · ') || 'Không áp dụng / Chưa cập nhật'
+  const logo = branding.logoDataUrl
+    ? `<img src="${escapeHtml(branding.logoDataUrl)}" alt="Logo">`
+    : '<span class="logo-placeholder">AF</span>'
+  return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Biên bản ${escapeHtml(asset.code)}</title><style>@page{size:A4;margin:0}*{box-sizing:border-box}body{margin:0;background:#e8ebef;color:#111;font:12.5px "Times New Roman",serif;line-height:1.4}.sheet{width:210mm;min-height:297mm;margin:12px auto;padding:15mm 17mm 13mm;background:#fff;box-shadow:0 3px 18px #0002}.toolbar{position:fixed;right:20px;top:20px}.toolbar button{border:0;background:#174f91;color:#fff;padding:10px 16px;font:600 13px Arial;cursor:pointer}.document-head{display:grid;grid-template-columns:1.35fr .65fr;gap:20px;padding-bottom:10px;border-bottom:2px solid #222}.company{display:grid;grid-template-columns:48px 1fr;gap:10px;align-items:center}.company img,.logo-placeholder{width:44px;height:44px;object-fit:contain;border:1px solid #777;display:grid;place-items:center;font:bold 16px Arial}.company b{display:block;font:700 14px Arial;text-transform:uppercase}.company small{display:block;margin-top:4px;font-size:11px}.form-meta{text-align:right;font:11px Arial}.form-meta b{display:block;font-size:12px;margin-bottom:4px}.title{text-align:center;margin:20px 0 17px}.title h1{font-size:20px;margin:0 0 5px}.title p{margin:0;font-style:italic}.section-title{margin:14px 0 7px;padding:5px 7px;background:#edf1f5;border-left:3px solid #174f91;font:bold 12px Arial}.info{display:grid;grid-template-columns:145px 1fr;border:1px solid #555;border-bottom:0}.info div{min-height:29px;padding:6px 8px;border-bottom:1px solid #777}.info div:nth-child(odd){font-weight:bold;background:#f7f7f7;border-right:1px solid #777}.device-table{width:100%;border-collapse:collapse}.device-table th,.device-table td{border:1px solid #555;padding:7px 6px;vertical-align:top}.device-table th{background:#edf1f5;font:700 10.5px Arial;text-align:center}.device-table .center{text-align:center}.notes{min-height:48px;border:1px solid #555;padding:7px}.commitment{margin:14px 0 0;text-align:justify}.signatures{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:24px;text-align:center}.signatures b{font:700 11px Arial}.signatures small{display:block;font-style:italic;margin-top:3px}.signature-space{height:74px}.signature-name{font-weight:bold}.document-footer{margin-top:16px;padding-top:6px;border-top:1px solid #aaa;display:flex;justify-content:space-between;color:#666;font:9.5px Arial}@media print{body{background:#fff}.sheet{margin:0;box-shadow:none}.toolbar{display:none}}</style></head><body><div class="toolbar"><button onclick="window.print()">In / Lưu PDF</button></div><main class="sheet"><header class="document-head"><div class="company">${logo}<div><b>${escapeHtml(branding.companyName)}</b><small>${escapeHtml(branding.companyAddress)}</small></div></div><div class="form-meta"><b>MẪU: ${escapeHtml(branding.handoverFormCode)}</b><span>Số biên bản: ${escapeHtml(documentNo)}</span><br><span>Ngày lập: ${escapeHtml(date)}</span></div></header><section class="title"><h1>BIÊN BẢN ${escapeHtml(transaction.type.toUpperCase())} TÀI SẢN</h1><p>Ngày ${occurred.getDate()} tháng ${occurred.getMonth() + 1} năm ${occurred.getFullYear()}</p></section><h2 class="section-title">I. THÔNG TIN BÀN GIAO</h2><div class="info"><div>Đơn vị / Công ty</div><div>${escapeHtml(branding.companyName)}</div><div>Bộ phận quản lý tài sản</div><div>${escapeHtml(branding.handoverDepartment)}</div><div>Người giao / Người thực hiện</div><div>${escapeHtml(transaction.performedBy)}</div><div>Người nhận bàn giao</div><div>${escapeHtml(transaction.to)}</div><div>Bộ phận người nhận</div><div>${escapeHtml(transaction.recipientDepartment || asset.department)}</div><div>Email người nhận</div><div>${escapeHtml(transaction.recipientEmail || 'Chưa cập nhật')}</div><div>Địa điểm bàn giao</div><div>${escapeHtml(transaction.handoverLocation || asset.location)}</div><div>Ngày giờ bàn giao</div><div>${escapeHtml(occurred.toLocaleString('vi-VN'))}</div><div>Ngày dự kiến trả</div><div>${transaction.dueDate ? escapeHtml(new Date(transaction.dueDate).toLocaleDateString('vi-VN')) : 'Không giới hạn'}</div></div><h2 class="section-title">II. DANH SÁCH THIẾT BỊ</h2><table class="device-table"><thead><tr><th style="width:28px">STT</th><th style="width:88px">Mã tài sản</th><th>Tên / Loại tài sản</th><th style="width:105px">Serial / Service Tag</th><th>Cấu hình kỹ thuật</th><th style="width:75px">Tình trạng</th><th style="width:34px">SL</th></tr></thead><tbody><tr><td class="center">1</td><td>${escapeHtml(asset.code)}</td><td><b>${escapeHtml(asset.name)}</b><br>${escapeHtml(asset.category)}</td><td>${escapeHtml(asset.serial || '—')}</td><td>${escapeHtml(configuration)}</td><td>${escapeHtml(transaction.condition || asset.condition || 'Tốt')}</td><td class="center">1</td></tr></tbody></table><h2 class="section-title">III. GHI CHÚ VÀ CAM KẾT</h2><div class="notes"><b>Ghi chú:</b> ${escapeHtml(transaction.note || 'Không có')}<br><b>Phạm vi bàn giao:</b> ${escapeHtml(transaction.from)} → ${escapeHtml(transaction.to)}</div><p class="commitment">Hai bên đã kiểm tra tài sản, cấu hình và tình trạng thực tế. Người nhận xác nhận tiếp nhận đúng thông tin nêu trên, cam kết sử dụng đúng mục đích, bảo quản tài sản và thông báo kịp thời cho ${escapeHtml(branding.handoverDepartment)} khi phát sinh hư hỏng, mất mát hoặc nhu cầu thu hồi.</p><section class="signatures"><div><b>ĐẠI DIỆN BỘ PHẬN</b><small>(Ký, ghi rõ họ tên)</small><div class="signature-space"></div><span>${escapeHtml(branding.handoverDepartment)}</span></div><div><b>NGƯỜI GIAO</b><small>(Ký, ghi rõ họ tên)</small><div class="signature-space"></div><span class="signature-name">${escapeHtml(transaction.performedBy)}</span></div><div><b>NGƯỜI NHẬN</b><small>(Ký, ghi rõ họ tên)</small><div class="signature-space"></div><span class="signature-name">${escapeHtml(transaction.to)}</span></div></section><footer class="document-footer"><span>Tạo bởi ${escapeHtml(branding.appName)} · ${escapeHtml(email.senderName)}</span><span>${escapeHtml(email.replyTo)}</span></footer></main></body></html>`
+}
+const printHandover = (
+  asset: Asset,
+  transaction: AssetTransaction,
+  email: EmailSettings,
+  branding: BrandingSettings,
+) => {
+  const w = window.open('', '_blank', 'width=1100,height=900')
+  if (!w) return
+  w.document.write(handoverHtml(asset, transaction, email, branding))
+  w.document.close()
+}
+const downloadHandover = (
+  asset: Asset,
+  transaction: AssetTransaction,
+  email: EmailSettings,
+  branding: BrandingSettings,
+) =>
+  downloadBlob(
+    new Blob([handoverHtml(asset, transaction, email, branding)], { type: 'text/html;charset=utf-8' }),
+    `bien-ban-A4-${asset.code}-${transaction.id}.html`,
+  )
+const emailHandover = (asset: Asset, transaction: AssetTransaction, email: EmailSettings) => {
+  const subject = email.subjectTemplate.replace('{{asset_code}}', asset.code)
+  const body = `Kính gửi ${transaction.to},\n\n${email.senderName} gửi biên bản ${transaction.type.toLowerCase()} tài sản ${asset.name} (${asset.code}).\nTình trạng: ${transaction.condition || 'Tốt'}\nNgày bàn giao: ${new Date(transaction.date).toLocaleString('vi-VN')}\n\nVui lòng xác nhận đã nhận tài sản.\nLiên hệ: ${email.replyTo}`
+  window.location.href = `mailto:${encodeURIComponent(transaction.recipientEmail || '')}?cc=${encodeURIComponent(email.cc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+}
 const iconFor = (type: string, size = 20) => {
-  const icons: Record<string, typeof Laptop> = { laptop: Laptop, desktop: Monitor, monitor: Monitor, printer: Printer, phone: Smartphone, chair: Armchair, server: Server, switch: Server, firewall: ShieldCheck, router: Wifi, ups: PlugZap, nas: HardDrive, tablet: Tablet, software: Cloud, digital: Database, byod: Smartphone, headphones: Headphones, keyboard: Keyboard, mouse: Mouse, webcam: Video, dock: Box, charger: PlugZap, hub: Usb, drive: HardDrive }
+  const icons: Record<string, typeof Laptop> = {
+    laptop: Laptop,
+    desktop: Monitor,
+    monitor: Monitor,
+    printer: Printer,
+    phone: Smartphone,
+    chair: Armchair,
+    server: Server,
+    switch: Server,
+    firewall: ShieldCheck,
+    router: Wifi,
+    ups: PlugZap,
+    nas: HardDrive,
+    tablet: Tablet,
+    software: Cloud,
+    digital: Database,
+    byod: Smartphone,
+    headphones: Headphones,
+    keyboard: Keyboard,
+    mouse: Mouse,
+    webcam: Video,
+    dock: Box,
+    charger: PlugZap,
+    hub: Usb,
+    drive: HardDrive,
+  }
   const Icon = icons[type] || Box
   return <Icon size={size} />
 }
 
-const assetGroups=[
-  {id:'all',label:'Tất cả',icon:Box,categories:[]},
-  {id:'laptop',label:'Laptop',icon:Laptop,categories:['Laptop','Máy tính']},
-  {id:'desktop',label:'PC',icon:Monitor,categories:['PC / Desktop']},
-  {id:'monitor',label:'Màn hình',icon:Monitor,categories:['Màn hình']},
-  {id:'mobile',label:'Mobile',icon:Smartphone,categories:['Mobile','Điện thoại']},
-  {id:'tablet',label:'Tablet',icon:Tablet,categories:['Tablet','Máy tính bảng']},
-  {id:'server',label:'Server',icon:Server,categories:['Server']},
-  {id:'switch',label:'Switch',icon:Server,categories:['Switch']},
-  {id:'firewall',label:'Firewall',icon:ShieldCheck,categories:['Firewall']},
-  {id:'network',label:'Router / Wi-Fi',icon:Wifi,categories:['Router / Wi-Fi']},
-  {id:'printer',label:'Máy in',icon:Printer,categories:['Máy in','Thiết bị văn phòng']},
-  {id:'accessory',label:'Phụ kiện',icon:Mouse,categories:['Tai nghe','Bàn phím','Chuột','Webcam','Dock chuyển đổi','Sạc & Adapter','Hub & Cáp kết nối','Ổ lưu trữ ngoài']},
-  {id:'other',label:'Nhóm khác',icon:Archive,categories:[]},
+const assetGroups = [
+  { id: 'all', label: 'Tất cả', icon: Box, categories: [] },
+  { id: 'laptop', label: 'Laptop', icon: Laptop, categories: ['Laptop', 'Máy tính'] },
+  { id: 'desktop', label: 'PC', icon: Monitor, categories: ['PC / Desktop'] },
+  { id: 'monitor', label: 'Màn hình', icon: Monitor, categories: ['Màn hình'] },
+  { id: 'mobile', label: 'Mobile', icon: Smartphone, categories: ['Mobile', 'Điện thoại'] },
+  { id: 'tablet', label: 'Tablet', icon: Tablet, categories: ['Tablet', 'Máy tính bảng'] },
+  { id: 'server', label: 'Server', icon: Server, categories: ['Server'] },
+  { id: 'switch', label: 'Switch', icon: Server, categories: ['Switch'] },
+  { id: 'firewall', label: 'Firewall', icon: ShieldCheck, categories: ['Firewall'] },
+  { id: 'network', label: 'Router / Wi-Fi', icon: Wifi, categories: ['Router / Wi-Fi'] },
+  { id: 'printer', label: 'Máy in', icon: Printer, categories: ['Máy in', 'Thiết bị văn phòng'] },
+  {
+    id: 'accessory',
+    label: 'Phụ kiện',
+    icon: Mouse,
+    categories: [
+      'Tai nghe',
+      'Bàn phím',
+      'Chuột',
+      'Webcam',
+      'Dock chuyển đổi',
+      'Sạc & Adapter',
+      'Hub & Cáp kết nối',
+      'Ổ lưu trữ ngoài',
+    ],
+  },
+  { id: 'other', label: 'Nhóm khác', icon: Archive, categories: [] },
 ]
-interface AssetCategoryCatalogItem{id:string;code:string;name:string;parentId?:string|null;description?:string|null;status?:string;_count?:{assets:number;children:number;models:number;inventorySessions?:number}}
-const customCategoryStorageKey='assetflow-custom-asset-categories-v1'
-const categoryCode=(name:string)=>name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'D').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,50)||'ASSET_GROUP'
-const seedCategoryCatalog=():AssetCategoryCatalogItem[]=>categories.map((name,index)=>({id:`seed-${index}`,code:categoryCode(name),name,status:'ACTIVE'}))
-const mergeCategoryCatalog=(items:AssetCategoryCatalogItem[])=>Array.from(new Map(items.map(item=>[item.id,item])).values()).sort((a,b)=>a.name.localeCompare(b.name,'vi'))
-function useAssetCategoryCatalog(manage=false){
-  const [allItems,setAllItems]=useState<AssetCategoryCatalogItem[]>(()=>env.demoMode?seedCategoryCatalog():[])
-  const items=useMemo(()=>allItems.filter(item=>item.status!=='INACTIVE'),[allItems])
-  const synchronize=(incoming:AssetCategoryCatalogItem[])=>{const merged=mergeCategoryCatalog([...(env.demoMode?seedCategoryCatalog():[]),...incoming]);merged.filter(item=>item.status!=='INACTIVE').forEach(item=>{if(!categories.includes(item.name))categories.push(item.name)});setAllItems(merged);return merged}
-  useEffect(()=>{
-    let active=true
-    const load=async()=>{try{const incoming=env.demoMode?JSON.parse(localStorage.getItem(customCategoryStorageKey)||'[]') as AssetCategoryCatalogItem[]:await api.get<AssetCategoryCatalogItem[]>(manage?'/admin/categories':'/categories');if(active)synchronize(incoming)}catch{if(active)synchronize([])}}
-    const changed=(event:Event)=>{const item=(event as CustomEvent<AssetCategoryCatalogItem>).detail;if(item)setAllItems(current=>mergeCategoryCatalog([...current,item]))}
-    void load();window.addEventListener('assetflow-category-changed',changed)
-    return()=>{active=false;window.removeEventListener('assetflow-category-changed',changed)}
-  },[manage])
-  const storeDemo=(next:AssetCategoryCatalogItem[])=>localStorage.setItem(customCategoryStorageKey,JSON.stringify(next.filter(item=>item.id.startsWith('local-')||item.status==='INACTIVE'||seedCategoryCatalog().some(seed=>seed.id===item.id&&JSON.stringify(seed)!==JSON.stringify(item)))))
-  const publish=(item:AssetCategoryCatalogItem)=>{setAllItems(current=>mergeCategoryCatalog([...current,item]));window.dispatchEvent(new CustomEvent('assetflow-category-changed',{detail:item}));return item}
-  const create=async(input:{name:string;code:string;description?:string})=>{
-    let created:AssetCategoryCatalogItem
-    if(env.demoMode){
-      const custom=JSON.parse(localStorage.getItem(customCategoryStorageKey)||'[]') as AssetCategoryCatalogItem[]
-      if([...items,...custom].some(item=>item.name.toLocaleLowerCase('vi')===input.name.toLocaleLowerCase('vi')||item.code.toUpperCase()===input.code.toUpperCase()))throw new Error('Mã hoặc tên nhóm tài sản đã tồn tại')
-      created={id:`local-${Date.now()}`,code:input.code.toUpperCase(),name:input.name,description:input.description,status:'ACTIVE',_count:{assets:0,children:0,models:0,inventorySessions:0}}
-      localStorage.setItem(customCategoryStorageKey,JSON.stringify([...custom,created]))
-    }else created=await api.post<AssetCategoryCatalogItem>('/admin/categories',input)
-    if(!categories.includes(created.name))categories.push(created.name)
+interface AssetCategoryCatalogItem {
+  id: string
+  code: string
+  name: string
+  parentId?: string | null
+  description?: string | null
+  status?: string
+  _count?: { assets: number; children: number; models: number; inventorySessions?: number }
+}
+const customCategoryStorageKey = 'assetflow-custom-asset-categories-v1'
+const categoryCode = (name: string) =>
+  name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/gi, 'D')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 50) || 'ASSET_GROUP'
+const seedCategoryCatalog = (): AssetCategoryCatalogItem[] =>
+  categories.map((name, index) => ({ id: `seed-${index}`, code: categoryCode(name), name, status: 'ACTIVE' }))
+const mergeCategoryCatalog = (items: AssetCategoryCatalogItem[]) =>
+  Array.from(new Map(items.map(item => [item.id, item])).values()).sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+function useAssetCategoryCatalog(manage = false) {
+  const [allItems, setAllItems] = useState<AssetCategoryCatalogItem[]>(() =>
+    env.demoMode ? seedCategoryCatalog() : [],
+  )
+  const items = useMemo(() => allItems.filter(item => item.status !== 'INACTIVE'), [allItems])
+  const synchronize = (incoming: AssetCategoryCatalogItem[]) => {
+    const merged = mergeCategoryCatalog([...(env.demoMode ? seedCategoryCatalog() : []), ...incoming])
+    merged
+      .filter(item => item.status !== 'INACTIVE')
+      .forEach(item => {
+        if (!categories.includes(item.name)) categories.push(item.name)
+      })
+    setAllItems(merged)
+    return merged
+  }
+  useEffect(() => {
+    let active = true
+    const load = async () => {
+      try {
+        const incoming = env.demoMode
+          ? (JSON.parse(localStorage.getItem(customCategoryStorageKey) || '[]') as AssetCategoryCatalogItem[])
+          : await api.get<AssetCategoryCatalogItem[]>(manage ? '/admin/categories' : '/categories')
+        if (active) synchronize(incoming)
+      } catch {
+        if (active) synchronize([])
+      }
+    }
+    const changed = (event: Event) => {
+      const item = (event as CustomEvent<AssetCategoryCatalogItem>).detail
+      if (item) setAllItems(current => mergeCategoryCatalog([...current, item]))
+    }
+    void load()
+    window.addEventListener('assetflow-category-changed', changed)
+    return () => {
+      active = false
+      window.removeEventListener('assetflow-category-changed', changed)
+    }
+  }, [manage])
+  const storeDemo = (next: AssetCategoryCatalogItem[]) =>
+    localStorage.setItem(
+      customCategoryStorageKey,
+      JSON.stringify(
+        next.filter(
+          item =>
+            item.id.startsWith('local-') ||
+            item.status === 'INACTIVE' ||
+            seedCategoryCatalog().some(seed => seed.id === item.id && JSON.stringify(seed) !== JSON.stringify(item)),
+        ),
+      ),
+    )
+  const publish = (item: AssetCategoryCatalogItem) => {
+    setAllItems(current => mergeCategoryCatalog([...current, item]))
+    window.dispatchEvent(new CustomEvent('assetflow-category-changed', { detail: item }))
+    return item
+  }
+  const create = async (input: { name: string; code: string; description?: string }) => {
+    let created: AssetCategoryCatalogItem
+    if (env.demoMode) {
+      const custom = JSON.parse(localStorage.getItem(customCategoryStorageKey) || '[]') as AssetCategoryCatalogItem[]
+      if (
+        [...items, ...custom].some(
+          item =>
+            item.name.toLocaleLowerCase('vi') === input.name.toLocaleLowerCase('vi') ||
+            item.code.toUpperCase() === input.code.toUpperCase(),
+        )
+      )
+        throw new Error('Mã hoặc tên nhóm tài sản đã tồn tại')
+      created = {
+        id: `local-${Date.now()}`,
+        code: input.code.toUpperCase(),
+        name: input.name,
+        description: input.description,
+        status: 'ACTIVE',
+        _count: { assets: 0, children: 0, models: 0, inventorySessions: 0 },
+      }
+      localStorage.setItem(customCategoryStorageKey, JSON.stringify([...custom, created]))
+    } else created = await api.post<AssetCategoryCatalogItem>('/admin/categories', input)
+    if (!categories.includes(created.name)) categories.push(created.name)
     return publish(created)
   }
-  const update=async(id:string,input:{name?:string;code?:string;description?:string;status?:string})=>{
-    let updated:AssetCategoryCatalogItem
-    if(env.demoMode){
-      const current=allItems.find(item=>item.id===id);if(!current)throw new Error('Không tìm thấy nhóm tài sản')
-      if(allItems.some(item=>item.id!==id&&((input.name&&item.name.toLocaleLowerCase('vi')===input.name.toLocaleLowerCase('vi'))||(input.code&&item.code.toUpperCase()===input.code.toUpperCase()))))throw new Error('Mã hoặc tên nhóm tài sản đã tồn tại')
-      updated={...current,...input};const next=mergeCategoryCatalog([...allItems.filter(item=>item.id!==id),updated]);storeDemo(next)
-    }else updated=await api.patch<AssetCategoryCatalogItem>(`/admin/categories/${id}`,input)
+  const update = async (id: string, input: { name?: string; code?: string; description?: string; status?: string }) => {
+    let updated: AssetCategoryCatalogItem
+    if (env.demoMode) {
+      const current = allItems.find(item => item.id === id)
+      if (!current) throw new Error('Không tìm thấy nhóm tài sản')
+      if (
+        allItems.some(
+          item =>
+            item.id !== id &&
+            ((input.name && item.name.toLocaleLowerCase('vi') === input.name.toLocaleLowerCase('vi')) ||
+              (input.code && item.code.toUpperCase() === input.code.toUpperCase())),
+        )
+      )
+        throw new Error('Mã hoặc tên nhóm tài sản đã tồn tại')
+      updated = { ...current, ...input }
+      const next = mergeCategoryCatalog([...allItems.filter(item => item.id !== id), updated])
+      storeDemo(next)
+    } else updated = await api.patch<AssetCategoryCatalogItem>(`/admin/categories/${id}`, input)
     return publish(updated)
   }
-  const remove=async(id:string)=>{
-    const current=allItems.find(item=>item.id===id);if(!current)throw new Error('Không tìm thấy nhóm tài sản')
-    if(env.demoMode){
-      const references=Object.values(current._count||{}).reduce((sum,value)=>sum+(value||0),0);if(references)throw new Error('Nhóm đã phát sinh dữ liệu nên không thể xóa. Hãy chọn Ngừng sử dụng.')
-      const next=allItems.filter(item=>item.id!==id);storeDemo(next);setAllItems(next);window.dispatchEvent(new CustomEvent('assetflow-category-removed',{detail:id}))
-    }else{await api.delete(`/admin/categories/${id}`);setAllItems(existing=>existing.filter(item=>item.id!==id));window.dispatchEvent(new CustomEvent('assetflow-category-removed',{detail:id}))}
+  const remove = async (id: string) => {
+    const current = allItems.find(item => item.id === id)
+    if (!current) throw new Error('Không tìm thấy nhóm tài sản')
+    if (env.demoMode) {
+      const references = Object.values(current._count || {}).reduce((sum, value) => sum + (value || 0), 0)
+      if (references) throw new Error('Nhóm đã phát sinh dữ liệu nên không thể xóa. Hãy chọn Ngừng sử dụng.')
+      const next = allItems.filter(item => item.id !== id)
+      storeDemo(next)
+      setAllItems(next)
+      window.dispatchEvent(new CustomEvent('assetflow-category-removed', { detail: id }))
+    } else {
+      await api.delete(`/admin/categories/${id}`)
+      setAllItems(existing => existing.filter(item => item.id !== id))
+      window.dispatchEvent(new CustomEvent('assetflow-category-removed', { detail: id }))
+    }
   }
-  return {items,allItems,create,update,remove}
+  return { items, allItems, create, update, remove }
 }
-const matchesAssetGroup=(asset:Asset,groupId:string,customNames:string[]=[])=>groupId==='all'||(groupId.startsWith('category:')?asset.category===decodeURIComponent(groupId.slice(9)):groupId==='other'?!assetGroups.some(group=>!['all','other'].includes(group.id)&&group.categories.includes(asset.category))&&!customNames.includes(asset.category):assetGroups.find(group=>group.id===groupId)?.categories.includes(asset.category)||false)
-const assetIconForCategory=(category:string)=>({Laptop:'laptop','PC / Desktop':'desktop','Màn hình':'monitor',Mobile:'phone',Tablet:'tablet',Server:'server',Switch:'switch',Firewall:'firewall','Router / Wi-Fi':'router',UPS:'ups','NAS / Storage':'nas','Máy in':'printer','Tai nghe':'headphones','Bàn phím':'keyboard','Chuột':'mouse',Webcam:'webcam','Dock chuyển đổi':'dock','Sạc & Adapter':'charger','Hub & Cáp kết nối':'hub','Ổ lưu trữ ngoài':'drive','Phần mềm & Bản quyền':'software','Tài sản số & Dữ liệu':'digital','Thiết bị BYOD':'byod','Nội thất':'chair'} as Record<string,string>)[category]||'box'
-const normalizeLegacyAsset=(asset:Asset):Asset=>{let category=asset.category;if(category==='Máy tính')category=asset.icon==='laptop'?'Laptop':'PC / Desktop';if(category==='Điện thoại')category='Mobile';if(category==='Máy tính bảng')category='Tablet';if(category==='Thiết bị văn phòng'&&asset.icon==='printer')category='Máy in';if(category==='Thiết bị mạng')category=/switch|catalyst/i.test(`${asset.name} ${asset.model||''}`)?'Switch':/firewall|fortigate|palo alto/i.test(`${asset.name} ${asset.model||''}`)?'Firewall':'Router / Wi-Fi';return {...asset,category,icon:category===asset.category?asset.icon:assetIconForCategory(category)}}
-const numericId=(value:string)=>Math.abs([...value].reduce((hash,char)=>(hash*31+char.charCodeAt(0))|0,0))
-const fromApiAsset=(item:any):Asset=>({id:numericId(item.id),apiId:item.id,code:item.assetTag,barcode:item.barcode||item.assetTag,qrCode:item.qrCode||item.barcode||item.assetTag,name:item.name,serial:item.serialNumber||'',category:item.category?.name||'Khác',department:item.currentCustodian?.department?.name||item.department?.name||'Chưa gán',location:item.location?.name||item.warehouse?.name||'Chưa xác định',assignedTo:item.currentCustodian?.fullName||item.assignedUser?.fullName||'Chưa gán',purchaseDate:String(item.purchaseDate||new Date().toISOString()).slice(0,10),purchaseCost:Number(item.purchaseCost||0),status:item.status?.code==='READY'?'Sẵn sàng':item.status?.code==='RESERVED'?'Đã giữ chỗ':item.status?.code==='RETURNED'?'Đã thu hồi':item.status?.code==='DISPOSED'?'Đã thanh lý':item.status?.code==='IN_USE'||item.status?.code==='ON_LOAN'?'Đang sử dụng':item.status?.code==='MAINTENANCE'?'Bảo trì':'Hỏng',icon:assetIconForCategory(item.category?.name||''),manufacturer:item.manufacturer?.name,model:item.model?.name,cpu:item.cpu||'',ram:item.ram||'',storage:item.storage||'',operatingSystem:item.operatingSystem||'',ipAddress:item.ipAddress||'',macAddress:item.macAddress||'',assignmentType:item.assignments?.[0]?.type==='LOAN'?'Cho mượn':item.assignments?.[0]?'Cấp phát':undefined,dueDate:item.assignments?.[0]?.expectedReturnDate||'',condition:item.assignments?.[0]?.conditionOut||undefined,recipientEmail:item.currentCustodian?.email||item.assignedUser?.email||''})
+const matchesAssetGroup = (asset: Asset, groupId: string, customNames: string[] = []) =>
+  groupId === 'all' ||
+  (groupId.startsWith('category:')
+    ? asset.category === decodeURIComponent(groupId.slice(9))
+    : groupId === 'other'
+      ? !assetGroups.some(group => !['all', 'other'].includes(group.id) && group.categories.includes(asset.category)) &&
+        !customNames.includes(asset.category)
+      : assetGroups.find(group => group.id === groupId)?.categories.includes(asset.category) || false)
+const assetIconForCategory = (category: string) =>
+  (
+    ({
+      Laptop: 'laptop',
+      'PC / Desktop': 'desktop',
+      'Màn hình': 'monitor',
+      Mobile: 'phone',
+      Tablet: 'tablet',
+      Server: 'server',
+      Switch: 'switch',
+      Firewall: 'firewall',
+      'Router / Wi-Fi': 'router',
+      UPS: 'ups',
+      'NAS / Storage': 'nas',
+      'Máy in': 'printer',
+      'Tai nghe': 'headphones',
+      'Bàn phím': 'keyboard',
+      Chuột: 'mouse',
+      Webcam: 'webcam',
+      'Dock chuyển đổi': 'dock',
+      'Sạc & Adapter': 'charger',
+      'Hub & Cáp kết nối': 'hub',
+      'Ổ lưu trữ ngoài': 'drive',
+      'Phần mềm & Bản quyền': 'software',
+      'Tài sản số & Dữ liệu': 'digital',
+      'Thiết bị BYOD': 'byod',
+      'Nội thất': 'chair',
+    }) as Record<string, string>
+  )[category] || 'box'
+const normalizeLegacyAsset = (asset: Asset): Asset => {
+  let category = asset.category
+  if (category === 'Máy tính') category = asset.icon === 'laptop' ? 'Laptop' : 'PC / Desktop'
+  if (category === 'Điện thoại') category = 'Mobile'
+  if (category === 'Máy tính bảng') category = 'Tablet'
+  if (category === 'Thiết bị văn phòng' && asset.icon === 'printer') category = 'Máy in'
+  if (category === 'Thiết bị mạng')
+    category = /switch|catalyst/i.test(`${asset.name} ${asset.model || ''}`)
+      ? 'Switch'
+      : /firewall|fortigate|palo alto/i.test(`${asset.name} ${asset.model || ''}`)
+        ? 'Firewall'
+        : 'Router / Wi-Fi'
+  return { ...asset, category, icon: category === asset.category ? asset.icon : assetIconForCategory(category) }
+}
+const numericId = (value: string) =>
+  Math.abs([...value].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) | 0, 0))
+const fromApiAsset = (item: any): Asset => ({
+  id: numericId(item.id),
+  apiId: item.id,
+  code: item.assetTag,
+  barcode: item.barcode || item.assetTag,
+  qrCode: item.qrCode || item.barcode || item.assetTag,
+  name: item.name,
+  serial: item.serialNumber || '',
+  category: item.category?.name || 'Khác',
+  department: item.currentCustodian?.department?.name || item.department?.name || 'Chưa gán',
+  location: item.location?.name || item.warehouse?.name || 'Chưa xác định',
+  assignedTo: item.currentCustodian?.fullName || item.assignedUser?.fullName || 'Chưa gán',
+  purchaseDate: String(item.purchaseDate || new Date().toISOString()).slice(0, 10),
+  purchaseCost: Number(item.purchaseCost || 0),
+  status:
+    item.status?.code === 'READY'
+      ? 'Sẵn sàng'
+      : item.status?.code === 'RESERVED'
+        ? 'Đã giữ chỗ'
+        : item.status?.code === 'RETURNED'
+          ? 'Đã thu hồi'
+          : item.status?.code === 'DISPOSED'
+            ? 'Đã thanh lý'
+            : item.status?.code === 'IN_USE' || item.status?.code === 'ON_LOAN'
+              ? 'Đang sử dụng'
+              : item.status?.code === 'MAINTENANCE'
+                ? 'Bảo trì'
+                : 'Hỏng',
+  icon: assetIconForCategory(item.category?.name || ''),
+  manufacturer: item.manufacturer?.name,
+  model: item.model?.name,
+  cpu: item.cpu || '',
+  ram: item.ram || '',
+  storage: item.storage || '',
+  operatingSystem: item.operatingSystem || '',
+  ipAddress: item.ipAddress || '',
+  macAddress: item.macAddress || '',
+  assignmentType: item.assignments?.[0]?.type === 'LOAN' ? 'Cho mượn' : item.assignments?.[0] ? 'Cấp phát' : undefined,
+  dueDate: item.assignments?.[0]?.expectedReturnDate || '',
+  condition: item.assignments?.[0]?.conditionOut || undefined,
+  recipientEmail: item.currentCustodian?.email || item.assignedUser?.email || '',
+})
 
-interface ApiLookup{id:string;code:string;name:string;managerPersonId?:string|null;manager?:{id:string;employeeCode:string;fullName:string}|null;locationId?:string;location?:ApiLookup;isIncidentResponseTeam?:boolean}
-interface ApiPerson{id:string;fullName:string;email?:string|null;department:{id:string;name:string};location?:ApiLookup|null}
-interface ReferenceData{categories:ApiLookup[];departments:ApiLookup[];locations:ApiLookup[];warehouses:ApiLookup[];people:ApiPerson[]}
-const emptyReferenceData:ReferenceData={categories:[],departments:[],locations:[],warehouses:[],people:[]}
-const apiErrorMessage=(error:unknown)=>error instanceof Error?error.message:'Không thể xử lý yêu cầu'
+interface ApiLookup {
+  id: string
+  code: string
+  name: string
+  managerPersonId?: string | null
+  manager?: { id: string; employeeCode: string; fullName: string } | null
+  locationId?: string
+  location?: ApiLookup
+  isIncidentResponseTeam?: boolean
+}
+interface ApiPerson {
+  id: string
+  fullName: string
+  email?: string | null
+  department: { id: string; name: string }
+  location?: ApiLookup | null
+}
+interface ReferenceData {
+  categories: ApiLookup[]
+  departments: ApiLookup[]
+  locations: ApiLookup[]
+  warehouses: ApiLookup[]
+  people: ApiPerson[]
+}
+const emptyReferenceData: ReferenceData = { categories: [], departments: [], locations: [], warehouses: [], people: [] }
+const apiErrorMessage = (error: unknown) => (error instanceof Error ? error.message : 'Không thể xử lý yêu cầu')
 
-const navSections: Array<{title:string;items:Array<{label:string;icon:typeof Box;count?:string}>}>=[
-  {title:'',items:[{label:'Tổng quan',icon:LayoutDashboard}]},
-  {title:'TÀI SẢN',items:[{label:'Sổ tài sản',icon:Box},{label:'Cấp phát & Thu hồi',icon:UserPlus},{label:'Nhập kho',icon:ArrowDownRight},{label:'Kho & Vị trí',icon:Warehouse},{label:'Kiểm kê',icon:ClipboardCheck}]},
-  {title:'NGHIỆP VỤ',items:[{label:'Mua sắm & PO',icon:ShoppingCart},{label:'Nhà cung cấp',icon:Building2},{label:'License & Gia hạn',icon:KeyRound},{label:'Bảo trì & Sự cố',icon:Wrench},{label:'Thanh lý & Hủy bỏ',icon:ArchiveX}]},
-  {title:'QUẢN TRỊ RỦI RO',items:[{label:'Đánh giá rủi ro CNTT',icon:ShieldAlert}]},
-  {title:'BÁO CÁO',items:[{label:'Báo cáo',icon:BarChart3},{label:'Lịch sử / Audit',icon:History}]},
-  {title:'CÔNG CỤ',items:[{label:'Barcode / QR',icon:ScanLine},{label:'Khám phá & Agent',icon:Wifi}]},
+const navSections: Array<{ title: string; items: Array<{ label: string; icon: typeof Box; count?: string }> }> = [
+  { title: '', items: [{ label: 'Tổng quan', icon: LayoutDashboard }] },
+  {
+    title: 'TÀI SẢN',
+    items: [
+      { label: 'Sổ tài sản', icon: Box },
+      { label: 'Cấp phát & Thu hồi', icon: UserPlus },
+      { label: 'Nhập kho', icon: ArrowDownRight },
+      { label: 'Kho & Vị trí', icon: Warehouse },
+      { label: 'Kiểm kê', icon: ClipboardCheck },
+    ],
+  },
+  {
+    title: 'NGHIỆP VỤ',
+    items: [
+      { label: 'Mua sắm & PO', icon: ShoppingCart },
+      { label: 'Nhà cung cấp', icon: Building2 },
+      { label: 'License & Gia hạn', icon: KeyRound },
+      { label: 'Bảo trì & Sự cố', icon: Wrench },
+      { label: 'Thanh lý & Hủy bỏ', icon: ArchiveX },
+    ],
+  },
+  { title: 'QUẢN TRỊ RỦI RO', items: [{ label: 'Đánh giá rủi ro CNTT', icon: ShieldAlert }] },
+  {
+    title: 'BÁO CÁO',
+    items: [
+      { label: 'Báo cáo', icon: BarChart3 },
+      { label: 'Lịch sử / Audit', icon: History },
+    ],
+  },
+  {
+    title: 'CÔNG CỤ',
+    items: [
+      { label: 'Barcode / QR', icon: ScanLine },
+      { label: 'Khám phá & Agent', icon: Wifi },
+    ],
+  },
 ]
 
 const statusClass: Record<AssetStatus, string> = {
-  'Đang sử dụng': 'green', 'Sẵn sàng': 'blue', 'Đã giữ chỗ':'amber', 'Đã thu hồi':'blue', 'Bảo trì': 'amber', 'Hỏng': 'red', 'Đã thanh lý':'gray',
+  'Đang sử dụng': 'green',
+  'Sẵn sàng': 'blue',
+  'Đã giữ chỗ': 'amber',
+  'Đã thu hồi': 'blue',
+  'Bảo trì': 'amber',
+  Hỏng: 'red',
+  'Đã thanh lý': 'gray',
 }
-const operationalStatusOptions=['Tất cả trạng thái','Sẵn sàng','Đang sử dụng','Cho mượn','Sắp đến hạn trả','Quá hạn trả','Bảo trì','Hỏng']
-const matchesOperationalStatus=(asset:Asset,status:string)=>{if(!status||status==='Tất cả trạng thái')return true;if(status==='Cho mượn')return asset.assignmentType==='Cho mượn';if(status==='Quá hạn trả')return Boolean(asset.dueDate&&new Date(asset.dueDate)<new Date());if(status==='Sắp đến hạn trả'){if(!asset.dueDate)return false;const days=(new Date(asset.dueDate).getTime()-Date.now())/86400000;return days>=0&&days<=7}return asset.status===status}
-
-type SupplierStatus='Chưa đánh giá'|'Đã phê duyệt'|'Có điều kiện'|'Cần cải thiện'
-type SupplierLifecycleStatus='ACTIVE'|'SUSPENDED'|'BLOCKED'
-type SupplierScores={quality:number;delivery:number;security:number;compliance:number;continuity:number;sustainability:number}
-interface Supplier{id:number;apiId?:string;code:string;name:string;taxCode:string;category:string;contact:string;email:string;phone:string;address:string;certifications:string;lifecycleStatus:SupplierLifecycleStatus;status:SupplierStatus;lastEvaluation:string;score:number;scores:SupplierScores;notes:string}
-const supplierCriteria:Array<{key:keyof SupplierScores;label:string;standard:string;weight:number;description:string}>=[
-  {key:'quality',label:'Chất lượng & đúng đặc tả',standard:'ISO 9001',weight:25,description:'Khả năng cung cấp ổn định, xử lý hàng lỗi và đáp ứng yêu cầu.'},
-  {key:'delivery',label:'Giao hàng & hỗ trợ',standard:'ISO 9001',weight:20,description:'Đúng hạn, đủ số lượng, SLA và chất lượng hỗ trợ sau bán.'},
-  {key:'security',label:'An toàn thông tin',standard:'ISO/IEC 27036',weight:20,description:'Bảo vệ dữ liệu, kiểm soát truy cập, sự cố và chuỗi cung ứng CNTT.'},
-  {key:'compliance',label:'Pháp lý & tuân thủ',standard:'ISO 9001',weight:15,description:'Hồ sơ pháp lý, hợp đồng, nguồn gốc và nghĩa vụ áp dụng.'},
-  {key:'continuity',label:'Rủi ro & liên tục cung ứng',standard:'ISO/IEC 27036',weight:10,description:'Năng lực dự phòng, quản lý nhà thầu phụ và ứng phó gián đoạn.'},
-  {key:'sustainability',label:'Đạo đức & bền vững',standard:'ISO 20400',weight:10,description:'Minh bạch, môi trường, lao động và trách nhiệm xã hội.'},
+const operationalStatusOptions = [
+  'Tất cả trạng thái',
+  'Sẵn sàng',
+  'Đang sử dụng',
+  'Cho mượn',
+  'Sắp đến hạn trả',
+  'Quá hạn trả',
+  'Bảo trì',
+  'Hỏng',
 ]
-const defaultSupplierScores:SupplierScores={quality:80,delivery:80,security:70,compliance:80,continuity:70,sustainability:70}
-const emptySupplierScores:SupplierScores={quality:0,delivery:0,security:0,compliance:0,continuity:0,sustainability:0}
-const supplierLifecycleLabels:Record<SupplierLifecycleStatus,string>={ACTIVE:'Đang hợp tác',SUSPENDED:'Tạm ngưng',BLOCKED:'Ngừng hợp tác'}
-const seedSuppliers:Supplier[]=[
-  {id:1,code:'NCC-001',name:'Công ty TNHH Dell Việt Nam',taxCode:'0109988123',category:'Máy tính & máy chủ',contact:'Nguyễn Hoàng Minh',email:'sales@dell-example.vn',phone:'024 7300 8899',address:'Hà Nội',certifications:'ISO 9001, ISO/IEC 27001',lifecycleStatus:'ACTIVE',status:'Đã phê duyệt',lastEvaluation:'2026-07-15',score:91,scores:{quality:95,delivery:90,security:92,compliance:94,continuity:86,sustainability:82},notes:'Nhà cung cấp chiến lược'},
-  {id:2,code:'NCC-002',name:'Công ty Cổ phần Thiết bị Sao Việt',taxCode:'0312456789',category:'Phụ kiện CNTT',contact:'Trần Thu Hà',email:'kinhdoanh@saoviet-example.vn',phone:'028 3822 7788',address:'TP. Hồ Chí Minh',certifications:'ISO 9001',lifecycleStatus:'ACTIVE',status:'Có điều kiện',lastEvaluation:'2026-06-28',score:78,scores:{quality:82,delivery:76,security:65,compliance:84,continuity:72,sustainability:70},notes:'Cần hoàn thiện kiểm soát an toàn thông tin'},
-  {id:3,code:'NCC-003',name:'CloudOne Services',taxCode:'0108877665',category:'Cloud & phần mềm',contact:'Lê Anh Tuấn',email:'account@cloudone-example.vn',phone:'024 3999 1100',address:'Hà Nội',certifications:'ISO/IEC 27001, ISO/IEC 27017',lifecycleStatus:'ACTIVE',status:'Đã phê duyệt',lastEvaluation:'2026-08-02',score:88,scores:{quality:88,delivery:92,security:94,compliance:86,continuity:88,sustainability:68},notes:'Đánh giá lại hằng năm'},
+const matchesOperationalStatus = (asset: Asset, status: string) => {
+  if (!status || status === 'Tất cả trạng thái') return true
+  if (status === 'Cho mượn') return asset.assignmentType === 'Cho mượn'
+  if (status === 'Quá hạn trả') return Boolean(asset.dueDate && new Date(asset.dueDate) < new Date())
+  if (status === 'Sắp đến hạn trả') {
+    if (!asset.dueDate) return false
+    const days = (new Date(asset.dueDate).getTime() - Date.now()) / 86400000
+    return days >= 0 && days <= 7
+  }
+  return asset.status === status
+}
+
+type SupplierStatus = 'Chưa đánh giá' | 'Đã phê duyệt' | 'Có điều kiện' | 'Cần cải thiện'
+type SupplierLifecycleStatus = 'ACTIVE' | 'SUSPENDED' | 'BLOCKED'
+type SupplierScores = {
+  quality: number
+  delivery: number
+  security: number
+  compliance: number
+  continuity: number
+  sustainability: number
+}
+interface Supplier {
+  id: number
+  apiId?: string
+  code: string
+  name: string
+  taxCode: string
+  category: string
+  contact: string
+  email: string
+  phone: string
+  address: string
+  certifications: string
+  lifecycleStatus: SupplierLifecycleStatus
+  status: SupplierStatus
+  lastEvaluation: string
+  score: number
+  scores: SupplierScores
+  notes: string
+}
+const supplierCriteria: Array<{
+  key: keyof SupplierScores
+  label: string
+  standard: string
+  weight: number
+  description: string
+}> = [
+  {
+    key: 'quality',
+    label: 'Chất lượng & đúng đặc tả',
+    standard: 'ISO 9001',
+    weight: 25,
+    description: 'Khả năng cung cấp ổn định, xử lý hàng lỗi và đáp ứng yêu cầu.',
+  },
+  {
+    key: 'delivery',
+    label: 'Giao hàng & hỗ trợ',
+    standard: 'ISO 9001',
+    weight: 20,
+    description: 'Đúng hạn, đủ số lượng, SLA và chất lượng hỗ trợ sau bán.',
+  },
+  {
+    key: 'security',
+    label: 'An toàn thông tin',
+    standard: 'ISO/IEC 27036',
+    weight: 20,
+    description: 'Bảo vệ dữ liệu, kiểm soát truy cập, sự cố và chuỗi cung ứng CNTT.',
+  },
+  {
+    key: 'compliance',
+    label: 'Pháp lý & tuân thủ',
+    standard: 'ISO 9001',
+    weight: 15,
+    description: 'Hồ sơ pháp lý, hợp đồng, nguồn gốc và nghĩa vụ áp dụng.',
+  },
+  {
+    key: 'continuity',
+    label: 'Rủi ro & liên tục cung ứng',
+    standard: 'ISO/IEC 27036',
+    weight: 10,
+    description: 'Năng lực dự phòng, quản lý nhà thầu phụ và ứng phó gián đoạn.',
+  },
+  {
+    key: 'sustainability',
+    label: 'Đạo đức & bền vững',
+    standard: 'ISO 20400',
+    weight: 10,
+    description: 'Minh bạch, môi trường, lao động và trách nhiệm xã hội.',
+  },
+]
+const defaultSupplierScores: SupplierScores = {
+  quality: 80,
+  delivery: 80,
+  security: 70,
+  compliance: 80,
+  continuity: 70,
+  sustainability: 70,
+}
+const emptySupplierScores: SupplierScores = {
+  quality: 0,
+  delivery: 0,
+  security: 0,
+  compliance: 0,
+  continuity: 0,
+  sustainability: 0,
+}
+const supplierLifecycleLabels: Record<SupplierLifecycleStatus, string> = {
+  ACTIVE: 'Đang hợp tác',
+  SUSPENDED: 'Tạm ngưng',
+  BLOCKED: 'Ngừng hợp tác',
+}
+const seedSuppliers: Supplier[] = [
+  {
+    id: 1,
+    code: 'NCC-001',
+    name: 'Công ty TNHH Dell Việt Nam',
+    taxCode: '0109988123',
+    category: 'Máy tính & máy chủ',
+    contact: 'Nguyễn Hoàng Minh',
+    email: 'sales@dell-example.vn',
+    phone: '024 7300 8899',
+    address: 'Hà Nội',
+    certifications: 'ISO 9001, ISO/IEC 27001',
+    lifecycleStatus: 'ACTIVE',
+    status: 'Đã phê duyệt',
+    lastEvaluation: '2026-07-15',
+    score: 91,
+    scores: { quality: 95, delivery: 90, security: 92, compliance: 94, continuity: 86, sustainability: 82 },
+    notes: 'Nhà cung cấp chiến lược',
+  },
+  {
+    id: 2,
+    code: 'NCC-002',
+    name: 'Công ty Cổ phần Thiết bị Sao Việt',
+    taxCode: '0312456789',
+    category: 'Phụ kiện CNTT',
+    contact: 'Trần Thu Hà',
+    email: 'kinhdoanh@saoviet-example.vn',
+    phone: '028 3822 7788',
+    address: 'TP. Hồ Chí Minh',
+    certifications: 'ISO 9001',
+    lifecycleStatus: 'ACTIVE',
+    status: 'Có điều kiện',
+    lastEvaluation: '2026-06-28',
+    score: 78,
+    scores: { quality: 82, delivery: 76, security: 65, compliance: 84, continuity: 72, sustainability: 70 },
+    notes: 'Cần hoàn thiện kiểm soát an toàn thông tin',
+  },
+  {
+    id: 3,
+    code: 'NCC-003',
+    name: 'CloudOne Services',
+    taxCode: '0108877665',
+    category: 'Cloud & phần mềm',
+    contact: 'Lê Anh Tuấn',
+    email: 'account@cloudone-example.vn',
+    phone: '024 3999 1100',
+    address: 'Hà Nội',
+    certifications: 'ISO/IEC 27001, ISO/IEC 27017',
+    lifecycleStatus: 'ACTIVE',
+    status: 'Đã phê duyệt',
+    lastEvaluation: '2026-08-02',
+    score: 88,
+    scores: { quality: 88, delivery: 92, security: 94, compliance: 86, continuity: 88, sustainability: 68 },
+    notes: 'Đánh giá lại hằng năm',
+  },
 ]
 
-function LoginScreen({ onLogin, branding }: { onLogin: (username: string, password: string) => Promise<boolean>; branding: BrandingSettings }) {
-  const [username,setUsername]=useState(''),[password,setPassword]=useState(''),[show,setShow]=useState(false),[error,setError]=useState('')
-  const [submitting,setSubmitting]=useState(false)
-  const submit=async(e:React.FormEvent)=>{e.preventDefault();if(submitting)return;setSubmitting(true);try{if(!await onLogin(username.trim(),password)){setError('Tên đăng nhập hoặc mật khẩu không đúng.');setPassword('')}}finally{setSubmitting(false)} }
-  const logo=branding.logoDataUrl?<img src={branding.logoDataUrl} alt="Logo"/>:<Box size={24}/>
-  return <div className="login-page login-centered"><section className="login-card login-centered-card"><div className="login-company"><div className="brand-mark">{logo}</div><div><b>{branding.appName}</b><strong>{branding.companyName}</strong><small>{branding.tagline}</small></div></div><div className="login-card-heading"><h2>Đăng nhập hệ thống</h2><p>Tài khoản quản trị ban đầu được tạo trong quá trình cài đặt hệ thống.</p></div><form onSubmit={submit}><label>Tên đăng nhập<div><UserRound size={18}/><input autoFocus required autoComplete="username" value={username} onChange={e=>{setUsername(e.target.value);setError('')}} placeholder="Nhập tên đăng nhập"/></div></label><label>Mật khẩu<div><LockKeyhole size={18}/><input required autoComplete="current-password" type={show?'text':'password'} value={password} onChange={e=>{setPassword(e.target.value);setError('')}} placeholder="Nhập mật khẩu"/><button type="button" onClick={()=>setShow(x=>!x)}>{show?<EyeOff size={17}/>:<Eye size={17}/>}</button></div></label>{error&&<div className="login-error">{error}</div>}<button disabled={submitting} className="login-submit">{submitting?'Đang xác thực...':'Đăng nhập'} <ChevronRight size={18}/></button></form><footer>© {new Date().getFullYear()} {branding.companyName}</footer></section></div>
+function LoginScreen({
+  onLogin,
+  branding,
+}: {
+  onLogin: (username: string, password: string) => Promise<boolean>
+  branding: BrandingSettings
+}) {
+  const [username, setUsername] = useState(''),
+    [password, setPassword] = useState(''),
+    [show, setShow] = useState(false),
+    [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (submitting) return
+    setSubmitting(true)
+    try {
+      if (!(await onLogin(username.trim(), password))) {
+        setError('Tên đăng nhập hoặc mật khẩu không đúng.')
+        setPassword('')
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+  const logo = branding.logoDataUrl ? <img src={branding.logoDataUrl} alt="Logo" /> : <Box size={24} />
+  return (
+    <div className="login-page login-centered">
+      <section className="login-card login-centered-card">
+        <div className="login-company">
+          <div className="brand-mark">{logo}</div>
+          <div>
+            <b>{branding.appName}</b>
+            <strong>{branding.companyName}</strong>
+            <small>{branding.tagline}</small>
+          </div>
+        </div>
+        <div className="login-card-heading">
+          <h2>Đăng nhập hệ thống</h2>
+          <p>Tài khoản quản trị ban đầu được tạo trong quá trình cài đặt hệ thống.</p>
+        </div>
+        <form onSubmit={submit}>
+          <label>
+            Tên đăng nhập
+            <div>
+              <UserRound size={18} />
+              <input
+                autoFocus
+                required
+                autoComplete="username"
+                value={username}
+                onChange={e => {
+                  setUsername(e.target.value)
+                  setError('')
+                }}
+                placeholder="Nhập tên đăng nhập"
+              />
+            </div>
+          </label>
+          <label>
+            Mật khẩu
+            <div>
+              <LockKeyhole size={18} />
+              <input
+                required
+                autoComplete="current-password"
+                type={show ? 'text' : 'password'}
+                value={password}
+                onChange={e => {
+                  setPassword(e.target.value)
+                  setError('')
+                }}
+                placeholder="Nhập mật khẩu"
+              />
+              <button type="button" onClick={() => setShow(x => !x)}>
+                {show ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </div>
+          </label>
+          {error && <div className="login-error">{error}</div>}
+          <button disabled={submitting} className="login-submit">
+            {submitting ? 'Đang xác thực...' : 'Đăng nhập'} <ChevronRight size={18} />
+          </button>
+        </form>
+        <footer>
+          © {new Date().getFullYear()} {branding.companyName}
+        </footer>
+      </section>
+    </div>
+  )
 }
 
-function ChangePasswordScreen({user,branding,onChange}:{user:AppUser;branding:BrandingSettings;onChange:(password:string)=>Promise<boolean>}){
-  const [password,setPassword]=useState(''),[confirm,setConfirm]=useState(''),[show,setShow]=useState(false),[error,setError]=useState(''),[saving,setSaving]=useState(false)
-  const valid=password.length>=8&&/[a-z]/.test(password)&&/[A-Z]/.test(password)&&/\d/.test(password)&&/[^A-Za-z0-9]/.test(password)
-  const submit=async(e:React.FormEvent)=>{e.preventDefault();if(!valid){setError('Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.');return}if(password!==confirm){setError('Mật khẩu xác nhận không khớp.');return}setSaving(true);try{if(!await onChange(password)){setError('Không thể đổi mật khẩu. Vui lòng thử lại.')}}finally{setSaving(false)}}
-  return <div className="login-page password-change-page"><div className="login-brand"><div className="brand-mark">{branding.logoDataUrl?<img src={branding.logoDataUrl} alt="Logo"/>:<Box size={24}/>}</div><div><b>{branding.appName}</b><small>{branding.companyName}</small></div></div><section className="login-card password-change-card"><span className="login-lock"><LockKeyhole size={24}/></span><h2>Đổi mật khẩu lần đầu</h2><p>Xin chào {user.name}. Tài khoản này đang dùng mật khẩu khởi tạo và phải đổi trước khi truy cập hệ thống.</p><form onSubmit={submit}><label>Mật khẩu mới<div><LockKeyhole size={18}/><input autoFocus required autoComplete="new-password" type={show?'text':'password'} value={password} onChange={e=>{setPassword(e.target.value);setError('')}} placeholder="Tối thiểu 8 ký tự"/><button type="button" onClick={()=>setShow(x=>!x)}>{show?<EyeOff size={17}/>:<Eye size={17}/>}</button></div></label><label>Xác nhận mật khẩu mới<div><LockKeyhole size={18}/><input required autoComplete="new-password" type={show?'text':'password'} value={confirm} onChange={e=>{setConfirm(e.target.value);setError('')}} placeholder="Nhập lại mật khẩu mới"/></div></label><div className="password-policy"><ShieldCheck size={17}/><span>Ít nhất 8 ký tự · chữ hoa · chữ thường · số · ký tự đặc biệt</span></div>{error&&<div className="login-error">{error}</div>}<button disabled={saving} className="login-submit">{saving?'Đang cập nhật...':'Đổi mật khẩu và tiếp tục'} <ChevronRight size={18}/></button></form></section></div>
-}
-
-function ChangePasswordModal({onClose,onChange}:{onClose:()=>void;onChange:(currentPassword:string,newPassword:string)=>Promise<void>}){
-  const [currentPassword,setCurrentPassword]=useState(''),[newPassword,setNewPassword]=useState(''),[confirm,setConfirm]=useState(''),[show,setShow]=useState(false),[error,setError]=useState(''),[saving,setSaving]=useState(false)
-  const valid=newPassword.length>=8&&/[a-z]/.test(newPassword)&&/[A-Z]/.test(newPassword)&&/\d/.test(newPassword)&&/[^A-Za-z0-9]/.test(newPassword)
-  const submit=async(event:React.FormEvent)=>{event.preventDefault();setError('');if(!valid){setError('Mật khẩu mới phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.');return}if(newPassword!==confirm){setError('Mật khẩu xác nhận không khớp.');return}if(currentPassword===newPassword){setError('Mật khẩu mới phải khác mật khẩu hiện tại.');return}setSaving(true);try{await onChange(currentPassword,newPassword);alert('Đổi mật khẩu thành công. Vui lòng đăng nhập lại.');onClose()}catch(reason){setError(apiErrorMessage(reason))}finally{setSaving(false)}}
-  return <div className="modal-backdrop" onMouseDown={event=>event.target===event.currentTarget&&onClose()}><div className="modal profile-password-modal"><div className="modal-head"><div><h2>Đổi mật khẩu</h2><p>Cập nhật mật khẩu cho tài khoản đang đăng nhập.</p></div><button className="icon-btn" onClick={onClose} aria-label="Đóng"><X size={20}/></button></div><form onSubmit={submit}><div className="password-modal-fields"><label>Mật khẩu hiện tại<div><LockKeyhole size={17}/><input autoFocus required autoComplete="current-password" type={show?'text':'password'} value={currentPassword} onChange={event=>{setCurrentPassword(event.target.value);setError('')}}/></div></label><label>Mật khẩu mới<div><LockKeyhole size={17}/><input required autoComplete="new-password" type={show?'text':'password'} value={newPassword} onChange={event=>{setNewPassword(event.target.value);setError('')}}/></div></label><label>Xác nhận mật khẩu mới<div><LockKeyhole size={17}/><input required autoComplete="new-password" type={show?'text':'password'} value={confirm} onChange={event=>{setConfirm(event.target.value);setError('')}}/></div></label><label className="password-visibility"><input type="checkbox" checked={show} onChange={event=>setShow(event.target.checked)}/><span>Hiển thị mật khẩu</span></label><div className="password-policy"><ShieldCheck size={17}/><span>Ít nhất 8 ký tự · chữ hoa · chữ thường · số · ký tự đặc biệt</span></div>{error&&<div className="login-error">{error}</div>}</div><div className="modal-actions"><button type="button" className="btn secondary" onClick={onClose}>Hủy</button><button className="btn primary" disabled={saving}>{saving?'Đang cập nhật...':'Đổi mật khẩu'}</button></div></form></div></div>
-}
-
-function Sidebar({ page, setPage, open, close, user, logout, openChangePassword, branding, language }: { page: string; setPage: (p: string) => void; open: boolean; close: () => void; user: AppUser; logout: () => void; openChangePassword:()=>void; branding: BrandingSettings; language:string }) {
-  const hcnsAllowed=['Tổng quan','Sổ tài sản','Cấp phát & Thu hồi','Lịch sử / Audit','Barcode / QR']
-  const initials=user.name.split(' ').slice(-2).map(x=>x[0]).join('')
-  return <>
-    {open && <div className="overlay" onClick={close} />}
-    <aside className={`sidebar ${open ? 'open' : ''}`}>
-      <button type="button" className="brand brand-home" onClick={()=>{setPage('Tổng quan');close()}} aria-label={language==='en-US'?'Back to overview':'Về trang tổng quan'}><span className="brand-mark">{branding.logoDataUrl?<img src={branding.logoDataUrl} alt="Logo công ty"/>:<Box size={27} strokeWidth={2.1}/>}</span><span className="brand-copy"><b>{branding.appName}</b><small>{language==='en-US'?'ASSET MANAGEMENT SYSTEM':'HỆ THỐNG QUẢN LÝ TÀI SẢN'}</small></span></button>
-      <nav>{navSections.map(section=>{const itOnly=['Khám phá & Agent','License & Gia hạn','Bảo trì & Sự cố','Thanh lý & Hủy bỏ','Đánh giá rủi ro CNTT'];const permitted=section.items.filter(item=>!itOnly.includes(item.label)||['Admin','IT'].includes(user.role));const items=user.role==='HCNS'?permitted.filter(item=>hcnsAllowed.includes(item.label)):permitted;return items.length?<div className="nav-section" key={section.title}><p className="nav-title">{uiLabel(section.title,language)}</p>{items.map(item=><button key={item.label} className={page===item.label?'active':''} onClick={()=>{setPage(item.label);close()}}><item.icon size={17}/><span>{uiLabel(item.label,language)}</span>{item.count&&<em>{item.count}</em>}</button>)}</div>:null})}</nav>
-      <div className="sidebar-bottom">
-        {user.role==='Admin'&&<button className={['Cấu hình hệ thống','Tùy chỉnh thương hiệu','Cấu hình email'].includes(page) ? 'active' : ''} onClick={() => { setPage('Cấu hình hệ thống'); close() }}><Settings size={19} /><span>{uiLabel('Cài đặt',language)}</span></button>}
-        <button><HelpCircle size={19} /><span>{uiLabel('Trợ giúp',language)}</span></button>
-        <div className="profile"><div className="avatar">{initials}</div><div><b>{localizedDefault(user.name,language)}</b><small>{user.role}{user.role==='HCNS'?(language==='en-US'?' · HR data only':' · Chỉ dữ liệu HCNS'):''}</small></div><div className="profile-actions"><button onClick={openChangePassword} title="Đổi mật khẩu" aria-label="Đổi mật khẩu"><LockKeyhole size={16}/></button><button className="logout-button" onClick={logout} title="Đăng xuất" aria-label="Đăng xuất"><LogOut size={17}/></button></div></div>
+function ChangePasswordScreen({
+  user,
+  branding,
+  onChange,
+}: {
+  user: AppUser
+  branding: BrandingSettings
+  onChange: (password: string) => Promise<boolean>
+}) {
+  const [password, setPassword] = useState(''),
+    [confirm, setConfirm] = useState(''),
+    [show, setShow] = useState(false),
+    [error, setError] = useState(''),
+    [saving, setSaving] = useState(false)
+  const valid =
+    password.length >= 8 &&
+    /[a-z]/.test(password) &&
+    /[A-Z]/.test(password) &&
+    /\d/.test(password) &&
+    /[^A-Za-z0-9]/.test(password)
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!valid) {
+      setError('Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.')
+      return
+    }
+    if (password !== confirm) {
+      setError('Mật khẩu xác nhận không khớp.')
+      return
+    }
+    setSaving(true)
+    try {
+      if (!(await onChange(password))) {
+        setError('Không thể đổi mật khẩu. Vui lòng thử lại.')
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <div className="login-page password-change-page">
+      <div className="login-brand">
+        <div className="brand-mark">
+          {branding.logoDataUrl ? <img src={branding.logoDataUrl} alt="Logo" /> : <Box size={24} />}
+        </div>
+        <div>
+          <b>{branding.appName}</b>
+          <small>{branding.companyName}</small>
+        </div>
       </div>
-    </aside>
-  </>
+      <section className="login-card password-change-card">
+        <span className="login-lock">
+          <LockKeyhole size={24} />
+        </span>
+        <h2>Đổi mật khẩu lần đầu</h2>
+        <p>Xin chào {user.name}. Tài khoản này đang dùng mật khẩu khởi tạo và phải đổi trước khi truy cập hệ thống.</p>
+        <form onSubmit={submit}>
+          <label>
+            Mật khẩu mới
+            <div>
+              <LockKeyhole size={18} />
+              <input
+                autoFocus
+                required
+                autoComplete="new-password"
+                type={show ? 'text' : 'password'}
+                value={password}
+                onChange={e => {
+                  setPassword(e.target.value)
+                  setError('')
+                }}
+                placeholder="Tối thiểu 8 ký tự"
+              />
+              <button type="button" onClick={() => setShow(x => !x)}>
+                {show ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </div>
+          </label>
+          <label>
+            Xác nhận mật khẩu mới
+            <div>
+              <LockKeyhole size={18} />
+              <input
+                required
+                autoComplete="new-password"
+                type={show ? 'text' : 'password'}
+                value={confirm}
+                onChange={e => {
+                  setConfirm(e.target.value)
+                  setError('')
+                }}
+                placeholder="Nhập lại mật khẩu mới"
+              />
+            </div>
+          </label>
+          <div className="password-policy">
+            <ShieldCheck size={17} />
+            <span>Ít nhất 8 ký tự · chữ hoa · chữ thường · số · ký tự đặc biệt</span>
+          </div>
+          {error && <div className="login-error">{error}</div>}
+          <button disabled={saving} className="login-submit">
+            {saving ? 'Đang cập nhật...' : 'Đổi mật khẩu và tiếp tục'} <ChevronRight size={18} />
+          </button>
+        </form>
+      </section>
+    </div>
+  )
 }
 
-function Topbar({ title, openMenu, user, branding = seedBrandingSettings, language='vi-VN', onQuickLanguage, onHome }: { title: string; openMenu: () => void; user: AppUser; branding?: BrandingSettings; language?: string; onQuickLanguage: (language:string) => void; onHome:()=>void }) {
-  const initials=user.name.split(' ').slice(-2).map(x=>x[0]).join('')
-  if(env.demoMode)try { branding={...branding,...JSON.parse(localStorage.getItem('assetflow-branding')||'{}')} } catch { /* dùng cấu hình mặc định */ }
-  const displayTitle=['Cấu hình hệ thống','Tùy chỉnh thương hiệu','Cấu hình email'].includes(title)?'Cài đặt':title
-  const english=language==='en-US'
-  return <header className="topbar"><button className="mobile-menu icon-btn" onClick={openMenu}><Menu size={21} /></button><div className="topbar-identity"><button type="button" className="company-identity company-home" onClick={onHome} aria-label={english?'Back to overview':'Về trang tổng quan'}><span className="company-symbol">{branding.logoDataUrl?<img src={branding.logoDataUrl} alt="Logo công ty"/>:<Building2 size={23}/>}</span><span className="company-copy"><b>{localizedDefault(branding.companyName,language)}</b><small>{branding.appName} · {english?'Asset management system':'Hệ thống quản lý tài sản'}</small></span></button><div className="crumb"><button type="button" onClick={onHome}>{english?'Home':'Trang chủ'}</button><ChevronRight size={14}/><b>{uiLabel(displayTitle,language)}</b></div></div><div className="top-actions"><button type="button" className="quick-language" title={english?'Switch Vietnamese / English':'Chuyển nhanh ngôn ngữ Việt / Anh'} onClick={()=>onQuickLanguage(language==='vi-VN'?'en-US':'vi-VN')}><span className={language==='vi-VN'?'active':''}>VI</span><i/><span className={language==='en-US'?'active':''}>EN</span></button><span className={`role-badge ${user.role.toLowerCase()}`}>{user.role}</span><button className="icon-btn" title={english?'Search':'Tìm kiếm'}><Search size={19}/></button><button className="icon-btn notification" title={english?'Notifications':'Thông báo'}><Bell size={19}/><i/></button><div className="avatar small" title={localizedDefault(user.name,language)}>{initials}</div></div></header>
+function ChangePasswordModal({
+  onClose,
+  onChange,
+}: {
+  onClose: () => void
+  onChange: (currentPassword: string, newPassword: string) => Promise<void>
+}) {
+  const [currentPassword, setCurrentPassword] = useState(''),
+    [newPassword, setNewPassword] = useState(''),
+    [confirm, setConfirm] = useState(''),
+    [show, setShow] = useState(false),
+    [error, setError] = useState(''),
+    [saving, setSaving] = useState(false)
+  const valid =
+    newPassword.length >= 8 &&
+    /[a-z]/.test(newPassword) &&
+    /[A-Z]/.test(newPassword) &&
+    /\d/.test(newPassword) &&
+    /[^A-Za-z0-9]/.test(newPassword)
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setError('')
+    if (!valid) {
+      setError('Mật khẩu mới phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.')
+      return
+    }
+    if (newPassword !== confirm) {
+      setError('Mật khẩu xác nhận không khớp.')
+      return
+    }
+    if (currentPassword === newPassword) {
+      setError('Mật khẩu mới phải khác mật khẩu hiện tại.')
+      return
+    }
+    setSaving(true)
+    try {
+      await onChange(currentPassword, newPassword)
+      alert('Đổi mật khẩu thành công. Vui lòng đăng nhập lại.')
+      onClose()
+    } catch (reason) {
+      setError(apiErrorMessage(reason))
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <div className="modal-backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}>
+      <div className="modal profile-password-modal">
+        <div className="modal-head">
+          <div>
+            <h2>Đổi mật khẩu</h2>
+            <p>Cập nhật mật khẩu cho tài khoản đang đăng nhập.</p>
+          </div>
+          <button className="icon-btn" onClick={onClose} aria-label="Đóng">
+            <X size={20} />
+          </button>
+        </div>
+        <form onSubmit={submit}>
+          <div className="password-modal-fields">
+            <label>
+              Mật khẩu hiện tại
+              <div>
+                <LockKeyhole size={17} />
+                <input
+                  autoFocus
+                  required
+                  autoComplete="current-password"
+                  type={show ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={event => {
+                    setCurrentPassword(event.target.value)
+                    setError('')
+                  }}
+                />
+              </div>
+            </label>
+            <label>
+              Mật khẩu mới
+              <div>
+                <LockKeyhole size={17} />
+                <input
+                  required
+                  autoComplete="new-password"
+                  type={show ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={event => {
+                    setNewPassword(event.target.value)
+                    setError('')
+                  }}
+                />
+              </div>
+            </label>
+            <label>
+              Xác nhận mật khẩu mới
+              <div>
+                <LockKeyhole size={17} />
+                <input
+                  required
+                  autoComplete="new-password"
+                  type={show ? 'text' : 'password'}
+                  value={confirm}
+                  onChange={event => {
+                    setConfirm(event.target.value)
+                    setError('')
+                  }}
+                />
+              </div>
+            </label>
+            <label className="password-visibility">
+              <input type="checkbox" checked={show} onChange={event => setShow(event.target.checked)} />
+              <span>Hiển thị mật khẩu</span>
+            </label>
+            <div className="password-policy">
+              <ShieldCheck size={17} />
+              <span>Ít nhất 8 ký tự · chữ hoa · chữ thường · số · ký tự đặc biệt</span>
+            </div>
+            {error && <div className="login-error">{error}</div>}
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn secondary" onClick={onClose}>
+              Hủy
+            </button>
+            <button className="btn primary" disabled={saving}>
+              {saving ? 'Đang cập nhật...' : 'Đổi mật khẩu'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
 }
 
-function Dashboard({ assets, transactions, goAssets, addAsset, goPage, onView, language, userName }: { assets: Asset[]; transactions:AssetTransaction[]; goAssets: () => void; addAsset: () => void; goPage:(page:string)=>void; onView: (asset: Asset) => void; language:string; userName:string }) {
-  type DashboardView='all'|'inUse'|'stock'|'attention'|'overdue'
-  const english=language==='en-US'
-  const [activeView,setActiveView]=useState<DashboardView>('all')
-  const [activeCategory,setActiveCategory]=useState('')
-  const inUse=assets.filter(a=>a.status==='Đang sử dụng').length
-  const inStock=assets.filter(a=>a.status==='Sẵn sàng'&&a.assignedTo==='Chưa gán').length
-  const maintenance=assets.filter(a=>a.status==='Bảo trì'||a.status==='Hỏng').length
-  const overdue=assets.filter(a=>a.dueDate&&new Date(a.dueDate)<new Date()).length
-  const typeCounts=countDashboardLabels(assets.map(asset=>asset.category),english?'Uncategorized':'Chưa phân loại',language).map(item=>({category:item.label,count:item.count}))
-  const totalValue=assets.reduce((sum,asset)=>sum+asset.purchaseCost,0)
-  const colors=['#315fe5','#31ad6d','#f1aa1f','#8953d7','#e65a43','#25a6bd']
-  let categoryCursor=0
-  const categoryGradient=typeCounts.length?`conic-gradient(${typeCounts.map((item,index)=>{const start=categoryCursor;categoryCursor+=item.count/Math.max(assets.length,1)*100;return `${colors[index%colors.length]} ${start}% ${categoryCursor}%`}).join(',')})`:'#e8edf3'
-  const otherStatus=Math.max(0,assets.length-inUse-inStock-maintenance)
-  const statusCounts=[{label:english?'In use':'Đang sử dụng',count:inUse,color:'#31ad6d',view:'inUse' as DashboardView},{label:english?'In stock':'Trong kho',count:inStock,color:'#2f86e8',view:'stock' as DashboardView},{label:english?'Maintenance / Broken':'Bảo trì / Hỏng',count:maintenance,color:'#e65a43',view:'attention' as DashboardView},{label:english?'Other':'Khác',count:otherStatus,color:'#718096',view:'all' as DashboardView}].filter(item=>item.count>0)
-  let statusCursor=0
-  const statusGradient=assets.length?`conic-gradient(${statusCounts.map(item=>{const start=statusCursor;statusCursor+=item.count/Math.max(statusCounts.reduce((sum,value)=>sum+value.count,0),1)*100;return `${item.color} ${start}% ${statusCursor}%`}).join(',')})`:'#e8edf3'
-  const locationCounts=countDashboardLabels(assets.map(asset=>asset.location),english?'Unknown location':'Chưa xác định',language).slice(0,5).map(item=>({location:item.label,count:item.count}))
-  const recentTransactions=[...transactions].sort((a,b)=>new Date(b.date).getTime()-new Date(a.date).getTime()).slice(0,5)
-  const metrics:Array<{key:DashboardView;label:string;value:number;Icon:typeof Box;tone:string}>=[
-    {key:'all',label:english?'Total assets':'Tổng tài sản',value:assets.length,Icon:Box,tone:'blue'},
-    {key:'inUse',label:english?'In use':'Đang sử dụng',value:inUse,Icon:UserRound,tone:'green'},
-    {key:'attention',label:english?'Maintenance / Broken':'Bảo trì / Hỏng',value:maintenance,Icon:Wrench,tone:'amber'},
-    {key:'overdue',label:english?'Overdue returns':'Quá hạn trả',value:overdue,Icon:AlertTriangle,tone:'red'},
+function Sidebar({
+  page,
+  setPage,
+  open,
+  close,
+  user,
+  logout,
+  openChangePassword,
+  branding,
+  language,
+}: {
+  page: string
+  setPage: (p: string) => void
+  open: boolean
+  close: () => void
+  user: AppUser
+  logout: () => void
+  openChangePassword: () => void
+  branding: BrandingSettings
+  language: string
+}) {
+  const hcnsAllowed = ['Tổng quan', 'Sổ tài sản', 'Cấp phát & Thu hồi', 'Lịch sử / Audit', 'Barcode / QR']
+  const initials = user.name
+    .split(' ')
+    .slice(-2)
+    .map(x => x[0])
+    .join('')
+  return (
+    <>
+      {open && <div className="overlay" onClick={close} />}
+      <aside className={`sidebar ${open ? 'open' : ''}`}>
+        <button
+          type="button"
+          className="brand brand-home"
+          onClick={() => {
+            setPage('Tổng quan')
+            close()
+          }}
+          aria-label={language === 'en-US' ? 'Back to overview' : 'Về trang tổng quan'}
+        >
+          <span className="brand-mark">
+            {branding.logoDataUrl ? (
+              <img src={branding.logoDataUrl} alt="Logo công ty" />
+            ) : (
+              <Box size={27} strokeWidth={2.1} />
+            )}
+          </span>
+          <span className="brand-copy">
+            <b>{branding.appName}</b>
+            <small>{language === 'en-US' ? 'ASSET MANAGEMENT SYSTEM' : 'HỆ THỐNG QUẢN LÝ TÀI SẢN'}</small>
+          </span>
+        </button>
+        <nav>
+          {navSections.map(section => {
+            const itOnly = [
+              'Khám phá & Agent',
+              'License & Gia hạn',
+              'Bảo trì & Sự cố',
+              'Thanh lý & Hủy bỏ',
+              'Đánh giá rủi ro CNTT',
+            ]
+            const permitted = section.items.filter(
+              item => !itOnly.includes(item.label) || ['Admin', 'IT'].includes(user.role),
+            )
+            const items = user.role === 'HCNS' ? permitted.filter(item => hcnsAllowed.includes(item.label)) : permitted
+            return items.length ? (
+              <div className="nav-section" key={section.title}>
+                <p className="nav-title">{uiLabel(section.title, language)}</p>
+                {items.map(item => (
+                  <button
+                    key={item.label}
+                    className={page === item.label ? 'active' : ''}
+                    onClick={() => {
+                      setPage(item.label)
+                      close()
+                    }}
+                  >
+                    <item.icon size={17} />
+                    <span>{uiLabel(item.label, language)}</span>
+                    {item.count && <em>{item.count}</em>}
+                  </button>
+                ))}
+              </div>
+            ) : null
+          })}
+        </nav>
+        <div className="sidebar-bottom">
+          {user.role === 'Admin' && (
+            <button
+              className={
+                ['Cấu hình hệ thống', 'Tùy chỉnh thương hiệu', 'Cấu hình email'].includes(page) ? 'active' : ''
+              }
+              onClick={() => {
+                setPage('Cấu hình hệ thống')
+                close()
+              }}
+            >
+              <Settings size={19} />
+              <span>{uiLabel('Cài đặt', language)}</span>
+            </button>
+          )}
+          <button>
+            <HelpCircle size={19} />
+            <span>{uiLabel('Trợ giúp', language)}</span>
+          </button>
+          <div className="profile">
+            <div className="avatar">{initials}</div>
+            <div>
+              <b>{localizedDefault(user.name, language)}</b>
+              <small>
+                {user.role}
+                {user.role === 'HCNS' ? (language === 'en-US' ? ' · HR data only' : ' · Chỉ dữ liệu HCNS') : ''}
+              </small>
+            </div>
+            <div className="profile-actions">
+              <button onClick={openChangePassword} title="Đổi mật khẩu" aria-label="Đổi mật khẩu">
+                <LockKeyhole size={16} />
+              </button>
+              <button className="logout-button" onClick={logout} title="Đăng xuất" aria-label="Đăng xuất">
+                <LogOut size={17} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </>
+  )
+}
+
+function Topbar({
+  title,
+  openMenu,
+  user,
+  branding = seedBrandingSettings,
+  language = 'vi-VN',
+  onQuickLanguage,
+  onHome,
+}: {
+  title: string
+  openMenu: () => void
+  user: AppUser
+  branding?: BrandingSettings
+  language?: string
+  onQuickLanguage: (language: string) => void
+  onHome: () => void
+}) {
+  const initials = user.name
+    .split(' ')
+    .slice(-2)
+    .map(x => x[0])
+    .join('')
+  if (env.demoMode)
+    try {
+      branding = { ...branding, ...JSON.parse(localStorage.getItem('assetflow-branding') || '{}') }
+    } catch {
+      /* dùng cấu hình mặc định */
+    }
+  const displayTitle = ['Cấu hình hệ thống', 'Tùy chỉnh thương hiệu', 'Cấu hình email'].includes(title)
+    ? 'Cài đặt'
+    : title
+  const english = language === 'en-US'
+  return (
+    <header className="topbar">
+      <button className="mobile-menu icon-btn" onClick={openMenu}>
+        <Menu size={21} />
+      </button>
+      <div className="topbar-identity">
+        <button
+          type="button"
+          className="company-identity company-home"
+          onClick={onHome}
+          aria-label={english ? 'Back to overview' : 'Về trang tổng quan'}
+        >
+          <span className="company-symbol">
+            {branding.logoDataUrl ? <img src={branding.logoDataUrl} alt="Logo công ty" /> : <Building2 size={23} />}
+          </span>
+          <span className="company-copy">
+            <b>{localizedDefault(branding.companyName, language)}</b>
+            <small>
+              {branding.appName} · {english ? 'Asset management system' : 'Hệ thống quản lý tài sản'}
+            </small>
+          </span>
+        </button>
+        <div className="crumb">
+          <button type="button" onClick={onHome}>
+            {english ? 'Home' : 'Trang chủ'}
+          </button>
+          <ChevronRight size={14} />
+          <b>{uiLabel(displayTitle, language)}</b>
+        </div>
+      </div>
+      <div className="top-actions">
+        <button
+          type="button"
+          className="quick-language"
+          title={english ? 'Switch Vietnamese / English' : 'Chuyển nhanh ngôn ngữ Việt / Anh'}
+          onClick={() => onQuickLanguage(language === 'vi-VN' ? 'en-US' : 'vi-VN')}
+        >
+          <span className={language === 'vi-VN' ? 'active' : ''}>VI</span>
+          <i />
+          <span className={language === 'en-US' ? 'active' : ''}>EN</span>
+        </button>
+        <span className={`role-badge ${user.role.toLowerCase()}`}>{user.role}</span>
+        <button className="icon-btn" title={english ? 'Search' : 'Tìm kiếm'}>
+          <Search size={19} />
+        </button>
+        <button className="icon-btn notification" title={english ? 'Notifications' : 'Thông báo'}>
+          <Bell size={19} />
+          <i />
+        </button>
+        <div className="avatar small" title={localizedDefault(user.name, language)}>
+          {initials}
+        </div>
+      </div>
+    </header>
+  )
+}
+
+function Dashboard({
+  assets,
+  transactions,
+  goAssets,
+  goPage,
+  onView,
+  language,
+  userName,
+}: {
+  assets: Asset[]
+  transactions: AssetTransaction[]
+  goAssets: () => void
+  goPage: (page: string) => void
+  onView: (asset: Asset) => void
+  language: string
+  userName: string
+}) {
+  type DashboardView = 'all' | 'inUse' | 'stock' | 'attention' | 'overdue'
+  const english = language === 'en-US'
+  const [activeView, setActiveView] = useState<DashboardView>('all')
+  const [activeCategory, setActiveCategory] = useState('')
+  const inUse = assets.filter(a => a.status === 'Đang sử dụng').length
+  const inStock = assets.filter(a => a.status === 'Sẵn sàng' && a.assignedTo === 'Chưa gán').length
+  const maintenance = assets.filter(a => a.status === 'Bảo trì' || a.status === 'Hỏng').length
+  const overdue = assets.filter(a => a.dueDate && new Date(a.dueDate) < new Date()).length
+  const typeCounts = countDashboardLabels(
+    assets.map(asset => asset.category),
+    english ? 'Uncategorized' : 'Chưa phân loại',
+    language,
+  ).map(item => ({ category: item.label, count: item.count }))
+  const totalValue = assets.reduce((sum, asset) => sum + asset.purchaseCost, 0)
+  const colors = ['#315fe5', '#31ad6d', '#f1aa1f', '#8953d7', '#e65a43', '#25a6bd']
+  let categoryCursor = 0
+  const categoryGradient = typeCounts.length
+    ? `conic-gradient(${typeCounts
+        .map((item, index) => {
+          const start = categoryCursor
+          categoryCursor += (item.count / Math.max(assets.length, 1)) * 100
+          return `${colors[index % colors.length]} ${start}% ${categoryCursor}%`
+        })
+        .join(',')})`
+    : '#e8edf3'
+  const otherStatus = Math.max(0, assets.length - inUse - inStock - maintenance)
+  const statusCounts = [
+    { label: english ? 'In use' : 'Đang sử dụng', count: inUse, color: '#31ad6d', view: 'inUse' as DashboardView },
+    { label: english ? 'In stock' : 'Trong kho', count: inStock, color: '#2f86e8', view: 'stock' as DashboardView },
+    {
+      label: english ? 'Maintenance / Broken' : 'Bảo trì / Hỏng',
+      count: maintenance,
+      color: '#e65a43',
+      view: 'attention' as DashboardView,
+    },
+    { label: english ? 'Other' : 'Khác', count: otherStatus, color: '#718096', view: 'all' as DashboardView },
+  ].filter(item => item.count > 0)
+  let statusCursor = 0
+  const statusGradient = assets.length
+    ? `conic-gradient(${statusCounts
+        .map(item => {
+          const start = statusCursor
+          statusCursor +=
+            (item.count /
+              Math.max(
+                statusCounts.reduce((sum, value) => sum + value.count, 0),
+                1,
+              )) *
+            100
+          return `${item.color} ${start}% ${statusCursor}%`
+        })
+        .join(',')})`
+    : '#e8edf3'
+  const locationCounts = countDashboardLabels(
+    assets.map(asset => asset.location),
+    english ? 'Unknown location' : 'Chưa xác định',
+    language,
+  )
+    .slice(0, 5)
+    .map(item => ({ location: item.label, count: item.count }))
+  const recentTransactions = [...transactions]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5)
+  const metrics: Array<{ key: DashboardView; label: string; value: number; Icon: typeof Box; tone: string }> = [
+    { key: 'all', label: english ? 'Total assets' : 'Tổng tài sản', value: assets.length, Icon: Box, tone: 'blue' },
+    { key: 'inUse', label: english ? 'In use' : 'Đang sử dụng', value: inUse, Icon: UserRound, tone: 'green' },
+    {
+      key: 'attention',
+      label: english ? 'Maintenance / Broken' : 'Bảo trì / Hỏng',
+      value: maintenance,
+      Icon: Wrench,
+      tone: 'amber',
+    },
+    {
+      key: 'overdue',
+      label: english ? 'Overdue returns' : 'Quá hạn trả',
+      value: overdue,
+      Icon: AlertTriangle,
+      tone: 'red',
+    },
   ]
-  const selectedLabel=activeCategory?`${english?'Asset category':'Loại tài sản'}: ${activeCategory}`:metrics.find(item=>item.key===activeView)?.label||(english?'Asset list':'Danh sách tài sản')
-  const visibleAssets=assets.filter(asset=>{
-    if(activeCategory&&!dashboardLabelsEqual(asset.category,activeCategory))return false
-    if(activeView==='inUse')return asset.status==='Đang sử dụng'
-    if(activeView==='stock')return asset.status==='Sẵn sàng'&&asset.assignedTo==='Chưa gán'
-    if(activeView==='attention')return asset.status==='Bảo trì'||asset.status==='Hỏng'
-    if(activeView==='overdue')return Boolean(asset.dueDate&&new Date(asset.dueDate)<new Date())
+  const selectedLabel = activeCategory
+    ? `${english ? 'Asset category' : 'Loại tài sản'}: ${activeCategory}`
+    : metrics.find(item => item.key === activeView)?.label || (english ? 'Asset list' : 'Danh sách tài sản')
+  const visibleAssets = assets.filter(asset => {
+    if (activeCategory && !dashboardLabelsEqual(asset.category, activeCategory)) return false
+    if (activeView === 'inUse') return asset.status === 'Đang sử dụng'
+    if (activeView === 'stock') return asset.status === 'Sẵn sàng' && asset.assignedTo === 'Chưa gán'
+    if (activeView === 'attention') return asset.status === 'Bảo trì' || asset.status === 'Hỏng'
+    if (activeView === 'overdue') return Boolean(asset.dueDate && new Date(asset.dueDate) < new Date())
     return true
   })
-  const selectView=(view:DashboardView)=>{setActiveView(view);setActiveCategory('')}
-  const selectCategory=(category:string)=>{setActiveCategory(category);setActiveView('all')}
-  const displayStatus=(asset:Asset)=>uiLabel(asset.dueDate&&new Date(asset.dueDate)<new Date()?'Quá hạn':asset.assignmentType==='Cho mượn'?'Cho mượn':asset.status,language)
-  const statusClass=(asset:Asset)=>asset.dueDate&&new Date(asset.dueDate)<new Date()?'broken':asset.status==='Đang sử dụng'?'using':asset.status==='Sẵn sàng'?'ready':asset.status==='Bảo trì'?'maintenance':'broken'
-  return <main className="page enterprise-dashboard">
-    <section className="page-heading dashboard-heading"><div><h1>{english?'Dashboard':'Tổng quan tài sản'}</h1><p>{english?`Welcome back, ${localizedDefault(userName,language)}. Here is what is happening with your assets today.`:`Chào mừng ${userName}. Đây là tình hình tài sản và các công việc cần chú ý hôm nay.`}</p></div><div className="heading-actions"><button className="btn secondary dashboard-date"><CalendarDays size={16}/>{new Date().toLocaleDateString(language)}</button></div></section>
-    <section className="ops-summary dashboard-kpis" aria-label="Bộ lọc nhanh tài sản">{metrics.map(({key,label,value,Icon,tone})=><button type="button" className={`${activeView===key&&!activeCategory?'active ':''}${tone}`} onClick={()=>selectView(key)} key={key}><span className="kpi-copy"><small>{label}</small><b>{value}</b><em>{key==='inUse'?`${assets.length?Math.round(inUse/assets.length*100):0}% ${english?'of total assets':'tổng tài sản'}`:key==='attention'?(english?'Requires review':'Cần kiểm tra xử lý'):key==='overdue'?(english?'Immediate attention':'Cần xử lý ngay'):(english?'Asset records':'Hồ sơ tài sản')}</em></span><span className="kpi-icon"><Icon size={22}/></span></button>)}<div className="dashboard-value-kpi"><span className="kpi-copy"><small>{english?'Total value':'Tổng nguyên giá'}</small><b>{compactMoney(totalValue)}</b><em>{english?'Asset book value':'Giá trị theo sổ tài sản'}</em></span><span className="kpi-icon"><CircleDollarSign size={22}/></span></div></section>
-    <section className="dashboard-reference-grid">
-      <div className="dashboard-overview-summary">
-      <article className="dashboard-reference-card location-overview"><header><h2>{english?'Top locations':'Vị trí có nhiều tài sản'}</h2><button onClick={()=>goPage('Kho & Vị trí')}>{english?'View all':'Xem tất cả'}</button></header><div>{locationCounts.map((item,index)=><div key={item.location}><span title={item.location}>{item.location}</span><i><u style={{width:`${assets.length?item.count/assets.length*100:0}%`,background:colors[index%colors.length]}}/></i><b>{item.count}</b><small>{assets.length?Math.round(item.count/assets.length*100):0}%</small></div>)}</div></article>
-      <article className="dashboard-reference-card category-overview"><header><h2>{english?'Assets by category':'Tài sản theo nhóm'}</h2><button onClick={goAssets}>{english?'View report':'Xem danh sách'}</button></header><div className="dashboard-donut-layout"><button className="dashboard-donut" style={{background:categoryGradient}} onClick={()=>selectView('all')}><span><b>{assets.length}</b><small>{english?'Total':'Tổng'}</small></span></button><div className="dashboard-legend">{typeCounts.map((item,index)=><button onClick={()=>selectCategory(item.category)} key={item.category}><i style={{background:colors[index%colors.length]}}/><span>{item.category}</span><b>{item.count}</b><small>{assets.length?Math.round(item.count/assets.length*100):0}%</small></button>)}</div></div></article>
-      <article className="dashboard-reference-card status-overview"><header><h2>{english?'Assets by status':'Tài sản theo trạng thái'}</h2><button onClick={goAssets}>{english?'View all':'Xem tất cả'}</button></header><div className="dashboard-donut-layout"><div className="dashboard-donut" style={{background:statusGradient}}><span><b>{assets.length}</b><small>{english?'Total':'Tổng'}</small></span></div><div className="dashboard-legend">{statusCounts.map(item=><button onClick={()=>selectView(item.view)} key={item.label}><i style={{background:item.color}}/><span>{item.label}</span><b>{item.count}</b><small>{assets.length?Math.round(item.count/assets.length*100):0}%</small></button>)}</div></div></article>
-      </div>
-      <article className="dashboard-reference-card recent-overview"><header><h2>{english?'Recent activity':'Hoạt động gần đây'}</h2><button onClick={()=>goPage('Lịch sử / Audit')}>{english?'View all':'Xem tất cả'}</button></header><div className="recent-dashboard-list">{recentTransactions.map(transaction=><button onClick={()=>{const asset=assets.find(item=>item.id===transaction.assetId);if(asset)onView(asset)}} key={transaction.id}><span className={`recent-icon ${transaction.type.toLowerCase().replace(' ','-')}`}>{transaction.type==='Thu hồi'?<RotateCcw size={16}/>:transaction.type==='Điều chuyển'?<ArrowUpRight size={16}/>:transaction.type==='Nhập kho'?<Plus size={16}/>:<PackageCheck size={16}/>}</span><div><b>{transaction.assetName}</b><small>{transaction.type} · {transaction.performedBy}</small></div><time>{new Date(transaction.date).toLocaleDateString(language)}</time></button>)}{!recentTransactions.length&&<p className="dashboard-empty-note">{english?'No activity recorded yet.':'Chưa có hoạt động được ghi nhận.'}</p>}</div></article>
-    </section>
-    <section className="dashboard-operations"><div className="enterprise-panel"><div className="panel-heading"><div><h2>{selectedLabel}</h2><span>{visibleAssets.length} {english?'records':'bản ghi'}</span></div>{(activeView!=='attention'||activeCategory)&&<button className="text-link" onClick={()=>selectView('attention')}>{english?'Needs attention':'Xem cần xử lý'}</button>}</div><div className="table-scroll"><table className="dashboard-asset-table"><thead><tr><th>{english?'ASSET CODE':'MÃ TÀI SẢN'}</th><th>{english?'ASSET NAME':'TÊN TÀI SẢN'}</th><th>{english?'CATEGORY':'LOẠI'}</th><th>{english?'DEPARTMENT':'ĐƠN VỊ'}</th><th>{english?'ASSIGNED USER':'NGƯỜI SỬ DỤNG'}</th><th>{english?'STATUS':'TRẠNG THÁI'}</th><th>{english?'DUE DATE':'HẠN TRẢ'}</th></tr></thead><tbody>{visibleAssets.slice(0,12).map(a=><tr key={a.id} onDoubleClick={()=>onView(a)}><td><button className="table-code" onClick={()=>onView(a)}>{a.code}</button></td><td><b>{a.name}</b></td><td>{a.category}</td><td>{a.department}</td><td>{a.assignedTo}</td><td><span className={`enterprise-status ${statusClass(a)}`}>{displayStatus(a)}</span></td><td>{a.dueDate?new Date(a.dueDate).toLocaleDateString(language):'—'}</td></tr>)}</tbody></table></div>{!visibleAssets.length&&<div className="enterprise-empty">{english?'No assets match the selected condition.':'Không có tài sản phù hợp với điều kiện đã chọn.'}</div>}{visibleAssets.length>12&&<div className="panel-list-footer"><span>{english?'Showing':'Hiển thị'} 12/{visibleAssets.length} {english?'records':'bản ghi'}</span><button className="text-link" onClick={goAssets}>{english?'Open asset register':'Mở sổ tài sản'}</button></div>}</div><div className="enterprise-panel"><div className="panel-heading"><h2>{english?'Assets by category':'Tài sản theo loại'}</h2><button className="text-link" onClick={()=>selectView('all')}>{english?'All':'Tất cả'} ({assets.length})</button></div><div className="type-count-list">{typeCounts.map(x=><button type="button" className={activeCategory===x.category?'active':''} onClick={()=>selectCategory(x.category)} key={x.category}><span>{x.category}</span><b>{x.count}</b></button>)}</div><div className="panel-footer">{english?'Total purchase cost:':'Tổng nguyên giá:'} <b>{compactMoney(assets.reduce((s,a)=>s+a.purchaseCost,0))}</b></div></div></section>
-  </main>
+  const selectView = (view: DashboardView) => {
+    setActiveView(view)
+    setActiveCategory('')
+  }
+  const selectCategory = (category: string) => {
+    setActiveCategory(category)
+    setActiveView('all')
+  }
+  const displayStatus = (asset: Asset) =>
+    uiLabel(
+      asset.dueDate && new Date(asset.dueDate) < new Date()
+        ? 'Quá hạn'
+        : asset.assignmentType === 'Cho mượn'
+          ? 'Cho mượn'
+          : asset.status,
+      language,
+    )
+  const statusClass = (asset: Asset) =>
+    asset.dueDate && new Date(asset.dueDate) < new Date()
+      ? 'broken'
+      : asset.status === 'Đang sử dụng'
+        ? 'using'
+        : asset.status === 'Sẵn sàng'
+          ? 'ready'
+          : asset.status === 'Bảo trì'
+            ? 'maintenance'
+            : 'broken'
+  return (
+    <main className="page enterprise-dashboard">
+      <section className="page-heading dashboard-heading">
+        <div>
+          <h1>{english ? 'Dashboard' : 'Tổng quan tài sản'}</h1>
+          <p>
+            {english
+              ? `Welcome back, ${localizedDefault(userName, language)}. Here is what is happening with your assets today.`
+              : `Chào mừng ${userName}. Đây là tình hình tài sản và các công việc cần chú ý hôm nay.`}
+          </p>
+        </div>
+        <div className="heading-actions">
+          <button className="btn secondary dashboard-date">
+            <CalendarDays size={16} />
+            {new Date().toLocaleDateString(language)}
+          </button>
+        </div>
+      </section>
+      <section className="ops-summary dashboard-kpis" aria-label="Bộ lọc nhanh tài sản">
+        {metrics.map(({ key, label, value, Icon, tone }) => (
+          <button
+            type="button"
+            className={`${activeView === key && !activeCategory ? 'active ' : ''}${tone}`}
+            onClick={() => selectView(key)}
+            key={key}
+          >
+            <span className="kpi-copy">
+              <small>{label}</small>
+              <b>{value}</b>
+              <em>
+                {key === 'inUse'
+                  ? `${assets.length ? Math.round((inUse / assets.length) * 100) : 0}% ${english ? 'of total assets' : 'tổng tài sản'}`
+                  : key === 'attention'
+                    ? english
+                      ? 'Requires review'
+                      : 'Cần kiểm tra xử lý'
+                    : key === 'overdue'
+                      ? english
+                        ? 'Immediate attention'
+                        : 'Cần xử lý ngay'
+                      : english
+                        ? 'Asset records'
+                        : 'Hồ sơ tài sản'}
+              </em>
+            </span>
+            <span className="kpi-icon">
+              <Icon size={22} />
+            </span>
+          </button>
+        ))}
+        <div className="dashboard-value-kpi">
+          <span className="kpi-copy">
+            <small>{english ? 'Total value' : 'Tổng nguyên giá'}</small>
+            <b>{compactMoney(totalValue)}</b>
+            <em>{english ? 'Asset book value' : 'Giá trị theo sổ tài sản'}</em>
+          </span>
+          <span className="kpi-icon">
+            <CircleDollarSign size={22} />
+          </span>
+        </div>
+      </section>
+      <section className="dashboard-reference-grid">
+        <div className="dashboard-overview-summary">
+          <article className="dashboard-reference-card location-overview">
+            <header>
+              <h2>{english ? 'Top locations' : 'Vị trí có nhiều tài sản'}</h2>
+              <button onClick={() => goPage('Kho & Vị trí')}>{english ? 'View all' : 'Xem tất cả'}</button>
+            </header>
+            <div>
+              {locationCounts.map((item, index) => (
+                <div key={item.location}>
+                  <span title={item.location}>{item.location}</span>
+                  <i>
+                    <u
+                      style={{
+                        width: `${assets.length ? (item.count / assets.length) * 100 : 0}%`,
+                        background: colors[index % colors.length],
+                      }}
+                    />
+                  </i>
+                  <b>{item.count}</b>
+                  <small>{assets.length ? Math.round((item.count / assets.length) * 100) : 0}%</small>
+                </div>
+              ))}
+            </div>
+          </article>
+          <article className="dashboard-reference-card category-overview">
+            <header>
+              <h2>{english ? 'Assets by category' : 'Tài sản theo nhóm'}</h2>
+              <button onClick={goAssets}>{english ? 'View report' : 'Xem danh sách'}</button>
+            </header>
+            <div className="dashboard-donut-layout">
+              <button
+                className="dashboard-donut"
+                style={{ background: categoryGradient }}
+                onClick={() => selectView('all')}
+              >
+                <span>
+                  <b>{assets.length}</b>
+                  <small>{english ? 'Total' : 'Tổng'}</small>
+                </span>
+              </button>
+              <div className="dashboard-legend">
+                {typeCounts.map((item, index) => (
+                  <button onClick={() => selectCategory(item.category)} key={item.category}>
+                    <i style={{ background: colors[index % colors.length] }} />
+                    <span>{item.category}</span>
+                    <b>{item.count}</b>
+                    <small>{assets.length ? Math.round((item.count / assets.length) * 100) : 0}%</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </article>
+          <article className="dashboard-reference-card status-overview">
+            <header>
+              <h2>{english ? 'Assets by status' : 'Tài sản theo trạng thái'}</h2>
+              <button onClick={goAssets}>{english ? 'View all' : 'Xem tất cả'}</button>
+            </header>
+            <div className="dashboard-donut-layout">
+              <div className="dashboard-donut" style={{ background: statusGradient }}>
+                <span>
+                  <b>{assets.length}</b>
+                  <small>{english ? 'Total' : 'Tổng'}</small>
+                </span>
+              </div>
+              <div className="dashboard-legend">
+                {statusCounts.map(item => (
+                  <button onClick={() => selectView(item.view)} key={item.label}>
+                    <i style={{ background: item.color }} />
+                    <span>{item.label}</span>
+                    <b>{item.count}</b>
+                    <small>{assets.length ? Math.round((item.count / assets.length) * 100) : 0}%</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </article>
+        </div>
+        <article className="dashboard-reference-card recent-overview">
+          <header>
+            <h2>{english ? 'Recent activity' : 'Hoạt động gần đây'}</h2>
+            <button onClick={() => goPage('Lịch sử / Audit')}>{english ? 'View all' : 'Xem tất cả'}</button>
+          </header>
+          <div className="recent-dashboard-list">
+            {recentTransactions.map(transaction => (
+              <button
+                onClick={() => {
+                  const asset = assets.find(item => item.id === transaction.assetId)
+                  if (asset) onView(asset)
+                }}
+                key={transaction.id}
+              >
+                <span className={`recent-icon ${transaction.type.toLowerCase().replace(' ', '-')}`}>
+                  {transaction.type === 'Thu hồi' ? (
+                    <RotateCcw size={16} />
+                  ) : transaction.type === 'Điều chuyển' ? (
+                    <ArrowUpRight size={16} />
+                  ) : transaction.type === 'Nhập kho' ? (
+                    <Plus size={16} />
+                  ) : (
+                    <PackageCheck size={16} />
+                  )}
+                </span>
+                <div>
+                  <b>{transaction.assetName}</b>
+                  <small>
+                    {transaction.type} · {transaction.performedBy}
+                  </small>
+                </div>
+                <time>{new Date(transaction.date).toLocaleDateString(language)}</time>
+              </button>
+            ))}
+            {!recentTransactions.length && (
+              <p className="dashboard-empty-note">
+                {english ? 'No activity recorded yet.' : 'Chưa có hoạt động được ghi nhận.'}
+              </p>
+            )}
+          </div>
+        </article>
+      </section>
+      <section className="dashboard-operations">
+        <div className="enterprise-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>{selectedLabel}</h2>
+              <span>
+                {visibleAssets.length} {english ? 'records' : 'bản ghi'}
+              </span>
+            </div>
+            {(activeView !== 'attention' || activeCategory) && (
+              <button className="text-link" onClick={() => selectView('attention')}>
+                {english ? 'Needs attention' : 'Xem cần xử lý'}
+              </button>
+            )}
+          </div>
+          <div className="table-scroll">
+            <table className="dashboard-asset-table">
+              <thead>
+                <tr>
+                  <th>{english ? 'ASSET CODE' : 'MÃ TÀI SẢN'}</th>
+                  <th>{english ? 'ASSET NAME' : 'TÊN TÀI SẢN'}</th>
+                  <th>{english ? 'CATEGORY' : 'LOẠI'}</th>
+                  <th>{english ? 'DEPARTMENT' : 'ĐƠN VỊ'}</th>
+                  <th>{english ? 'ASSIGNED USER' : 'NGƯỜI SỬ DỤNG'}</th>
+                  <th>{english ? 'STATUS' : 'TRẠNG THÁI'}</th>
+                  <th>{english ? 'DUE DATE' : 'HẠN TRẢ'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleAssets.slice(0, 12).map(a => (
+                  <tr key={a.id} onDoubleClick={() => onView(a)}>
+                    <td>
+                      <button className="table-code" onClick={() => onView(a)}>
+                        {a.code}
+                      </button>
+                    </td>
+                    <td>
+                      <b>{a.name}</b>
+                    </td>
+                    <td>{a.category}</td>
+                    <td>{a.department}</td>
+                    <td>{a.assignedTo}</td>
+                    <td>
+                      <span className={`enterprise-status ${statusClass(a)}`}>{displayStatus(a)}</span>
+                    </td>
+                    <td>{a.dueDate ? new Date(a.dueDate).toLocaleDateString(language) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!visibleAssets.length && (
+            <div className="enterprise-empty">
+              {english ? 'No assets match the selected condition.' : 'Không có tài sản phù hợp với điều kiện đã chọn.'}
+            </div>
+          )}
+          {visibleAssets.length > 12 && (
+            <div className="panel-list-footer">
+              <span>
+                {english ? 'Showing' : 'Hiển thị'} 12/{visibleAssets.length} {english ? 'records' : 'bản ghi'}
+              </span>
+              <button className="text-link" onClick={goAssets}>
+                {english ? 'Open asset register' : 'Mở sổ tài sản'}
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="enterprise-panel">
+          <div className="panel-heading">
+            <h2>{english ? 'Assets by category' : 'Tài sản theo loại'}</h2>
+            <button className="text-link" onClick={() => selectView('all')}>
+              {english ? 'All' : 'Tất cả'} ({assets.length})
+            </button>
+          </div>
+          <div className="type-count-list">
+            {typeCounts.map(x => (
+              <button
+                type="button"
+                className={activeCategory === x.category ? 'active' : ''}
+                onClick={() => selectCategory(x.category)}
+                key={x.category}
+              >
+                <span>{x.category}</span>
+                <b>{x.count}</b>
+              </button>
+            ))}
+          </div>
+          <div className="panel-footer">
+            {english ? 'Total purchase cost:' : 'Tổng nguyên giá:'}{' '}
+            <b>{compactMoney(assets.reduce((s, a) => s + a.purchaseCost, 0))}</b>
+          </div>
+        </div>
+      </section>
+    </main>
+  )
 }
 
-function OperationsDashboard({ assets, transactions, onAssign, onBarcode, onView, openHistory, openScanner }: { assets: Asset[]; transactions: AssetTransaction[]; onAssign: (a: Asset) => void; onBarcode: (a: Asset) => void; onView: (a: Asset) => void; openHistory: () => void; openScanner: (mode?:'lookup'|'intake') => void }) {
-  type View='all'|'assigned'|'stock'|'due';type SortKey='code'|'name'|'serial'|'category'|'assignedTo'|'department'|'location'|'status'
-  const [query,setQuery]=useState(''),[activeView,setActiveView]=useState<View>('all')
-  const [department,setDepartment]=useState(''),[category,setCategory]=useState(''),[status,setStatus]=useState(''),[location,setLocation]=useState(''),[user,setUser]=useState('')
-  const [sortKey,setSortKey]=useState<SortKey>('code'),[sortAsc,setSortAsc]=useState(true),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(10),[menuId,setMenuId]=useState<number>()
-  const [selectedIds,setSelectedIds]=useState<number[]>([])
-  const assignedAssets=assets.filter(a=>a.assignedTo!=='Chưa gán'),stockAssets=assets.filter(a=>a.assignedTo==='Chưa gán'&&a.status==='Sẵn sàng'&&/kho/i.test(a.location)),dueAssets=assignedAssets.filter(a=>a.dueDate)
-  const baseAssets=activeView==='assigned'?assignedAssets:activeView==='stock'?stockAssets:activeView==='due'?dueAssets:assets
-  const options=(values:string[])=>{const unique=[...new Set(values.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));return unique.length>0&&unique.every(value=>['Đang sử dụng','Sẵn sàng','Bảo trì','Hỏng'].includes(value))?operationalStatusOptions.slice(1):unique}
-  const filtered=useMemo(()=>baseAssets.filter(a=>matchesAssetSearch(a,query)&&(!department||a.department===department)&&(!category||a.category===category)&&matchesOperationalStatus(a,status)&&(!location||a.location===location)&&(!user||a.assignedTo===user)).sort((a,b)=>String(a[sortKey]||'').localeCompare(String(b[sortKey]||''),'vi')*(sortAsc?1:-1)),[baseAssets,query,department,category,status,location,user,sortKey,sortAsc])
-  useEffect(()=>setPage(1),[query,activeView,department,category,status,location,user,pageSize])
-  const pageCount=Math.max(1,Math.ceil(filtered.length/pageSize)),visible=filtered.slice((page-1)*pageSize,page*pageSize)
-  const selectedAssets=assets.filter(a=>selectedIds.includes(a.id)),allVisibleSelected=visible.length>0&&visible.every(a=>selectedIds.includes(a.id))
-  const toggleVisible=()=>setSelectedIds(current=>allVisibleSelected?current.filter(id=>!visible.some(a=>a.id===id)):[...new Set([...current,...visible.map(a=>a.id)])])
-  const lastTransaction=(assetId:number,types:TransactionType[])=>transactions.find(t=>t.assetId===assetId&&types.includes(t.type))
-  const dateCell=(value?:string)=>value?new Date(value).toLocaleDateString('vi-VN'):'—'
-  const sort=(key:SortKey)=>{if(sortKey===key)setSortAsc(value=>!value);else{setSortKey(key);setSortAsc(true)}}
-  const workflow=[['Nhập kho',()=>openScanner('intake')],['Cấp phát / Mượn',()=>setActiveView('stock')],['Thu hồi',()=>setActiveView('assigned')],['Điều chuyển',()=>setActiveView('all')],['Kiểm kê',()=>setActiveView('all')]] as const
-  const headers:Array<[string,SortKey|undefined]>=[['Mã tài sản','code'],['Tên tài sản','name'],['Serial / Service Tag','serial'],['Loại','category'],['Người sử dụng','assignedTo'],['Đơn vị','department'],['Vị trí','location'],['Trạng thái','status'],['Ngày cấp',undefined],['Ngày thu hồi',undefined],['',undefined]]
-  return <main className="page operations enterprise-ops"><section className="page-heading"><div><h1>Quản lý cấp phát tài sản</h1><p>{assets.length} tài sản · {assignedAssets.length} đang sử dụng · {stockAssets.length} sẵn sàng trong kho</p></div><div className="heading-actions"><button className="btn secondary" onClick={()=>openScanner('lookup')}><ScanLine size={16}/>Quét mã</button><button className="btn primary" onClick={()=>openScanner('intake')}><Plus size={16}/>Nhập kho</button></div></section>
-    <section className="enterprise-workflow"><b>Quy trình:</b>{workflow.map(([label,action],index)=><button onClick={action} key={label}><span>{index+1}</span>{label}</button>)}</section>
-    <section className="enterprise-metrics"><button className={activeView==='all'?'active':''} onClick={()=>setActiveView('all')}><span>Tổng tài sản</span><b>{assets.length}</b></button><button className={activeView==='assigned'?'active':''} onClick={()=>setActiveView('assigned')}><span>Đã cấp phát</span><b>{assignedAssets.length}</b></button><button className={activeView==='stock'?'active':''} onClick={()=>setActiveView('stock')}><span>Sẵn sàng trong kho</span><b>{stockAssets.length}</b></button><button className={activeView==='due'?'active':''} onClick={()=>setActiveView('due')}><span>Có hạn trả</span><b>{dueAssets.length}</b></button><div><span>Cần xử lý</span><b>{assets.filter(a=>a.status==='Bảo trì'||a.status==='Hỏng').length}</b></div></section>
-    <section className="enterprise-table"><div className="enterprise-table-title"><div><h2>Danh sách tài sản</h2><span>{filtered.length} bản ghi</span></div><button className="text-link" onClick={()=>{setQuery('');setDepartment('');setCategory('');setStatus('');setLocation('');setUser('')}}>Xóa bộ lọc</button></div><div className="enterprise-filters"><label><Search size={15}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Mã, tên, serial, người sử dụng"/></label><select value={department} onChange={e=>setDepartment(e.target.value)}><option value="">Đơn vị: Tất cả</option>{options(assets.map(a=>a.department)).map(x=><option key={x}>{x}</option>)}</select><select value={category} onChange={e=>setCategory(e.target.value)}><option value="">Loại: Tất cả</option>{options(assets.map(a=>a.category)).map(x=><option key={x}>{x}</option>)}</select><select value={status} onChange={e=>setStatus(e.target.value)}><option value="">Trạng thái: Tất cả</option>{options(assets.map(a=>a.status)).map(x=><option key={x}>{x}</option>)}</select><select value={location} onChange={e=>setLocation(e.target.value)}><option value="">Vị trí: Tất cả</option>{options(assets.map(a=>a.location)).map(x=><option key={x}>{x}</option>)}</select><select value={user} onChange={e=>setUser(e.target.value)}><option value="">Người dùng: Tất cả</option>{options(assignedAssets.map(a=>a.assignedTo)).map(x=><option key={x}>{x}</option>)}</select></div>{selectedAssets.length>0&&<div className="bulk-action-bar"><b>{selectedAssets.length} tài sản đã chọn</b><button disabled={selectedAssets.length!==1} onClick={()=>selectedAssets[0]&&onAssign(selectedAssets[0])}>Cấp phát / Thu hồi</button><button disabled={selectedAssets.length!==1} onClick={()=>selectedAssets[0]&&onAssign(selectedAssets[0])}>Điều chuyển</button><button onClick={()=>selectedAssets.forEach(onBarcode)}>In barcode</button><button onClick={()=>setSelectedIds([])}>Bỏ chọn</button></div>}<div className="table-scroll"><table className="enterprise-asset-table"><thead><tr><th className="check-cell"><input type="checkbox" aria-label="Chọn tất cả tài sản đang hiển thị" checked={allVisibleSelected} onChange={toggleVisible}/></th>{headers.map(([label,key])=><th key={label||'actions'}>{key?<button onClick={()=>sort(key)}>{label}<ChevronDown size={12} className={sortKey===key&&sortAsc?'sort-up':''}/></button>:label}</th>)}</tr></thead><tbody>{visible.map(a=>{const issued=lastTransaction(a.id,['Cấp phát','Cho mượn']),returned=lastTransaction(a.id,['Thu hồi']);const inStock=a.assignedTo==='Chưa gán'&&a.status==='Sẵn sàng'&&/kho/i.test(a.location);return <tr key={a.id} className={selectedIds.includes(a.id)?'selected-row':''}><td className="check-cell"><input type="checkbox" aria-label={`Chọn ${a.code}`} checked={selectedIds.includes(a.id)} onChange={()=>setSelectedIds(current=>current.includes(a.id)?current.filter(id=>id!==a.id):[...current,a.id])}/></td><td><button className="table-code" onClick={()=>onView(a)}>{a.code}</button></td><td><b>{a.name}</b></td><td>{a.serial||'—'}</td><td>{a.category}</td><td>{a.assignedTo==='Chưa gán'?<span className="muted">Chưa gán</span>:a.assignedTo}</td><td>{a.department}</td><td>{a.location}</td><td><span className={`enterprise-status ${a.status==='Đang sử dụng'?'using':a.status==='Sẵn sàng'?'ready':a.status==='Bảo trì'?'maintenance':'broken'}`}>{a.status}</span></td><td>{dateCell(issued?.date)}</td><td>{dateCell(returned?.date)}</td><td className="action-cell"><button className="more-action" onClick={()=>setMenuId(menuId===a.id?undefined:a.id)}><MoreHorizontal size={17}/></button>{menuId===a.id&&<div className="row-action-menu"><button onClick={()=>{onView(a);setMenuId(undefined)}}>Xem chi tiết</button><button onClick={()=>{onAssign(a);setMenuId(undefined)}}>{inStock?'Cấp phát / Cho mượn':a.assignedTo!=='Chưa gán'?'Thu hồi / Điều chuyển':'Điều chuyển'}</button><button onClick={()=>{onBarcode(a);setMenuId(undefined)}}>In barcode</button></div>}</td></tr>})}</tbody></table></div>{!visible.length&&<div className="enterprise-empty">Không có dữ liệu phù hợp với bộ lọc.</div>}<div className="enterprise-pagination"><span>Hiển thị {filtered.length?((page-1)*pageSize+1):0}–{Math.min(page*pageSize,filtered.length)} / {filtered.length} bản ghi</span><label>Số dòng<select value={pageSize} onChange={e=>setPageSize(Number(e.target.value))}>{[10,20,50].map(x=><option key={x}>{x}</option>)}</select></label><div><button disabled={page<=1} onClick={()=>setPage(p=>p-1)}><ChevronLeft size={15}/></button><span>Trang {page}/{pageCount}</span><button disabled={page>=pageCount} onClick={()=>setPage(p=>p+1)}><ChevronRight size={15}/></button></div></div></section>
-    <section className="enterprise-audit"><div className="enterprise-table-title"><div><h2>Hoạt động gần đây</h2><span>Audit log nghiệp vụ</span></div><button className="text-link" onClick={openHistory}>Xem toàn bộ</button></div><div className="audit-grid audit-head"><span>MÃ PHIẾU</span><span>NGHIỆP VỤ</span><span>TÀI SẢN</span><span>THỜI GIAN</span><span>NGƯỜI THAO TÁC</span></div>{transactions.slice(0,5).map(t=><div className="audit-grid" key={t.id}><b>PGD-{String(t.id).slice(-6)}</b><span>{t.type}</span><span>{t.assetCode} · {t.assetName}</span><span>{new Date(t.date).toLocaleString('vi-VN')}</span><span>{t.performedBy}</span></div>)}</section>
-  </main>
+function OperationsDashboard({
+  assets,
+  transactions,
+  onAssign,
+  onBarcode,
+  onView,
+  openHistory,
+  openScanner,
+}: {
+  assets: Asset[]
+  transactions: AssetTransaction[]
+  onAssign: (a: Asset) => void
+  onBarcode: (a: Asset) => void
+  onView: (a: Asset) => void
+  openHistory: () => void
+  openScanner: (mode?: 'lookup' | 'intake') => void
+}) {
+  type View = 'all' | 'assigned' | 'stock' | 'due'
+  type SortKey = 'code' | 'name' | 'serial' | 'category' | 'assignedTo' | 'department' | 'location' | 'status'
+  const [query, setQuery] = useState(''),
+    [activeView, setActiveView] = useState<View>('all')
+  const [department, setDepartment] = useState(''),
+    [category, setCategory] = useState(''),
+    [status, setStatus] = useState(''),
+    [location, setLocation] = useState(''),
+    [user, setUser] = useState('')
+  const [sortKey, setSortKey] = useState<SortKey>('code'),
+    [sortAsc, setSortAsc] = useState(true),
+    [page, setPage] = useState(1),
+    [pageSize, setPageSize] = useState(10),
+    [menuId, setMenuId] = useState<number>()
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const assignedAssets = assets.filter(a => a.assignedTo !== 'Chưa gán'),
+    stockAssets = assets.filter(a => a.assignedTo === 'Chưa gán' && a.status === 'Sẵn sàng' && /kho/i.test(a.location)),
+    dueAssets = assignedAssets.filter(a => a.dueDate)
+  const baseAssets =
+    activeView === 'assigned'
+      ? assignedAssets
+      : activeView === 'stock'
+        ? stockAssets
+        : activeView === 'due'
+          ? dueAssets
+          : assets
+  const options = (values: string[]) => {
+    const unique = [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'))
+    return unique.length > 0 && unique.every(value => ['Đang sử dụng', 'Sẵn sàng', 'Bảo trì', 'Hỏng'].includes(value))
+      ? operationalStatusOptions.slice(1)
+      : unique
+  }
+  const filtered = useMemo(
+    () =>
+      baseAssets
+        .filter(
+          a =>
+            matchesAssetSearch(a, query) &&
+            (!department || a.department === department) &&
+            (!category || a.category === category) &&
+            matchesOperationalStatus(a, status) &&
+            (!location || a.location === location) &&
+            (!user || a.assignedTo === user),
+        )
+        .sort((a, b) => String(a[sortKey] || '').localeCompare(String(b[sortKey] || ''), 'vi') * (sortAsc ? 1 : -1)),
+    [baseAssets, query, department, category, status, location, user, sortKey, sortAsc],
+  )
+  useEffect(() => setPage(1), [query, activeView, department, category, status, location, user, pageSize])
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize)),
+    visible = filtered.slice((page - 1) * pageSize, page * pageSize)
+  const selectedAssets = assets.filter(a => selectedIds.includes(a.id)),
+    allVisibleSelected = visible.length > 0 && visible.every(a => selectedIds.includes(a.id))
+  const toggleVisible = () =>
+    setSelectedIds(current =>
+      allVisibleSelected
+        ? current.filter(id => !visible.some(a => a.id === id))
+        : [...new Set([...current, ...visible.map(a => a.id)])],
+    )
+  const lastTransaction = (assetId: number, types: TransactionType[]) =>
+    transactions.find(t => t.assetId === assetId && types.includes(t.type))
+  const dateCell = (value?: string) => (value ? new Date(value).toLocaleDateString('vi-VN') : '—')
+  const sort = (key: SortKey) => {
+    if (sortKey === key) setSortAsc(value => !value)
+    else {
+      setSortKey(key)
+      setSortAsc(true)
+    }
+  }
+  const workflow = [
+    ['Nhập kho', () => openScanner('intake')],
+    ['Cấp phát / Mượn', () => setActiveView('stock')],
+    ['Thu hồi', () => setActiveView('assigned')],
+    ['Điều chuyển', () => setActiveView('all')],
+    ['Kiểm kê', () => setActiveView('all')],
+  ] as const
+  const headers: Array<[string, SortKey | undefined]> = [
+    ['Mã tài sản', 'code'],
+    ['Tên tài sản', 'name'],
+    ['Serial / Service Tag', 'serial'],
+    ['Loại', 'category'],
+    ['Người sử dụng', 'assignedTo'],
+    ['Đơn vị', 'department'],
+    ['Vị trí', 'location'],
+    ['Trạng thái', 'status'],
+    ['Ngày cấp', undefined],
+    ['Ngày thu hồi', undefined],
+    ['', undefined],
+  ]
+  return (
+    <main className="page operations enterprise-ops">
+      <section className="page-heading">
+        <div>
+          <h1>Quản lý cấp phát tài sản</h1>
+          <p>
+            {assets.length} tài sản · {assignedAssets.length} đang sử dụng · {stockAssets.length} sẵn sàng trong kho
+          </p>
+        </div>
+        <div className="heading-actions">
+          <button className="btn secondary" onClick={() => openScanner('lookup')}>
+            <ScanLine size={16} />
+            Quét mã
+          </button>
+          <button className="btn primary" onClick={() => openScanner('intake')}>
+            <Plus size={16} />
+            Nhập kho
+          </button>
+        </div>
+      </section>
+      <section className="enterprise-workflow">
+        <b>Quy trình:</b>
+        {workflow.map(([label, action], index) => (
+          <button onClick={action} key={label}>
+            <span>{index + 1}</span>
+            {label}
+          </button>
+        ))}
+      </section>
+      <section className="enterprise-metrics">
+        <button className={activeView === 'all' ? 'active' : ''} onClick={() => setActiveView('all')}>
+          <span>Tổng tài sản</span>
+          <b>{assets.length}</b>
+        </button>
+        <button className={activeView === 'assigned' ? 'active' : ''} onClick={() => setActiveView('assigned')}>
+          <span>Đã cấp phát</span>
+          <b>{assignedAssets.length}</b>
+        </button>
+        <button className={activeView === 'stock' ? 'active' : ''} onClick={() => setActiveView('stock')}>
+          <span>Sẵn sàng trong kho</span>
+          <b>{stockAssets.length}</b>
+        </button>
+        <button className={activeView === 'due' ? 'active' : ''} onClick={() => setActiveView('due')}>
+          <span>Có hạn trả</span>
+          <b>{dueAssets.length}</b>
+        </button>
+        <div>
+          <span>Cần xử lý</span>
+          <b>{assets.filter(a => a.status === 'Bảo trì' || a.status === 'Hỏng').length}</b>
+        </div>
+      </section>
+      <section className="enterprise-table">
+        <div className="enterprise-table-title">
+          <div>
+            <h2>Danh sách tài sản</h2>
+            <span>{filtered.length} bản ghi</span>
+          </div>
+          <button
+            className="text-link"
+            onClick={() => {
+              setQuery('')
+              setDepartment('')
+              setCategory('')
+              setStatus('')
+              setLocation('')
+              setUser('')
+            }}
+          >
+            Xóa bộ lọc
+          </button>
+        </div>
+        <div className="enterprise-filters">
+          <label>
+            <Search size={15} />
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Mã, tên, serial, người sử dụng"
+            />
+          </label>
+          <select value={department} onChange={e => setDepartment(e.target.value)}>
+            <option value="">Đơn vị: Tất cả</option>
+            {options(assets.map(a => a.department)).map(x => (
+              <option key={x}>{x}</option>
+            ))}
+          </select>
+          <select value={category} onChange={e => setCategory(e.target.value)}>
+            <option value="">Loại: Tất cả</option>
+            {options(assets.map(a => a.category)).map(x => (
+              <option key={x}>{x}</option>
+            ))}
+          </select>
+          <select value={status} onChange={e => setStatus(e.target.value)}>
+            <option value="">Trạng thái: Tất cả</option>
+            {options(assets.map(a => a.status)).map(x => (
+              <option key={x}>{x}</option>
+            ))}
+          </select>
+          <select value={location} onChange={e => setLocation(e.target.value)}>
+            <option value="">Vị trí: Tất cả</option>
+            {options(assets.map(a => a.location)).map(x => (
+              <option key={x}>{x}</option>
+            ))}
+          </select>
+          <select value={user} onChange={e => setUser(e.target.value)}>
+            <option value="">Người dùng: Tất cả</option>
+            {options(assignedAssets.map(a => a.assignedTo)).map(x => (
+              <option key={x}>{x}</option>
+            ))}
+          </select>
+        </div>
+        {selectedAssets.length > 0 && (
+          <div className="bulk-action-bar">
+            <b>{selectedAssets.length} tài sản đã chọn</b>
+            <button
+              disabled={selectedAssets.length !== 1}
+              onClick={() => selectedAssets[0] && onAssign(selectedAssets[0])}
+            >
+              Cấp phát / Thu hồi
+            </button>
+            <button
+              disabled={selectedAssets.length !== 1}
+              onClick={() => selectedAssets[0] && onAssign(selectedAssets[0])}
+            >
+              Điều chuyển
+            </button>
+            <button onClick={() => selectedAssets.forEach(onBarcode)}>In barcode</button>
+            <button onClick={() => setSelectedIds([])}>Bỏ chọn</button>
+          </div>
+        )}
+        <div className="table-scroll">
+          <table className="enterprise-asset-table">
+            <thead>
+              <tr>
+                <th className="check-cell">
+                  <input
+                    type="checkbox"
+                    aria-label="Chọn tất cả tài sản đang hiển thị"
+                    checked={allVisibleSelected}
+                    onChange={toggleVisible}
+                  />
+                </th>
+                {headers.map(([label, key]) => (
+                  <th key={label || 'actions'}>
+                    {key ? (
+                      <button onClick={() => sort(key)}>
+                        {label}
+                        <ChevronDown size={12} className={sortKey === key && sortAsc ? 'sort-up' : ''} />
+                      </button>
+                    ) : (
+                      label
+                    )}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map(a => {
+                const issued = lastTransaction(a.id, ['Cấp phát', 'Cho mượn']),
+                  returned = lastTransaction(a.id, ['Thu hồi'])
+                const inStock = a.assignedTo === 'Chưa gán' && a.status === 'Sẵn sàng' && /kho/i.test(a.location)
+                return (
+                  <tr key={a.id} className={selectedIds.includes(a.id) ? 'selected-row' : ''}>
+                    <td className="check-cell">
+                      <input
+                        type="checkbox"
+                        aria-label={`Chọn ${a.code}`}
+                        checked={selectedIds.includes(a.id)}
+                        onChange={() =>
+                          setSelectedIds(current =>
+                            current.includes(a.id) ? current.filter(id => id !== a.id) : [...current, a.id],
+                          )
+                        }
+                      />
+                    </td>
+                    <td>
+                      <button className="table-code" onClick={() => onView(a)}>
+                        {a.code}
+                      </button>
+                    </td>
+                    <td>
+                      <b>{a.name}</b>
+                    </td>
+                    <td>{a.serial || '—'}</td>
+                    <td>{a.category}</td>
+                    <td>{a.assignedTo === 'Chưa gán' ? <span className="muted">Chưa gán</span> : a.assignedTo}</td>
+                    <td>{a.department}</td>
+                    <td>{a.location}</td>
+                    <td>
+                      <span
+                        className={`enterprise-status ${a.status === 'Đang sử dụng' ? 'using' : a.status === 'Sẵn sàng' ? 'ready' : a.status === 'Bảo trì' ? 'maintenance' : 'broken'}`}
+                      >
+                        {a.status}
+                      </span>
+                    </td>
+                    <td>{dateCell(issued?.date)}</td>
+                    <td>{dateCell(returned?.date)}</td>
+                    <td className="action-cell">
+                      <button className="more-action" onClick={() => setMenuId(menuId === a.id ? undefined : a.id)}>
+                        <MoreHorizontal size={17} />
+                      </button>
+                      {menuId === a.id && (
+                        <div className="row-action-menu">
+                          <button
+                            onClick={() => {
+                              onView(a)
+                              setMenuId(undefined)
+                            }}
+                          >
+                            Xem chi tiết
+                          </button>
+                          <button
+                            onClick={() => {
+                              onAssign(a)
+                              setMenuId(undefined)
+                            }}
+                          >
+                            {inStock
+                              ? 'Cấp phát / Cho mượn'
+                              : a.assignedTo !== 'Chưa gán'
+                                ? 'Thu hồi / Điều chuyển'
+                                : 'Điều chuyển'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              onBarcode(a)
+                              setMenuId(undefined)
+                            }}
+                          >
+                            In barcode
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        {!visible.length && <div className="enterprise-empty">Không có dữ liệu phù hợp với bộ lọc.</div>}
+        <div className="enterprise-pagination">
+          <span>
+            Hiển thị {filtered.length ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, filtered.length)} /{' '}
+            {filtered.length} bản ghi
+          </span>
+          <label>
+            Số dòng
+            <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+              {[10, 20, 50].map(x => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </label>
+          <div>
+            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+              <ChevronLeft size={15} />
+            </button>
+            <span>
+              Trang {page}/{pageCount}
+            </span>
+            <button disabled={page >= pageCount} onClick={() => setPage(p => p + 1)}>
+              <ChevronRight size={15} />
+            </button>
+          </div>
+        </div>
+      </section>
+      <section className="enterprise-audit">
+        <div className="enterprise-table-title">
+          <div>
+            <h2>Hoạt động gần đây</h2>
+            <span>Audit log nghiệp vụ</span>
+          </div>
+          <button className="text-link" onClick={openHistory}>
+            Xem toàn bộ
+          </button>
+        </div>
+        <div className="audit-grid audit-head">
+          <span>MÃ PHIẾU</span>
+          <span>NGHIỆP VỤ</span>
+          <span>TÀI SẢN</span>
+          <span>THỜI GIAN</span>
+          <span>NGƯỜI THAO TÁC</span>
+        </div>
+        {transactions.slice(0, 5).map(t => (
+          <div className="audit-grid" key={t.id}>
+            <b>PGD-{String(t.id).slice(-6)}</b>
+            <span>{t.type}</span>
+            <span>
+              {t.assetCode} · {t.assetName}
+            </span>
+            <span>{new Date(t.date).toLocaleString('vi-VN')}</span>
+            <span>{t.performedBy}</span>
+          </div>
+        ))}
+      </section>
+    </main>
+  )
 }
 
 function TransactionHistory({ transactions }: { transactions: AssetTransaction[] }) {
   const [filter, setFilter] = useState('Tất cả')
   const shown = filter === 'Tất cả' ? transactions : transactions.filter(t => t.type === filter)
-  return <main className="page"><section className="page-heading"><div><h1>Lịch sử nhập xuất</h1><p>Nhật ký đầy đủ mọi lần nhập kho, cấp phát, cho mượn, thu hồi và điều chuyển.</p></div><button className="btn secondary"><Download size={17}/>Xuất Excel</button></section><section className="card history-card"><div className="history-filters">{['Tất cả','Nhập kho','Cấp phát','Cho mượn','Thu hồi','Điều chuyển'].map(x => <button className={filter === x ? 'active' : ''} onClick={() => setFilter(x)} key={x}>{x}</button>)}</div><div className="table-scroll"><table><thead><tr><th>THỜI GIAN</th><th>LOẠI GIAO DỊCH</th><th>TÀI SẢN</th><th>TỪ</th><th>ĐẾN / NGƯỜI NHẬN</th><th>NGƯỜI THỰC HIỆN</th><th>GHI CHÚ</th></tr></thead><tbody>{shown.map(t => <tr key={t.id}><td><b className="cell-main">{new Date(t.date).toLocaleDateString('vi-VN')}</b><small className="cell-sub">{new Date(t.date).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}</small></td><td><span className={`transaction-label ${t.type.replace(' ','-').toLowerCase()}`}>{t.type}</span></td><td><b className="cell-main">{t.assetName}</b><small className="cell-sub">{t.assetCode}</small></td><td>{t.from}</td><td><b className="cell-main">{t.to}</b></td><td>{t.performedBy}</td><td>{t.note}</td></tr>)}</tbody></table></div></section></main>
+  return (
+    <main className="page">
+      <section className="page-heading">
+        <div>
+          <h1>Lịch sử nhập xuất</h1>
+          <p>Nhật ký đầy đủ mọi lần nhập kho, cấp phát, cho mượn, thu hồi và điều chuyển.</p>
+        </div>
+        <button className="btn secondary">
+          <Download size={17} />
+          Xuất Excel
+        </button>
+      </section>
+      <section className="card history-card">
+        <div className="history-filters">
+          {['Tất cả', 'Nhập kho', 'Cấp phát', 'Cho mượn', 'Thu hồi', 'Điều chuyển'].map(x => (
+            <button className={filter === x ? 'active' : ''} onClick={() => setFilter(x)} key={x}>
+              {x}
+            </button>
+          ))}
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>THỜI GIAN</th>
+                <th>LOẠI GIAO DỊCH</th>
+                <th>TÀI SẢN</th>
+                <th>TỪ</th>
+                <th>ĐẾN / NGƯỜI NHẬN</th>
+                <th>NGƯỜI THỰC HIỆN</th>
+                <th>GHI CHÚ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map(t => (
+                <tr key={t.id}>
+                  <td>
+                    <b className="cell-main">{new Date(t.date).toLocaleDateString('vi-VN')}</b>
+                    <small className="cell-sub">
+                      {new Date(t.date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                    </small>
+                  </td>
+                  <td>
+                    <span className={`transaction-label ${t.type.replace(' ', '-').toLowerCase()}`}>{t.type}</span>
+                  </td>
+                  <td>
+                    <b className="cell-main">{t.assetName}</b>
+                    <small className="cell-sub">{t.assetCode}</small>
+                  </td>
+                  <td>{t.from}</td>
+                  <td>
+                    <b className="cell-main">{t.to}</b>
+                  </td>
+                  <td>{t.performedBy}</td>
+                  <td>{t.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  )
 }
 
-function IntakeForm({ initialCode, assets, departmentOptions, warehouseOptions }: { initialCode: string; assets: Asset[]; departmentOptions:string[]; warehouseOptions:string[] }) {
-  const categoryCatalog=useAssetCategoryCatalog()
-  const siteOptions=warehouseOptions
-  const blank:Asset={id:Date.now(),code:initialCode||`TS-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,name:'',category:categoryCatalog.items[0]?.name||'',serial:'',department:departmentOptions[0]||'',location:warehouseOptions[0]||'',assignedTo:'Chưa gán',purchaseDate:new Date().toISOString().slice(0,10),purchaseCost:0,status:'Sẵn sàng',icon:'laptop'}
-  const [form,setForm]=useState<Asset>(blank)
-  const update=(key:keyof Asset,value:string|number)=>setForm(current=>({...current,[key]:value,...(key==='category'?{icon:assetIconForCategory(String(value))}:{})}))
-  const uploadImage=(file?:File)=>{if(!file)return;if(!file.type.startsWith('image/')){alert('Vui lòng chọn đúng file ảnh.');return}if(file.size>1_500_000){alert('Ảnh tài sản tối đa 1,5 MB.');return}const reader=new FileReader();reader.onload=()=>update('imageDataUrl',String(reader.result));reader.readAsDataURL(file)}
-  const submit=(e:React.FormEvent)=>{e.preventDefault();if(!form.name.trim()||!form.code.trim())return;if(!form.category){alert('Hãy tạo và chọn loại tài sản trong danh mục hệ thống.');return}if(!warehouseOptions.includes(form.location)){alert('Hãy chọn kho nhập đã được cấu hình.');return}if(!Number.isFinite(form.purchaseCost)||form.purchaseCost<0){alert('Nguyên giá phải là số không âm.');return}window.dispatchEvent(new CustomEvent<Asset>('assetflow-save-intake',{detail:{...form,name:form.name.trim(),code:form.code.trim(),serial:form.serial.trim(),status:'Sẵn sàng',assignedTo:'Chưa gán'}}));setForm({...blank,id:Date.now(),code:`TS-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`})}
-  const technical:Array<[keyof Asset,string,string]>=[['manufacturer','Hãng sản xuất','Apple, Dell, Lenovo...'],['model','Model','Tên model thiết bị'],['cpu','CPU','Ví dụ: Intel Core i7-1365U'],['ram','RAM','Ví dụ: 16 GB DDR5'],['storage','Ổ đĩa','Ví dụ: SSD 512 GB'],['operatingSystem','Hệ điều hành','Windows 11 Pro, macOS...'],['ipAddress','Địa chỉ IP','10.10.1.25'],['macAddress','Địa chỉ MAC','00:1A:2B:3C:4D:5E']]
-  return <form className="card intake-form-page" onSubmit={submit}><div className="intake-form-head"><div><h2>Nhập thủ công một tài sản</h2><p>Khai báo đầy đủ hồ sơ và cấu hình trước khi ghi nhận vào kho.</p></div></div><div className="form-grid intake-grid"><h3 className="form-section span-2">Ảnh và thông tin chung</h3><label className="span-2">Ảnh tài sản<div className="asset-image-uploader"><span>{form.imageDataUrl?<img src={form.imageDataUrl} alt="Ảnh tài sản"/>:<ImageIcon size={32}/>}</span><div><label className="btn secondary">Chọn ảnh<input hidden type="file" accept="image/*" onChange={e=>uploadImage(e.target.files?.[0])}/></label>{form.imageDataUrl&&<button type="button" className="text-link" onClick={()=>update('imageDataUrl','')}>Xóa ảnh</button>}<small>PNG, JPG hoặc WebP · tối đa 1,5 MB</small></div></div></label><label className="span-2">Tên tài sản<input autoFocus required value={form.name} onChange={e=>update('name',e.target.value)} placeholder="Ví dụ: MacBook Pro 14 inch"/></label><label>Mã tài sản / Barcode<input required value={form.code} onChange={e=>update('code',e.target.value)}/></label><label>Serial / IMEI<input value={form.serial} onChange={e=>update('serial',e.target.value)} placeholder="Số serial thiết bị"/></label><label>Loại / Nhóm tài sản<select value={form.category} onChange={e=>update('category',e.target.value)}>{categoryCatalog.items.map(x=><option key={x.id}>{x.name}</option>)}</select></label><label>Trạng thái<input disabled value="Sẵn sàng"/></label><label>Phòng ban<select value={form.department} onChange={e=>update('department',e.target.value)}>{departmentOptions.map(x=><option key={x}>{x}</option>)}</select></label><label>Người sử dụng<input disabled value="Chưa gán"/></label><label className="span-2">Kho / Vị trí nhập<input required list="intake-sites" value={form.location} onChange={e=>update('location',e.target.value)}/><datalist id="intake-sites">{siteOptions.filter(x=>/kho/i.test(x)).map(x=><option key={x} value={x}/>)}</datalist><small>Nhập kho luôn tạo tài sản ở trạng thái Sẵn sàng và chưa gán người sử dụng.</small></label><label>Ngày mua<input type="date" value={form.purchaseDate} onChange={e=>update('purchaseDate',e.target.value)}/></label><label>Nguyên giá (VNĐ)<input type="number" min="0" value={form.purchaseCost} onChange={e=>update('purchaseCost',Number(e.target.value))}/></label><h3 className="form-section span-2">Cấu hình kỹ thuật</h3>{technical.map(([key,label,placeholder])=><label key={key}>{label}<input value={String(form[key]||'')} onChange={e=>update(key,e.target.value)} placeholder={placeholder}/></label>)}</div><div className="intake-form-actions"><span>{assets.length} tài sản hiện có · Hệ thống sẽ chặn mã bị trùng</span><button className="btn primary"><Warehouse size={18}/>Xác nhận nhập kho</button></div></form>
+function IntakeForm({
+  initialCode,
+  assets,
+  departmentOptions,
+  warehouseOptions,
+}: {
+  initialCode: string
+  assets: Asset[]
+  departmentOptions: string[]
+  warehouseOptions: string[]
+}) {
+  const categoryCatalog = useAssetCategoryCatalog()
+  const siteOptions = warehouseOptions
+  const blank: Asset = {
+    id: Date.now(),
+    code: initialCode || `TS-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
+    name: '',
+    category: categoryCatalog.items[0]?.name || '',
+    serial: '',
+    department: departmentOptions[0] || '',
+    location: warehouseOptions[0] || '',
+    assignedTo: 'Chưa gán',
+    purchaseDate: new Date().toISOString().slice(0, 10),
+    purchaseCost: 0,
+    status: 'Sẵn sàng',
+    icon: 'laptop',
+  }
+  const [form, setForm] = useState<Asset>(blank)
+  const update = (key: keyof Asset, value: string | number) =>
+    setForm(current => ({
+      ...current,
+      [key]: value,
+      ...(key === 'category' ? { icon: assetIconForCategory(String(value)) } : {}),
+    }))
+  const uploadImage = (file?: File) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn đúng file ảnh.')
+      return
+    }
+    if (file.size > 1_500_000) {
+      alert('Ảnh tài sản tối đa 1,5 MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => update('imageDataUrl', String(reader.result))
+    reader.readAsDataURL(file)
+  }
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.name.trim() || !form.code.trim()) return
+    if (!form.category) {
+      alert('Hãy tạo và chọn loại tài sản trong danh mục hệ thống.')
+      return
+    }
+    if (!warehouseOptions.includes(form.location)) {
+      alert('Hãy chọn kho nhập đã được cấu hình.')
+      return
+    }
+    if (!Number.isFinite(form.purchaseCost) || form.purchaseCost < 0) {
+      alert('Nguyên giá phải là số không âm.')
+      return
+    }
+    window.dispatchEvent(
+      new CustomEvent<Asset>('assetflow-save-intake', {
+        detail: {
+          ...form,
+          name: form.name.trim(),
+          code: form.code.trim(),
+          serial: form.serial.trim(),
+          status: 'Sẵn sàng',
+          assignedTo: 'Chưa gán',
+        },
+      }),
+    )
+    setForm({ ...blank, id: Date.now(), code: `TS-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}` })
+  }
+  const technical: Array<[keyof Asset, string, string]> = [
+    ['manufacturer', 'Hãng sản xuất', 'Apple, Dell, Lenovo...'],
+    ['model', 'Model', 'Tên model thiết bị'],
+    ['cpu', 'CPU', 'Ví dụ: Intel Core i7-1365U'],
+    ['ram', 'RAM', 'Ví dụ: 16 GB DDR5'],
+    ['storage', 'Ổ đĩa', 'Ví dụ: SSD 512 GB'],
+    ['operatingSystem', 'Hệ điều hành', 'Windows 11 Pro, macOS...'],
+    ['ipAddress', 'Địa chỉ IP', '10.10.1.25'],
+    ['macAddress', 'Địa chỉ MAC', '00:1A:2B:3C:4D:5E'],
+  ]
+  return (
+    <form className="card intake-form-page" onSubmit={submit}>
+      <div className="intake-form-head">
+        <div>
+          <h2>Nhập thủ công một tài sản</h2>
+          <p>Khai báo đầy đủ hồ sơ và cấu hình trước khi ghi nhận vào kho.</p>
+        </div>
+      </div>
+      <div className="form-grid intake-grid">
+        <h3 className="form-section span-2">Ảnh và thông tin chung</h3>
+        <label className="span-2">
+          Ảnh tài sản
+          <div className="asset-image-uploader">
+            <span>
+              {form.imageDataUrl ? <img src={form.imageDataUrl} alt="Ảnh tài sản" /> : <ImageIcon size={32} />}
+            </span>
+            <div>
+              <label className="btn secondary">
+                Chọn ảnh
+                <input hidden type="file" accept="image/*" onChange={e => uploadImage(e.target.files?.[0])} />
+              </label>
+              {form.imageDataUrl && (
+                <button type="button" className="text-link" onClick={() => update('imageDataUrl', '')}>
+                  Xóa ảnh
+                </button>
+              )}
+              <small>PNG, JPG hoặc WebP · tối đa 1,5 MB</small>
+            </div>
+          </div>
+        </label>
+        <label className="span-2">
+          Tên tài sản
+          <input
+            autoFocus
+            required
+            value={form.name}
+            onChange={e => update('name', e.target.value)}
+            placeholder="Ví dụ: MacBook Pro 14 inch"
+          />
+        </label>
+        <label>
+          Mã tài sản / Barcode
+          <input required value={form.code} onChange={e => update('code', e.target.value)} />
+        </label>
+        <label>
+          Serial / IMEI
+          <input
+            value={form.serial}
+            onChange={e => update('serial', e.target.value)}
+            placeholder="Số serial thiết bị"
+          />
+        </label>
+        <label>
+          Loại / Nhóm tài sản
+          <select value={form.category} onChange={e => update('category', e.target.value)}>
+            {categoryCatalog.items.map(x => (
+              <option key={x.id}>{x.name}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Trạng thái
+          <input disabled value="Sẵn sàng" />
+        </label>
+        <label>
+          Phòng ban
+          <select value={form.department} onChange={e => update('department', e.target.value)}>
+            {departmentOptions.map(x => (
+              <option key={x}>{x}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Người sử dụng
+          <input disabled value="Chưa gán" />
+        </label>
+        <label className="span-2">
+          Kho / Vị trí nhập
+          <input
+            required
+            list="intake-sites"
+            value={form.location}
+            onChange={e => update('location', e.target.value)}
+          />
+          <datalist id="intake-sites">
+            {siteOptions
+              .filter(x => /kho/i.test(x))
+              .map(x => (
+                <option key={x} value={x} />
+              ))}
+          </datalist>
+          <small>Nhập kho luôn tạo tài sản ở trạng thái Sẵn sàng và chưa gán người sử dụng.</small>
+        </label>
+        <label>
+          Ngày mua
+          <input type="date" value={form.purchaseDate} onChange={e => update('purchaseDate', e.target.value)} />
+        </label>
+        <label>
+          Nguyên giá (VNĐ)
+          <input
+            type="number"
+            min="0"
+            value={form.purchaseCost}
+            onChange={e => update('purchaseCost', Number(e.target.value))}
+          />
+        </label>
+        <h3 className="form-section span-2">Cấu hình kỹ thuật</h3>
+        {technical.map(([key, label, placeholder]) => (
+          <label key={key}>
+            {label}
+            <input
+              value={String(form[key] || '')}
+              onChange={e => update(key, e.target.value)}
+              placeholder={placeholder}
+            />
+          </label>
+        ))}
+      </div>
+      <div className="intake-form-actions">
+        <span>{assets.length} tài sản hiện có · Hệ thống sẽ chặn mã bị trùng</span>
+        <button className="btn primary">
+          <Warehouse size={18} />
+          Xác nhận nhập kho
+        </button>
+      </div>
+    </form>
+  )
 }
 
-function IntakeExcelImport({assets,departmentOptions,categories:categoryOptions,warehouses,onImport}:{assets:Asset[];departmentOptions:string[];categories:IntakeLookup[];warehouses:IntakeLookup[];onImport:(items:Asset[])=>Promise<void>}){
-  const fileRef=useRef<HTMLInputElement>(null)
-  const [fileName,setFileName]=useState('')
-  const [busy,setBusy]=useState(false)
-  const [uploading,setUploading]=useState(false)
-  const [error,setError]=useState('')
-  const [message,setMessage]=useState('')
-  const [pendingItems,setPendingItems]=useState<Asset[]>([])
-  const downloadTemplate=async()=>{setError('');try{if(!categoryOptions.length||!warehouses.length)throw new IntakeExcelValidationError([!categoryOptions.length?'Chưa có Nhóm tài sản hoạt động. Hãy tạo danh mục trước khi tải template.':'',!warehouses.length?'Chưa có Kho nhập hoạt động. Hãy tạo Site/Kho trước khi tải template.':''].filter(Boolean));const writeXlsxFile=(await import('write-excel-file/browser')).default;await writeXlsxFile(createIntakeTemplateSheets(categoryOptions,warehouses),{}).toFile(intakeTemplateFileName)}catch(reason){setError(reason instanceof Error?reason.message:'Không thể tạo template Excel.')}}
-  const inspectExcel=async(file?:File)=>{if(!file)return;setFileName(file.name);setBusy(true);setError('');setMessage('');setPendingItems([]);try{const {readSheet}=await import('read-excel-file/browser');const rows=await readSheet(file);const parsed=parseIntakeExcelRows(rows as unknown[][],categoryOptions,warehouses,departmentOptions[0]||'');const items:Asset[]=parsed.map((row,index)=>({id:Date.now()+index,code:row.assetTag,name:row.name,category:row.category.name,serial:row.serialNumber,department:row.department,location:row.warehouse.name,assignedTo:'Chưa gán',status:'Sẵn sàng',purchaseDate:row.purchaseDate,purchaseCost:row.purchaseCost,manufacturer:row.manufacturer,model:row.model,cpu:row.cpu,ram:row.ram,storage:row.storage,operatingSystem:row.operatingSystem,ipAddress:row.ipAddress,macAddress:row.macAddress,imageDataUrl:row.imageUrl,icon:assetIconForCategory(row.category.name)}));setPendingItems(items)}catch(reason){setError(reason instanceof Error?reason.message:'Không thể đọc file Excel.')}finally{setBusy(false);if(fileRef.current)fileRef.current.value=''}}
-  const uploadExcel=async()=>{if(!pendingItems.length)return;setUploading(true);setError('');setMessage('');try{const count=pendingItems.length;await onImport(pendingItems);setPendingItems([]);setFileName('');setMessage(`Đã nhập kho thành công ${count} tài sản.`)}catch(reason){setError(reason instanceof Error?reason.message:'Không thể tải dữ liệu tài sản lên hệ thống.')}finally{setUploading(false)}}
-  return <section className="card intake-import-panel"><div className="intake-import-head"><span><FileSpreadsheet size={27}/></span><div><h2>Import tài sản từ template Excel</h2><p>Dùng khi tiếp nhận nhiều tài sản trong cùng một đợt nhập kho.</p></div></div><div className="intake-import-steps"><div><b>1</b><span><strong>Tải template Excel</strong><small>Template có thêm sheet danh mục hợp lệ lấy trực tiếp từ hệ thống.</small></span></div><div><b>2</b><span><strong>Điền dữ liệu tài sản</strong><small>Mã tài sản và Tên tài sản là bắt buộc; mỗi dòng là một tài sản.</small></span></div><div><b>3</b><span><strong>Chọn và kiểm tra file</strong><small>Hệ thống kiểm tra từng dòng nhưng chưa ghi dữ liệu.</small></span></div><div><b>4</b><span><strong>Xác nhận tải lên</strong><small>Chỉ nhập kho sau khi người dùng bấm nút xác nhận.</small></span></div></div><div className="intake-template-fields"><h3>Các cột trong template</h3><p><b>Bắt buộc:</b> Mã tài sản, Tên tài sản.</p><p><b>Tùy chọn:</b> Nhóm tài sản, Serial, Phòng ban, Kho/Vị trí, Ngày mua, Nguyên giá, Hãng, Model, CPU, RAM, Ổ đĩa, Hệ điều hành, IP, MAC và URL ảnh.</p><p>Nếu bỏ trống Nhóm tài sản hoặc Kho/Vị trí, hệ thống dùng giá trị đầu tiên trong sheet <b>Danh mục hợp lệ</b>.</p></div>{error&&<div className="form-error" role="alert">{error.split('\n').map((line,index)=><div key={`${line}-${index}`}>{line}</div>)}</div>}{pendingItems.length>0&&<div className="intake-import-ready" role="status"><Check size={19}/><div><strong>{pendingItems.length} tài sản hợp lệ · sẵn sàng tải lên</strong><small>File {fileName} đã được kiểm tra. Chưa có dữ liệu nào được ghi vào hệ thống.</small></div></div>}{message&&<div className="intake-import-success" role="status"><Check size={19}/>{message}</div>}<div className="intake-import-actions"><button type="button" className="btn secondary" onClick={()=>void downloadTemplate()}><Download size={17}/>Tải template Excel</button><input ref={fileRef} hidden type="file" accept=".xlsx" onChange={e=>inspectExcel(e.target.files?.[0])}/><button type="button" className="btn secondary" disabled={busy||uploading} onClick={()=>fileRef.current?.click()}><FileSpreadsheet size={17}/>{busy?'Đang kiểm tra file...':pendingItems.length?'Chọn file khác':'Chọn file Excel'}</button><button type="button" className="btn primary" disabled={!pendingItems.length||busy||uploading} onClick={()=>void uploadExcel()}><Upload size={17}/>{uploading?'Đang tải lên...':`Tải lên & nhập kho${pendingItems.length?` (${pendingItems.length})`:''}`}</button>{fileName&&!pendingItems.length&&!error&&<span>{fileName}</span>}</div><footer>{assets.length} tài sản hiện có · File chỉ chấp nhận định dạng .xlsx</footer></section>
+function IntakeExcelImport({
+  assets,
+  departmentOptions,
+  categories: categoryOptions,
+  warehouses,
+  onImport,
+}: {
+  assets: Asset[]
+  departmentOptions: string[]
+  categories: IntakeLookup[]
+  warehouses: IntakeLookup[]
+  onImport: (items: Asset[]) => Promise<void>
+}) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [fileName, setFileName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const [pendingItems, setPendingItems] = useState<Asset[]>([])
+  const downloadTemplate = async () => {
+    setError('')
+    try {
+      if (!categoryOptions.length || !warehouses.length)
+        throw new IntakeExcelValidationError(
+          [
+            !categoryOptions.length ? 'Chưa có Nhóm tài sản hoạt động. Hãy tạo danh mục trước khi tải template.' : '',
+            !warehouses.length ? 'Chưa có Kho nhập hoạt động. Hãy tạo Site/Kho trước khi tải template.' : '',
+          ].filter(Boolean),
+        )
+      const writeXlsxFile = (await import('write-excel-file/browser')).default
+      await writeXlsxFile(createIntakeTemplateSheets(categoryOptions, warehouses), {}).toFile(intakeTemplateFileName)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Không thể tạo template Excel.')
+    }
+  }
+  const inspectExcel = async (file?: File) => {
+    if (!file) return
+    setFileName(file.name)
+    setBusy(true)
+    setError('')
+    setMessage('')
+    setPendingItems([])
+    try {
+      const { readSheet } = await import('read-excel-file/browser')
+      const rows = await readSheet(file)
+      const parsed = parseIntakeExcelRows(rows as unknown[][], categoryOptions, warehouses, departmentOptions[0] || '')
+      const items: Asset[] = parsed.map((row, index) => ({
+        id: Date.now() + index,
+        code: row.assetTag,
+        name: row.name,
+        category: row.category.name,
+        serial: row.serialNumber,
+        department: row.department,
+        location: row.warehouse.name,
+        assignedTo: 'Chưa gán',
+        status: 'Sẵn sàng',
+        purchaseDate: row.purchaseDate,
+        purchaseCost: row.purchaseCost,
+        manufacturer: row.manufacturer,
+        model: row.model,
+        cpu: row.cpu,
+        ram: row.ram,
+        storage: row.storage,
+        operatingSystem: row.operatingSystem,
+        ipAddress: row.ipAddress,
+        macAddress: row.macAddress,
+        imageDataUrl: row.imageUrl,
+        icon: assetIconForCategory(row.category.name),
+      }))
+      setPendingItems(items)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Không thể đọc file Excel.')
+    } finally {
+      setBusy(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+  const uploadExcel = async () => {
+    if (!pendingItems.length) return
+    setUploading(true)
+    setError('')
+    setMessage('')
+    try {
+      const count = pendingItems.length
+      await onImport(pendingItems)
+      setPendingItems([])
+      setFileName('')
+      setMessage(`Đã nhập kho thành công ${count} tài sản.`)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Không thể tải dữ liệu tài sản lên hệ thống.')
+    } finally {
+      setUploading(false)
+    }
+  }
+  return (
+    <section className="card intake-import-panel">
+      <div className="intake-import-head">
+        <span>
+          <FileSpreadsheet size={27} />
+        </span>
+        <div>
+          <h2>Import tài sản từ template Excel</h2>
+          <p>Dùng khi tiếp nhận nhiều tài sản trong cùng một đợt nhập kho.</p>
+        </div>
+      </div>
+      <div className="intake-import-steps">
+        <div>
+          <b>1</b>
+          <span>
+            <strong>Tải template Excel</strong>
+            <small>Template có thêm sheet danh mục hợp lệ lấy trực tiếp từ hệ thống.</small>
+          </span>
+        </div>
+        <div>
+          <b>2</b>
+          <span>
+            <strong>Điền dữ liệu tài sản</strong>
+            <small>Mã tài sản và Tên tài sản là bắt buộc; mỗi dòng là một tài sản.</small>
+          </span>
+        </div>
+        <div>
+          <b>3</b>
+          <span>
+            <strong>Chọn và kiểm tra file</strong>
+            <small>Hệ thống kiểm tra từng dòng nhưng chưa ghi dữ liệu.</small>
+          </span>
+        </div>
+        <div>
+          <b>4</b>
+          <span>
+            <strong>Xác nhận tải lên</strong>
+            <small>Chỉ nhập kho sau khi người dùng bấm nút xác nhận.</small>
+          </span>
+        </div>
+      </div>
+      <div className="intake-template-fields">
+        <h3>Các cột trong template</h3>
+        <p>
+          <b>Bắt buộc:</b> Mã tài sản, Tên tài sản.
+        </p>
+        <p>
+          <b>Tùy chọn:</b> Nhóm tài sản, Serial, Phòng ban, Kho/Vị trí, Ngày mua, Nguyên giá, Hãng, Model, CPU, RAM, Ổ
+          đĩa, Hệ điều hành, IP, MAC và URL ảnh.
+        </p>
+        <p>
+          Nếu bỏ trống Nhóm tài sản hoặc Kho/Vị trí, hệ thống dùng giá trị đầu tiên trong sheet <b>Danh mục hợp lệ</b>.
+        </p>
+      </div>
+      {error && (
+        <div className="form-error" role="alert">
+          {error.split('\n').map((line, index) => (
+            <div key={`${line}-${index}`}>{line}</div>
+          ))}
+        </div>
+      )}
+      {pendingItems.length > 0 && (
+        <div className="intake-import-ready" role="status">
+          <Check size={19} />
+          <div>
+            <strong>{pendingItems.length} tài sản hợp lệ · sẵn sàng tải lên</strong>
+            <small>File {fileName} đã được kiểm tra. Chưa có dữ liệu nào được ghi vào hệ thống.</small>
+          </div>
+        </div>
+      )}
+      {message && (
+        <div className="intake-import-success" role="status">
+          <Check size={19} />
+          {message}
+        </div>
+      )}
+      <div className="intake-import-actions">
+        <button type="button" className="btn secondary" onClick={() => void downloadTemplate()}>
+          <Download size={17} />
+          Tải template Excel
+        </button>
+        <input ref={fileRef} hidden type="file" accept=".xlsx" onChange={e => inspectExcel(e.target.files?.[0])} />
+        <button
+          type="button"
+          className="btn secondary"
+          disabled={busy || uploading}
+          onClick={() => fileRef.current?.click()}
+        >
+          <FileSpreadsheet size={17} />
+          {busy ? 'Đang kiểm tra file...' : pendingItems.length ? 'Chọn file khác' : 'Chọn file Excel'}
+        </button>
+        <button
+          type="button"
+          className="btn primary"
+          disabled={!pendingItems.length || busy || uploading}
+          onClick={() => void uploadExcel()}
+        >
+          <Upload size={17} />
+          {uploading
+            ? 'Đang tải lên...'
+            : `Tải lên & nhập kho${pendingItems.length ? ` (${pendingItems.length})` : ''}`}
+        </button>
+        {fileName && !pendingItems.length && !error && <span>{fileName}</span>}
+      </div>
+      <footer>{assets.length} tài sản hiện có · File chỉ chấp nhận định dạng .xlsx</footer>
+    </section>
+  )
 }
 
-function BarcodeCenter({ assets, initialMode, departmentOptions, warehouseOptions, categoryOptions, warehouseCatalog, onImport, onBarcode, onAssign }: { assets: Asset[]; initialMode:'lookup'|'manual'|'import'; departmentOptions:string[]; warehouseOptions:string[]; categoryOptions:IntakeLookup[]; warehouseCatalog:IntakeLookup[]; onImport:(items:Asset[])=>Promise<void>; onBarcode: (a: Asset) => void; onAssign: (a: Asset) => void }) {
-  const [mode, setMode] = useState<'lookup'|'manual'|'import'>(initialMode)
+function BarcodeCenter({
+  assets,
+  initialMode,
+  departmentOptions,
+  warehouseOptions,
+  categoryOptions,
+  warehouseCatalog,
+  onImport,
+  onBarcode,
+  onAssign,
+}: {
+  assets: Asset[]
+  initialMode: 'lookup' | 'manual' | 'import'
+  departmentOptions: string[]
+  warehouseOptions: string[]
+  categoryOptions: IntakeLookup[]
+  warehouseCatalog: IntakeLookup[]
+  onImport: (items: Asset[]) => Promise<void>
+  onBarcode: (a: Asset) => void
+  onAssign: (a: Asset) => void
+}) {
+  const [mode, setMode] = useState<'lookup' | 'manual' | 'import'>(initialMode)
   const [code, setCode] = useState('')
   const [result, setResult] = useState<Asset | null>(null)
   const [message, setMessage] = useState('')
   const [cameraActive, setCameraActive] = useState(false)
-  const [lookingUp,setLookingUp]=useState(false)
+  const [lookingUp, setLookingUp] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const timerRef=useRef<number|undefined>(undefined)
-  const stopCamera=()=>{if(timerRef.current)window.clearInterval(timerRef.current);timerRef.current=undefined;streamRef.current?.getTracks().forEach(track=>track.stop());streamRef.current=null;setCameraActive(false)}
-  const lookup = async(value: string) => {
-    const normalized=normalizeSearchText(value)
-    if(!normalized){setMessage('Vui lòng quét hoặc nhập mã tài sản / serial.');return}
-    setLookingUp(true);setMessage('')
-    try{
-      let found:Asset|null
-      if(env.demoMode)found=findAssetByScannedValue(assets,value)
-      else found=fromApiAsset(await api.get<any>(`/assets/scan?value=${encodeURIComponent(value.trim())}`))
-      if(!found)throw new ApiError(404,'ASSET_SCAN_NOT_FOUND','Không tìm thấy tài sản')
-      setResult(found)
-      setMessage(mode==='manual'?'Mã này đã tồn tại trong sổ tài sản. Không thể nhập trùng.':`Đã nhận diện ${found.code} từ dữ liệu tài sản.`)
-    }catch(error){
-      const notFound=error instanceof ApiError&&error.status===404
-      setResult(null)
-      setMessage(mode==='manual'&&notFound?'Mã chưa tồn tại. Có thể tạo phiếu nhập kho mới.':notFound?'Không tìm thấy tài sản phù hợp.':apiErrorMessage(error))
-    }finally{setLookingUp(false)}
+  const timerRef = useRef<number | undefined>(undefined)
+  const stopCamera = () => {
+    if (timerRef.current) window.clearInterval(timerRef.current)
+    timerRef.current = undefined
+    streamRef.current?.getTracks().forEach(track => track.stop())
+    streamRef.current = null
+    setCameraActive(false)
   }
-  const changeMode=(next:'lookup'|'manual'|'import')=>{setMode(next);setResult(null);setMessage('')}
-  const startCamera = async () => { try { stopCamera();const Detector = (window as any).BarcodeDetector;if(!Detector){setMessage('Trình duyệt chưa hỗ trợ quét camera. Bạn có thể dùng máy quét USB hoặc nhập mã.');return}const supported:string[]=Detector.getSupportedFormats?await Detector.getSupportedFormats():['code_128','qr_code'];const formats=['code_128','qr_code'].filter(format=>supported.includes(format));if(!formats.length){setMessage('Trình duyệt không hỗ trợ CODE128 hoặc QR qua camera. Hãy dùng máy quét USB hoặc nhập mã.');return}const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});streamRef.current=stream;setCameraActive(true);if(videoRef.current){videoRef.current.srcObject=stream;await videoRef.current.play()}const detector=new Detector({formats});let detecting=false;timerRef.current=window.setInterval(async()=>{if(!videoRef.current||detecting)return;detecting=true;try{const codes=await detector.detect(videoRef.current);if(codes[0]?.rawValue){const value=codes[0].rawValue;setCode(value);stopCamera();await lookup(value)}}catch{stopCamera();setMessage('Camera không thể giải mã hình ảnh. Hãy thử lại hoặc nhập mã thủ công.')}finally{detecting=false}},500)}catch{stopCamera();setMessage('Không thể mở camera. Vui lòng cấp quyền camera hoặc nhập mã thủ công.')}}
-  useEffect(() => () => {if(timerRef.current)window.clearInterval(timerRef.current);streamRef.current?.getTracks().forEach(track=>track.stop())}, [])
-  if(mode==='manual')return <main className="page">
-    <section className="page-heading"><div><h1>Nhập kho tài sản</h1><p>Quét Barcode hoặc QR, khai báo trực tiếp hoặc import danh sách tài sản từ Excel.</p></div></section>
-    <div className="scanner-mode-tabs"><button onClick={()=>changeMode('lookup')}><Search size={17}/>Tra cứu Barcode / QR</button><button className="active"><Plus size={17}/>Nhập thủ công</button><button onClick={()=>changeMode('import')}><FileSpreadsheet size={17}/>Import template Excel</button></div>
-    <section className="card intake-scan-strip">
-      <div><span><QrCode size={21}/></span><div><b>Quét Barcode / QR vào phiếu nhập</b><small>Camera hỗ trợ CODE128 và QR Code; cũng có thể dùng máy quét USB hoặc nhập mã thủ công.</small></div></div>
-      <video ref={videoRef} className={`scan-video ${cameraActive?'active':''}`} muted playsInline/>
-      <div className="intake-scan-controls"><button className="btn secondary" disabled={cameraActive||lookingUp} onClick={startCamera}><ScanLine size={17}/>{cameraActive?'Đang quét...':'Mở camera quét mã'}</button><form onSubmit={e=>{e.preventDefault();void lookup(code)}}><input value={code} onChange={e=>setCode(e.target.value)} placeholder="Mã tài sản, Barcode, QR hoặc serial"/><button className="btn primary" disabled={lookingUp}>{lookingUp?'Đang tra cứu...':'Kiểm tra mã'}</button></form></div>
-      {message&&<div className={`scan-message ${!result?'success':''}`}>{message}</div>}
-    </section>
-    <IntakeForm key={code||'new-intake'} initialCode={result?'':code} assets={assets} departmentOptions={departmentOptions} warehouseOptions={warehouseOptions}/>
-  </main>
-  if(mode==='import')return <main className="page">
-    <section className="page-heading"><div><h1>Nhập kho tài sản</h1><p>Nhập hàng loạt tài sản bằng template Excel chuẩn của hệ thống.</p></div></section>
-    <div className="scanner-mode-tabs"><button onClick={()=>changeMode('lookup')}><Search size={17}/>Tra cứu Barcode / QR</button><button onClick={()=>changeMode('manual')}><Plus size={17}/>Nhập thủ công</button><button className="active"><FileSpreadsheet size={17}/>Import template Excel</button></div>
-    <IntakeExcelImport assets={assets} departmentOptions={departmentOptions} categories={categoryOptions} warehouses={warehouseCatalog} onImport={onImport}/>
-  </main>
-  return <main className="page">
-    <section className="page-heading"><div><h1>Barcode / QR & Nhập kho</h1><p>Quét Barcode hoặc QR để tra cứu tài sản và lập hồ sơ nhập kho.</p></div></section>
-    <div className="scanner-mode-tabs"><button className="active"><Search size={17}/>Tra cứu Barcode / QR</button><button onClick={()=>changeMode('manual')}><Plus size={17}/>Nhập thủ công</button><button onClick={()=>changeMode('import')}><FileSpreadsheet size={17}/>Import template Excel</button></div>
-    <section className="barcode-layout">
-      <div className="card scanner-card"><span className="scanner-symbol"><QrCode size={34}/></span><h2>Quét Barcode / QR</h2><p>Đưa Barcode hoặc QR Code vào camera, dùng máy quét USB hoặc nhập mã thủ công.</p><div className="scanner-capabilities"><span><Barcode size={15}/>CODE128</span><span><QrCode size={15}/>QR Code</span></div><div className="scan-source-note"><b>Dữ liệu quét được xử lý thế nào?</b><span>Camera hoặc máy quét USB đọc mã thành chuỗi. Hệ thống tra cứu trực tiếp PostgreSQL theo mã tài sản, Barcode hoặc Serial và chỉ trả dữ liệu trong phạm vi được phân quyền.</span></div><video ref={videoRef} className={`scan-video ${cameraActive?'active':''}`} muted playsInline/><button className="btn secondary camera-button" disabled={cameraActive||lookingUp} onClick={startCamera}><ScanLine size={17}/>{cameraActive?'Đang quét...':'Mở camera quét mã'}</button><form onSubmit={e=>{e.preventDefault();void lookup(code)}} className="scan-input"><input autoFocus value={code} onChange={e=>setCode(e.target.value)} placeholder="Mã tài sản, Barcode, QR hoặc serial"/><button className="btn primary" disabled={lookingUp}>{lookingUp?'Đang tra cứu...':'Tra cứu'}</button></form>{message&&<div className="scan-message">{message}</div>}</div>
-      <div className="card scan-result">{result?<><div className="result-head"><span className="asset-icon">{iconFor(result.icon,24)}</span><span className={`status ${statusClass[result.status]}`}><i/>{result.status}</span></div><h2>{result.name}</h2><p className="result-code">{result.code} · {result.serial}</p><dl><div><dt>Loại tài sản</dt><dd>{result.category}</dd></div><div><dt>Người đang sử dụng</dt><dd>{result.assignedTo}</dd></div><div><dt>Phòng ban</dt><dd>{result.department}</dd></div><div><dt>Vị trí</dt><dd>{result.location}</dd></div><div><dt>Hãng / Model</dt><dd>{result.manufacturer||'-'} / {result.model||'-'}</dd></div><div><dt>CPU / RAM / Disk</dt><dd>{result.cpu||'-'} / {result.ram||'-'} / {result.storage||'-'}</dd></div></dl><div className="result-actions"><button className="btn secondary" onClick={()=>onBarcode(result)}><QrCode size={17}/>In Barcode / QR</button><button className="btn primary" onClick={()=>onAssign(result)}><UserPlus size={17}/>Cấp phát / Thu hồi</button></div></>:<div className="result-empty"><QrCode size={42}/><h3>Chưa quét tài sản</h3><p>Thông tin tài sản sẽ xuất hiện tại đây sau khi quét Barcode hoặc QR.</p></div>}</div>
-    </section>
-  </main>
+  const lookup = async (value: string) => {
+    const normalized = normalizeSearchText(value)
+    if (!normalized) {
+      setMessage('Vui lòng quét hoặc nhập mã tài sản / serial.')
+      return
+    }
+    setLookingUp(true)
+    setMessage('')
+    try {
+      let found: Asset | null
+      if (env.demoMode) found = findAssetByScannedValue(assets, value)
+      else found = fromApiAsset(await api.get<any>(`/assets/scan?value=${encodeURIComponent(value.trim())}`))
+      if (!found) throw new ApiError(404, 'ASSET_SCAN_NOT_FOUND', 'Không tìm thấy tài sản')
+      setResult(found)
+      setMessage(
+        mode === 'manual'
+          ? 'Mã này đã tồn tại trong sổ tài sản. Không thể nhập trùng.'
+          : `Đã nhận diện ${found.code} từ dữ liệu tài sản.`,
+      )
+    } catch (error) {
+      const notFound = error instanceof ApiError && error.status === 404
+      setResult(null)
+      setMessage(
+        mode === 'manual' && notFound
+          ? 'Mã chưa tồn tại. Có thể tạo phiếu nhập kho mới.'
+          : notFound
+            ? 'Không tìm thấy tài sản phù hợp.'
+            : apiErrorMessage(error),
+      )
+    } finally {
+      setLookingUp(false)
+    }
+  }
+  const changeMode = (next: 'lookup' | 'manual' | 'import') => {
+    setMode(next)
+    setResult(null)
+    setMessage('')
+  }
+  const startCamera = async () => {
+    try {
+      stopCamera()
+      const Detector = (window as any).BarcodeDetector
+      if (!Detector) {
+        setMessage('Trình duyệt chưa hỗ trợ quét camera. Bạn có thể dùng máy quét USB hoặc nhập mã.')
+        return
+      }
+      const supported: string[] = Detector.getSupportedFormats
+        ? await Detector.getSupportedFormats()
+        : ['code_128', 'qr_code']
+      const formats = ['code_128', 'qr_code'].filter(format => supported.includes(format))
+      if (!formats.length) {
+        setMessage('Trình duyệt không hỗ trợ CODE128 hoặc QR qua camera. Hãy dùng máy quét USB hoặc nhập mã.')
+        return
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      streamRef.current = stream
+      setCameraActive(true)
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+      const detector = new Detector({ formats })
+      let detecting = false
+      timerRef.current = window.setInterval(async () => {
+        if (!videoRef.current || detecting) return
+        detecting = true
+        try {
+          const codes = await detector.detect(videoRef.current)
+          if (codes[0]?.rawValue) {
+            const value = codes[0].rawValue
+            setCode(value)
+            stopCamera()
+            await lookup(value)
+          }
+        } catch {
+          stopCamera()
+          setMessage('Camera không thể giải mã hình ảnh. Hãy thử lại hoặc nhập mã thủ công.')
+        } finally {
+          detecting = false
+        }
+      }, 500)
+    } catch {
+      stopCamera()
+      setMessage('Không thể mở camera. Vui lòng cấp quyền camera hoặc nhập mã thủ công.')
+    }
+  }
+  useEffect(
+    () => () => {
+      if (timerRef.current) window.clearInterval(timerRef.current)
+      streamRef.current?.getTracks().forEach(track => track.stop())
+    },
+    [],
+  )
+  if (mode === 'manual')
+    return (
+      <main className="page">
+        <section className="page-heading">
+          <div>
+            <h1>Nhập kho tài sản</h1>
+            <p>Quét Barcode hoặc QR, khai báo trực tiếp hoặc import danh sách tài sản từ Excel.</p>
+          </div>
+        </section>
+        <div className="scanner-mode-tabs">
+          <button onClick={() => changeMode('lookup')}>
+            <Search size={17} />
+            Tra cứu Barcode / QR
+          </button>
+          <button className="active">
+            <Plus size={17} />
+            Nhập thủ công
+          </button>
+          <button onClick={() => changeMode('import')}>
+            <FileSpreadsheet size={17} />
+            Import template Excel
+          </button>
+        </div>
+        <section className="card intake-scan-strip">
+          <div>
+            <span>
+              <QrCode size={21} />
+            </span>
+            <div>
+              <b>Quét Barcode / QR vào phiếu nhập</b>
+              <small>Camera hỗ trợ CODE128 và QR Code; cũng có thể dùng máy quét USB hoặc nhập mã thủ công.</small>
+            </div>
+          </div>
+          <video ref={videoRef} className={`scan-video ${cameraActive ? 'active' : ''}`} muted playsInline />
+          <div className="intake-scan-controls">
+            <button className="btn secondary" disabled={cameraActive || lookingUp} onClick={startCamera}>
+              <ScanLine size={17} />
+              {cameraActive ? 'Đang quét...' : 'Mở camera quét mã'}
+            </button>
+            <form
+              onSubmit={e => {
+                e.preventDefault()
+                void lookup(code)
+              }}
+            >
+              <input
+                value={code}
+                onChange={e => setCode(e.target.value)}
+                placeholder="Mã tài sản, Barcode, QR hoặc serial"
+              />
+              <button className="btn primary" disabled={lookingUp}>
+                {lookingUp ? 'Đang tra cứu...' : 'Kiểm tra mã'}
+              </button>
+            </form>
+          </div>
+          {message && <div className={`scan-message ${!result ? 'success' : ''}`}>{message}</div>}
+        </section>
+        <IntakeForm
+          key={code || 'new-intake'}
+          initialCode={result ? '' : code}
+          assets={assets}
+          departmentOptions={departmentOptions}
+          warehouseOptions={warehouseOptions}
+        />
+      </main>
+    )
+  if (mode === 'import')
+    return (
+      <main className="page">
+        <section className="page-heading">
+          <div>
+            <h1>Nhập kho tài sản</h1>
+            <p>Nhập hàng loạt tài sản bằng template Excel chuẩn của hệ thống.</p>
+          </div>
+        </section>
+        <div className="scanner-mode-tabs">
+          <button onClick={() => changeMode('lookup')}>
+            <Search size={17} />
+            Tra cứu Barcode / QR
+          </button>
+          <button onClick={() => changeMode('manual')}>
+            <Plus size={17} />
+            Nhập thủ công
+          </button>
+          <button className="active">
+            <FileSpreadsheet size={17} />
+            Import template Excel
+          </button>
+        </div>
+        <IntakeExcelImport
+          assets={assets}
+          departmentOptions={departmentOptions}
+          categories={categoryOptions}
+          warehouses={warehouseCatalog}
+          onImport={onImport}
+        />
+      </main>
+    )
+  return (
+    <main className="page">
+      <section className="page-heading">
+        <div>
+          <h1>Barcode / QR & Nhập kho</h1>
+          <p>Quét Barcode hoặc QR để tra cứu tài sản và lập hồ sơ nhập kho.</p>
+        </div>
+      </section>
+      <div className="scanner-mode-tabs">
+        <button className="active">
+          <Search size={17} />
+          Tra cứu Barcode / QR
+        </button>
+        <button onClick={() => changeMode('manual')}>
+          <Plus size={17} />
+          Nhập thủ công
+        </button>
+        <button onClick={() => changeMode('import')}>
+          <FileSpreadsheet size={17} />
+          Import template Excel
+        </button>
+      </div>
+      <section className="barcode-layout">
+        <div className="card scanner-card">
+          <span className="scanner-symbol">
+            <QrCode size={34} />
+          </span>
+          <h2>Quét Barcode / QR</h2>
+          <p>Đưa Barcode hoặc QR Code vào camera, dùng máy quét USB hoặc nhập mã thủ công.</p>
+          <div className="scanner-capabilities">
+            <span>
+              <Barcode size={15} />
+              CODE128
+            </span>
+            <span>
+              <QrCode size={15} />
+              QR Code
+            </span>
+          </div>
+          <div className="scan-source-note">
+            <b>Dữ liệu quét được xử lý thế nào?</b>
+            <span>
+              Camera hoặc máy quét USB đọc mã thành chuỗi. Hệ thống tra cứu trực tiếp PostgreSQL theo mã tài sản,
+              Barcode hoặc Serial và chỉ trả dữ liệu trong phạm vi được phân quyền.
+            </span>
+          </div>
+          <video ref={videoRef} className={`scan-video ${cameraActive ? 'active' : ''}`} muted playsInline />
+          <button className="btn secondary camera-button" disabled={cameraActive || lookingUp} onClick={startCamera}>
+            <ScanLine size={17} />
+            {cameraActive ? 'Đang quét...' : 'Mở camera quét mã'}
+          </button>
+          <form
+            onSubmit={e => {
+              e.preventDefault()
+              void lookup(code)
+            }}
+            className="scan-input"
+          >
+            <input
+              autoFocus
+              value={code}
+              onChange={e => setCode(e.target.value)}
+              placeholder="Mã tài sản, Barcode, QR hoặc serial"
+            />
+            <button className="btn primary" disabled={lookingUp}>
+              {lookingUp ? 'Đang tra cứu...' : 'Tra cứu'}
+            </button>
+          </form>
+          {message && <div className="scan-message">{message}</div>}
+        </div>
+        <div className="card scan-result">
+          {result ? (
+            <>
+              <div className="result-head">
+                <span className="asset-icon">{iconFor(result.icon, 24)}</span>
+                <span className={`status ${statusClass[result.status]}`}>
+                  <i />
+                  {result.status}
+                </span>
+              </div>
+              <h2>{result.name}</h2>
+              <p className="result-code">
+                {result.code} · {result.serial}
+              </p>
+              <dl>
+                <div>
+                  <dt>Loại tài sản</dt>
+                  <dd>{result.category}</dd>
+                </div>
+                <div>
+                  <dt>Người đang sử dụng</dt>
+                  <dd>{result.assignedTo}</dd>
+                </div>
+                <div>
+                  <dt>Phòng ban</dt>
+                  <dd>{result.department}</dd>
+                </div>
+                <div>
+                  <dt>Vị trí</dt>
+                  <dd>{result.location}</dd>
+                </div>
+                <div>
+                  <dt>Hãng / Model</dt>
+                  <dd>
+                    {result.manufacturer || '-'} / {result.model || '-'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>CPU / RAM / Disk</dt>
+                  <dd>
+                    {result.cpu || '-'} / {result.ram || '-'} / {result.storage || '-'}
+                  </dd>
+                </div>
+              </dl>
+              <div className="result-actions">
+                <button className="btn secondary" onClick={() => onBarcode(result)}>
+                  <QrCode size={17} />
+                  In Barcode / QR
+                </button>
+                <button className="btn primary" onClick={() => onAssign(result)}>
+                  <UserPlus size={17} />
+                  Cấp phát / Thu hồi
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="result-empty">
+              <QrCode size={42} />
+              <h3>Chưa quét tài sản</h3>
+              <p>Thông tin tài sản sẽ xuất hiện tại đây sau khi quét Barcode hoặc QR.</p>
+            </div>
+          )}
+        </div>
+      </section>
+    </main>
+  )
 }
 
-function CategoryManager({catalog,assets,onClose,onSelected,onCatalogChanged}:{catalog:ReturnType<typeof useAssetCategoryCatalog>;assets:Asset[];onClose:()=>void;onSelected:(item:AssetCategoryCatalogItem)=>void;onCatalogChanged:(previousName?:string,nextName?:string)=>Promise<void>}){
-  const [editing,setEditing]=useState<AssetCategoryCatalogItem|null>(null),[name,setName]=useState(''),[code,setCode]=useState(''),[description,setDescription]=useState(''),[saving,setSaving]=useState(false),[error,setError]=useState('')
-  const reset=()=>{setEditing(null);setName('');setCode('');setDescription('');setError('')}
-  const edit=(item:AssetCategoryCatalogItem)=>{setEditing(item);setName(item.name);setCode(item.code);setDescription(item.description||'');setError('')}
-  const updateName=(value:string)=>{setName(value);if(!editing)setCode(current=>current&&current!==categoryCode(name)?current:categoryCode(value))}
-  const submit=async(event:React.FormEvent)=>{event.preventDefault();setSaving(true);setError('');try{const input={name:name.trim(),code:code.trim().toUpperCase(),description:description.trim()};const previousName=editing?.name;const saved=editing?await catalog.update(editing.id,input):await catalog.create(input);await onCatalogChanged(previousName,saved.name);onSelected(saved);reset()}catch(reason:any){setError(reason?.message||'Không thể lưu nhóm tài sản')}finally{setSaving(false)}}
-  const toggle=async(item:AssetCategoryCatalogItem)=>{setSaving(true);setError('');try{await catalog.update(item.id,{status:item.status==='INACTIVE'?'ACTIVE':'INACTIVE'});await onCatalogChanged()}catch(reason:any){setError(reason?.message||'Không thể cập nhật trạng thái nhóm')}finally{setSaving(false)}}
-  const remove=async(item:AssetCategoryCatalogItem)=>{if(!window.confirm(`Xóa nhóm “${item.name}”? Thao tác này chỉ được phép khi nhóm chưa phát sinh dữ liệu.`))return;setSaving(true);setError('');try{await catalog.remove(item.id);await onCatalogChanged();if(editing?.id===item.id)reset()}catch(reason:any){setError(reason?.message||'Không thể xóa nhóm tài sản')}finally{setSaving(false)}}
-  const usage=(item:AssetCategoryCatalogItem)=>item._count?.assets??assets.filter(asset=>asset.category===item.name).length
-  return <div className="modal-backdrop"><div className="modal category-manager"><div className="modal-header"><div><h2>Quản lý nhóm tài sản</h2><p>Danh mục dùng chung cho sổ tài sản, nhập kho, import và báo cáo.</p></div><button type="button" onClick={onClose}><X/></button></div><form className="category-editor" onSubmit={submit}><label>Tên nhóm<input autoFocus required minLength={2} maxLength={150} value={name} onChange={e=>updateName(e.target.value)} placeholder="Ví dụ: Máy chấm công"/></label><label>Mã danh mục<input required minLength={2} maxLength={50} pattern="[A-Z0-9._-]+" value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="MAY_CHAM_CONG"/></label><label>Mô tả<input maxLength={500} value={description} onChange={e=>setDescription(e.target.value)} placeholder="Phạm vi thiết bị thuộc nhóm"/></label><div className="category-editor-actions">{editing&&<button type="button" className="btn secondary" onClick={reset}>Hủy sửa</button>}<button className="btn primary" disabled={saving}><Check size={17}/>{saving?'Đang lưu...':editing?'Lưu thay đổi':'Thêm nhóm'}</button></div></form>{error&&<div className="form-error category-manager-error">{error}</div>}<div className="category-manager-table"><table><thead><tr><th>NHÓM TÀI SẢN</th><th>MÃ</th><th>SỬ DỤNG</th><th>TRẠNG THÁI</th><th>THAO TÁC</th></tr></thead><tbody>{catalog.allItems.map(item=><tr key={item.id} className={item.status==='INACTIVE'?'inactive':''}><td><b>{item.name}</b><small>{item.description||'Chưa có mô tả'}</small></td><td><code>{item.code}</code></td><td>{usage(item)} tài sản</td><td><span className={`status ${item.status==='INACTIVE'?'broken':'using'}`}><i/>{item.status==='INACTIVE'?'Ngừng sử dụng':'Đang dùng'}</span></td><td><div className="row-actions"><button type="button" onClick={()=>edit(item)} title="Sửa nhóm"><Pencil size={16}/></button><button type="button" onClick={()=>void toggle(item)} title={item.status==='INACTIVE'?'Kích hoạt lại':'Ngừng sử dụng'}><RotateCcw size={16}/></button><button type="button" onClick={()=>void remove(item)} title="Xóa nhóm"><Trash2 size={16}/></button></div></td></tr>)}</tbody></table></div><div className="category-manager-note"><ShieldCheck size={17}/><span>Nhóm đã phát sinh tài sản không được xóa hẳn; hãy ngừng sử dụng để giữ nguyên lịch sử và báo cáo.</span></div></div></div>
+function CategoryManager({
+  catalog,
+  assets,
+  onClose,
+  onSelected,
+  onCatalogChanged,
+}: {
+  catalog: ReturnType<typeof useAssetCategoryCatalog>
+  assets: Asset[]
+  onClose: () => void
+  onSelected: (item: AssetCategoryCatalogItem) => void
+  onCatalogChanged: (previousName?: string, nextName?: string) => Promise<void>
+}) {
+  const [editing, setEditing] = useState<AssetCategoryCatalogItem | null>(null),
+    [name, setName] = useState(''),
+    [code, setCode] = useState(''),
+    [description, setDescription] = useState(''),
+    [saving, setSaving] = useState(false),
+    [error, setError] = useState('')
+  const reset = () => {
+    setEditing(null)
+    setName('')
+    setCode('')
+    setDescription('')
+    setError('')
+  }
+  const edit = (item: AssetCategoryCatalogItem) => {
+    setEditing(item)
+    setName(item.name)
+    setCode(item.code)
+    setDescription(item.description || '')
+    setError('')
+  }
+  const updateName = (value: string) => {
+    setName(value)
+    if (!editing) setCode(current => (current && current !== categoryCode(name) ? current : categoryCode(value)))
+  }
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      const input = { name: name.trim(), code: code.trim().toUpperCase(), description: description.trim() }
+      const previousName = editing?.name
+      const saved = editing ? await catalog.update(editing.id, input) : await catalog.create(input)
+      await onCatalogChanged(previousName, saved.name)
+      onSelected(saved)
+      reset()
+    } catch (reason: any) {
+      setError(reason?.message || 'Không thể lưu nhóm tài sản')
+    } finally {
+      setSaving(false)
+    }
+  }
+  const toggle = async (item: AssetCategoryCatalogItem) => {
+    setSaving(true)
+    setError('')
+    try {
+      await catalog.update(item.id, { status: item.status === 'INACTIVE' ? 'ACTIVE' : 'INACTIVE' })
+      await onCatalogChanged()
+    } catch (reason: any) {
+      setError(reason?.message || 'Không thể cập nhật trạng thái nhóm')
+    } finally {
+      setSaving(false)
+    }
+  }
+  const remove = async (item: AssetCategoryCatalogItem) => {
+    if (!window.confirm(`Xóa nhóm “${item.name}”? Thao tác này chỉ được phép khi nhóm chưa phát sinh dữ liệu.`)) return
+    setSaving(true)
+    setError('')
+    try {
+      await catalog.remove(item.id)
+      await onCatalogChanged()
+      if (editing?.id === item.id) reset()
+    } catch (reason: any) {
+      setError(reason?.message || 'Không thể xóa nhóm tài sản')
+    } finally {
+      setSaving(false)
+    }
+  }
+  const usage = (item: AssetCategoryCatalogItem) =>
+    item._count?.assets ?? assets.filter(asset => asset.category === item.name).length
+  return (
+    <div className="modal-backdrop">
+      <div className="modal category-manager">
+        <div className="modal-header">
+          <div>
+            <h2>Quản lý nhóm tài sản</h2>
+            <p>Danh mục dùng chung cho sổ tài sản, nhập kho, import và báo cáo.</p>
+          </div>
+          <button type="button" onClick={onClose}>
+            <X />
+          </button>
+        </div>
+        <form className="category-editor" onSubmit={submit}>
+          <label>
+            Tên nhóm
+            <input
+              autoFocus
+              required
+              minLength={2}
+              maxLength={150}
+              value={name}
+              onChange={e => updateName(e.target.value)}
+              placeholder="Ví dụ: Máy chấm công"
+            />
+          </label>
+          <label>
+            Mã danh mục
+            <input
+              required
+              minLength={2}
+              maxLength={50}
+              pattern="[A-Z0-9._-]+"
+              value={code}
+              onChange={e => setCode(e.target.value.toUpperCase())}
+              placeholder="MAY_CHAM_CONG"
+            />
+          </label>
+          <label>
+            Mô tả
+            <input
+              maxLength={500}
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Phạm vi thiết bị thuộc nhóm"
+            />
+          </label>
+          <div className="category-editor-actions">
+            {editing && (
+              <button type="button" className="btn secondary" onClick={reset}>
+                Hủy sửa
+              </button>
+            )}
+            <button className="btn primary" disabled={saving}>
+              <Check size={17} />
+              {saving ? 'Đang lưu...' : editing ? 'Lưu thay đổi' : 'Thêm nhóm'}
+            </button>
+          </div>
+        </form>
+        {error && <div className="form-error category-manager-error">{error}</div>}
+        <div className="category-manager-table">
+          <table>
+            <thead>
+              <tr>
+                <th>NHÓM TÀI SẢN</th>
+                <th>MÃ</th>
+                <th>SỬ DỤNG</th>
+                <th>TRẠNG THÁI</th>
+                <th>THAO TÁC</th>
+              </tr>
+            </thead>
+            <tbody>
+              {catalog.allItems.map(item => (
+                <tr key={item.id} className={item.status === 'INACTIVE' ? 'inactive' : ''}>
+                  <td>
+                    <b>{item.name}</b>
+                    <small>{item.description || 'Chưa có mô tả'}</small>
+                  </td>
+                  <td>
+                    <code>{item.code}</code>
+                  </td>
+                  <td>{usage(item)} tài sản</td>
+                  <td>
+                    <span className={`status ${item.status === 'INACTIVE' ? 'broken' : 'using'}`}>
+                      <i />
+                      {item.status === 'INACTIVE' ? 'Ngừng sử dụng' : 'Đang dùng'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="row-actions">
+                      <button type="button" onClick={() => edit(item)} title="Sửa nhóm">
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void toggle(item)}
+                        title={item.status === 'INACTIVE' ? 'Kích hoạt lại' : 'Ngừng sử dụng'}
+                      >
+                        <RotateCcw size={16} />
+                      </button>
+                      <button type="button" onClick={() => void remove(item)} title="Xóa nhóm">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="category-manager-note">
+          <ShieldCheck size={17} />
+          <span>Nhóm đã phát sinh tài sản không được xóa hẳn; hãy ngừng sử dụng để giữ nguyên lịch sử và báo cáo.</span>
+        </div>
+      </div>
+    </div>
+  )
 }
 
-function AssetBook({ assets, departmentOptions, canManageCategories, onOpenImport, onCategoriesChanged, onAdd, onEdit, onDelete, onAssign, onBarcode, onView }: { assets: Asset[]; departmentOptions: string[]; canManageCategories:boolean; onOpenImport:()=>void; onCategoriesChanged:(previousName?:string,nextName?:string)=>Promise<void>; onAdd: () => void; onEdit: (a: Asset) => void; onDelete: (id: number) => void; onAssign: (a: Asset) => void; onBarcode: (a: Asset) => void; onView: (a: Asset) => void }) {
+function AssetBook({
+  assets,
+  departmentOptions,
+  canManageCategories,
+  onOpenImport,
+  onCategoriesChanged,
+  onAdd,
+  onEdit,
+  onDelete,
+  onAssign,
+  onBarcode,
+  onView,
+}: {
+  assets: Asset[]
+  departmentOptions: string[]
+  canManageCategories: boolean
+  onOpenImport: () => void
+  onCategoriesChanged: (previousName?: string, nextName?: string) => Promise<void>
+  onAdd: () => void
+  onEdit: (a: Asset) => void
+  onDelete: (id: number) => void
+  onAssign: (a: Asset) => void
+  onBarcode: (a: Asset) => void
+  onView: (a: Asset) => void
+}) {
   const [query, setQuery] = useState('')
   const [department, setDepartment] = useState('Tất cả phòng ban')
   const [status, setStatus] = useState('Tất cả trạng thái')
-  const [assetGroup,setAssetGroup]=useState('all')
-  const [exportOpen,setExportOpen]=useState(false)
-  const [categoryOpen,setCategoryOpen]=useState(false)
-  const categoryCatalog=useAssetCategoryCatalog(canManageCategories)
-  const visibleAssetGroups=useMemo(()=>[{id:'all',label:'Tất cả',icon:Box,categories:[]} as typeof assetGroups[number],...categoryCatalog.items.map(item=>({id:`category:${encodeURIComponent(item.name)}`,label:item.name,icon:assetGroups.find(group=>group.categories.includes(item.name))?.icon||Box,categories:[item.name]}))],[categoryCatalog.items])
-  useEffect(()=>{if(!visibleAssetGroups.some(group=>group.id===assetGroup))setAssetGroup('all')},[assetGroup,visibleAssetGroups])
-  const filtered = useMemo(() => assets.filter(a => {
-    const matches = matchesAssetSearch(a,query)
-    return matches && matchesAssetGroup(a,assetGroup) && (department === 'Tất cả phòng ban' || a.department === department) && matchesOperationalStatus(a,status)
-  }), [assets, query, department, status, assetGroup])
-  return <><main className="page">
-    <section className="page-heading"><div><h1>Sổ tài sản</h1><p>Quản lý và theo dõi toàn bộ tài sản trong công ty.</p></div><div className="heading-actions"><button className="btn secondary" onClick={onOpenImport}><Upload size={17}/>Nhập Excel</button><button className="btn secondary" onClick={()=>setExportOpen(true)}><Download size={17}/>Xuất Excel</button><button className="btn primary" onClick={onAdd}><Plus size={18}/>Thêm tài sản</button></div></section>
-    <div className="asset-summary"><span><b>{assets.length}</b> tài sản</span><span><i className="green-bg"/>{assets.filter(a => a.status === 'Đang sử dụng').length} đang sử dụng</span><span><i className="amber-bg"/>{assets.filter(a => a.status === 'Bảo trì').length} bảo trì</span><span><i className="red-bg"/>{assets.filter(a => a.status === 'Hỏng').length} hỏng</span></div>
-    <section className="asset-group-filter">{visibleAssetGroups.map(group=>{const count=assets.filter(asset=>matchesAssetGroup(asset,group.id)).length;return <button className={assetGroup===group.id?'active':''} onClick={()=>setAssetGroup(group.id)} key={group.id}><span><group.icon size={19}/></span><div><b>{group.label}</b><small>{count} tài sản</small></div></button>})}{canManageCategories&&<button className="asset-group-add" onClick={()=>setCategoryOpen(true)}><span><Settings size={18}/></span><div><b>Quản lý nhóm</b><small>Thêm · Sửa · Xóa</small></div></button>}</section>
-    <section className="card asset-list-card">
-      <div className="filters"><label className="search-box"><Search size={18}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Tìm mã, tên, serial, người sử dụng..."/></label><label className="filter-select"><Building2 size={17}/><select value={department} onChange={e => setDepartment(e.target.value)}>{['Tất cả phòng ban',...departmentOptions].map(d => <option key={d}>{d}</option>)}</select><ChevronDown size={15}/></label><label className="filter-select"><Filter size={17}/><select value={status} onChange={e => setStatus(e.target.value)}>{operationalStatusOptions.map(s => <option key={s}>{s}</option>)}</select><ChevronDown size={15}/></label></div>
-      <div className="table-scroll"><table><thead><tr><th>TÀI SẢN</th><th>PHÒNG BAN / VỊ TRÍ</th><th>NGƯỜI SỬ DỤNG</th><th>NGUYÊN GIÁ</th><th>TRẠNG THÁI</th><th></th></tr></thead><tbody>{filtered.map(a => <tr key={a.id}><td><div className="asset-cell"><span className={`asset-icon ${a.imageDataUrl?'has-image':''}`}>{a.imageDataUrl?<img src={a.imageDataUrl} alt={a.name}/>:iconFor(a.icon)}</span><div><button className="asset-name-link" onClick={()=>onView(a)}>{a.name}</button><small><em className="asset-category-tag">{a.category}</em>{a.code} · {a.serial}</small></div></div></td><td><b className="cell-main">{a.department}</b><small className="cell-sub"><MapPin size={12}/>{a.location}</small></td><td><span className="user-cell"><span>{a.assignedTo.split(' ').slice(-2).map(x => x[0]).join('')}</span>{a.assignedTo}</span></td><td><b className="cell-main">{money(a.purchaseCost)}</b><small className="cell-sub">Mua {new Date(a.purchaseDate).toLocaleDateString('vi-VN')}</small></td><td><span className={`status ${statusClass[a.status]}`}><i/>{a.status}</span></td><td><div className="row-actions"><button onClick={() => onAssign(a)} title="Cấp phát / Thu hồi"><UserPlus size={16}/></button><button onClick={() => onBarcode(a)} title="In Barcode / QR"><QrCode size={16}/></button><button onClick={() => onEdit(a)} title="Sửa"><Pencil size={16}/></button><button onClick={() => onDelete(a.id)} title="Xóa"><Trash2 size={16}/></button></div></td></tr>)}</tbody></table></div>
-      {filtered.length === 0 && <div className="empty"><Search size={30}/><h3>Không tìm thấy tài sản</h3><p>Thử thay đổi từ khóa hoặc bộ lọc.</p></div>}
-      <div className="pagination"><span>Hiển thị <b>{filtered.length}</b> trên <b>{assets.length}</b> tài sản</span><div><button disabled><ChevronLeft size={16}/></button><button className="active">1</button><button disabled><ChevronRight size={16}/></button></div></div>
-    </section>
-  </main>{exportOpen&&<ExportExcelModal assets={filtered} onClose={()=>setExportOpen(false)}/>} {categoryOpen&&<CategoryManager catalog={categoryCatalog} assets={assets} onClose={()=>setCategoryOpen(false)} onCatalogChanged={onCategoriesChanged} onSelected={item=>setAssetGroup(`category:${encodeURIComponent(item.name)}`)}/>}</>
+  const [assetGroup, setAssetGroup] = useState('all')
+  const [exportOpen, setExportOpen] = useState(false)
+  const [categoryOpen, setCategoryOpen] = useState(false)
+  const categoryCatalog = useAssetCategoryCatalog(canManageCategories)
+  const visibleAssetGroups = useMemo(
+    () => [
+      { id: 'all', label: 'Tất cả', icon: Box, categories: [] } as (typeof assetGroups)[number],
+      ...categoryCatalog.items.map(item => ({
+        id: `category:${encodeURIComponent(item.name)}`,
+        label: item.name,
+        icon: assetGroups.find(group => group.categories.includes(item.name))?.icon || Box,
+        categories: [item.name],
+      })),
+    ],
+    [categoryCatalog.items],
+  )
+  useEffect(() => {
+    if (!visibleAssetGroups.some(group => group.id === assetGroup)) setAssetGroup('all')
+  }, [assetGroup, visibleAssetGroups])
+  const filtered = useMemo(
+    () =>
+      assets.filter(a => {
+        const matches = matchesAssetSearch(a, query)
+        return (
+          matches &&
+          matchesAssetGroup(a, assetGroup) &&
+          (department === 'Tất cả phòng ban' || a.department === department) &&
+          matchesOperationalStatus(a, status)
+        )
+      }),
+    [assets, query, department, status, assetGroup],
+  )
+  return (
+    <>
+      <main className="page">
+        <section className="page-heading">
+          <div>
+            <h1>Sổ tài sản</h1>
+            <p>Quản lý và theo dõi toàn bộ tài sản trong công ty.</p>
+          </div>
+          <div className="heading-actions">
+            <button className="btn secondary" onClick={onOpenImport}>
+              <Upload size={17} />
+              Nhập Excel
+            </button>
+            <button className="btn secondary" onClick={() => setExportOpen(true)}>
+              <Download size={17} />
+              Xuất Excel
+            </button>
+            <button className="btn primary" onClick={onAdd}>
+              <Plus size={18} />
+              Thêm tài sản
+            </button>
+          </div>
+        </section>
+        <div className="asset-summary">
+          <span>
+            <b>{assets.length}</b> tài sản
+          </span>
+          <span>
+            <i className="green-bg" />
+            {assets.filter(a => a.status === 'Đang sử dụng').length} đang sử dụng
+          </span>
+          <span>
+            <i className="amber-bg" />
+            {assets.filter(a => a.status === 'Bảo trì').length} bảo trì
+          </span>
+          <span>
+            <i className="red-bg" />
+            {assets.filter(a => a.status === 'Hỏng').length} hỏng
+          </span>
+        </div>
+        <section className="asset-group-filter">
+          {visibleAssetGroups.map(group => {
+            const count = assets.filter(asset => matchesAssetGroup(asset, group.id)).length
+            return (
+              <button
+                className={assetGroup === group.id ? 'active' : ''}
+                onClick={() => setAssetGroup(group.id)}
+                key={group.id}
+              >
+                <span>
+                  <group.icon size={19} />
+                </span>
+                <div>
+                  <b>{group.label}</b>
+                  <small>{count} tài sản</small>
+                </div>
+              </button>
+            )
+          })}
+          {canManageCategories && (
+            <button className="asset-group-add" onClick={() => setCategoryOpen(true)}>
+              <span>
+                <Settings size={18} />
+              </span>
+              <div>
+                <b>Quản lý nhóm</b>
+                <small>Thêm · Sửa · Xóa</small>
+              </div>
+            </button>
+          )}
+        </section>
+        <section className="card asset-list-card">
+          <div className="filters">
+            <label className="search-box">
+              <Search size={18} />
+              <input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Tìm mã, tên, serial, người sử dụng..."
+              />
+            </label>
+            <label className="filter-select">
+              <Building2 size={17} />
+              <select value={department} onChange={e => setDepartment(e.target.value)}>
+                {['Tất cả phòng ban', ...departmentOptions].map(d => (
+                  <option key={d}>{d}</option>
+                ))}
+              </select>
+              <ChevronDown size={15} />
+            </label>
+            <label className="filter-select">
+              <Filter size={17} />
+              <select value={status} onChange={e => setStatus(e.target.value)}>
+                {operationalStatusOptions.map(s => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+              <ChevronDown size={15} />
+            </label>
+          </div>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>TÀI SẢN</th>
+                  <th>PHÒNG BAN / VỊ TRÍ</th>
+                  <th>NGƯỜI SỬ DỤNG</th>
+                  <th>NGUYÊN GIÁ</th>
+                  <th>TRẠNG THÁI</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(a => (
+                  <tr key={a.id}>
+                    <td>
+                      <div className="asset-cell">
+                        <span className={`asset-icon ${a.imageDataUrl ? 'has-image' : ''}`}>
+                          {a.imageDataUrl ? <img src={a.imageDataUrl} alt={a.name} /> : iconFor(a.icon)}
+                        </span>
+                        <div>
+                          <button className="asset-name-link" onClick={() => onView(a)}>
+                            {a.name}
+                          </button>
+                          <small>
+                            <em className="asset-category-tag">{a.category}</em>
+                            {a.code} · {a.serial}
+                          </small>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <b className="cell-main">{a.department}</b>
+                      <small className="cell-sub">
+                        <MapPin size={12} />
+                        {a.location}
+                      </small>
+                    </td>
+                    <td>
+                      <span className="user-cell">
+                        <span>
+                          {a.assignedTo
+                            .split(' ')
+                            .slice(-2)
+                            .map(x => x[0])
+                            .join('')}
+                        </span>
+                        {a.assignedTo}
+                      </span>
+                    </td>
+                    <td>
+                      <b className="cell-main">{money(a.purchaseCost)}</b>
+                      <small className="cell-sub">Mua {new Date(a.purchaseDate).toLocaleDateString('vi-VN')}</small>
+                    </td>
+                    <td>
+                      <span className={`status ${statusClass[a.status]}`}>
+                        <i />
+                        {a.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="row-actions">
+                        <button onClick={() => onAssign(a)} title="Cấp phát / Thu hồi">
+                          <UserPlus size={16} />
+                        </button>
+                        <button onClick={() => onBarcode(a)} title="In Barcode / QR">
+                          <QrCode size={16} />
+                        </button>
+                        <button onClick={() => onEdit(a)} title="Sửa">
+                          <Pencil size={16} />
+                        </button>
+                        <button onClick={() => onDelete(a.id)} title="Xóa">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {filtered.length === 0 && (
+            <div className="empty">
+              <Search size={30} />
+              <h3>Không tìm thấy tài sản</h3>
+              <p>Thử thay đổi từ khóa hoặc bộ lọc.</p>
+            </div>
+          )}
+          <div className="pagination">
+            <span>
+              Hiển thị <b>{filtered.length}</b> trên <b>{assets.length}</b> tài sản
+            </span>
+            <div>
+              <button disabled>
+                <ChevronLeft size={16} />
+              </button>
+              <button className="active">1</button>
+              <button disabled>
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+      {exportOpen && <ExportExcelModal assets={filtered} onClose={() => setExportOpen(false)} />}{' '}
+      {categoryOpen && (
+        <CategoryManager
+          catalog={categoryCatalog}
+          assets={assets}
+          onClose={() => setCategoryOpen(false)}
+          onCatalogChanged={onCategoriesChanged}
+          onSelected={item => setAssetGroup(`category:${encodeURIComponent(item.name)}`)}
+        />
+      )}
+    </>
+  )
 }
 
-function ITAssets({ assets, openBook }: { assets: Asset[]; openBook: () => void }) {
-  const groups = [
-    { title: 'Phần cứng', desc: 'Máy tính, máy chủ, thiết bị mạng và điện thoại.', icon: Server, count: 126, tone: 'purple', tags: ['Máy tính', 'Máy chủ', 'Mạng'] },
-    { title: 'Phần mềm', desc: 'Bản quyền, giấy phép sử dụng và ứng dụng đám mây.', icon: Cloud, count: 42, tone: 'blue', tags: ['SaaS', 'License', 'Cloud'] },
-    { title: 'Tài sản số & Dữ liệu', desc: 'Thông tin, mã nguồn, tên miền và chứng chỉ số.', icon: Database, count: 18, tone: 'green', tags: ['Dữ liệu', 'Mã nguồn', 'Chứng chỉ'] },
-    { title: 'Thiết bị BYOD', desc: 'Thiết bị cá nhân được phép kết nối và làm việc.', icon: Smartphone, count: 31, tone: 'orange', tags: ['Cá nhân', 'Di động', 'Đã duyệt'] },
-  ]
-  const lifecycle = [
-    { title: 'Mua sắm', desc: 'Lập kế hoạch, phê duyệt và đặt mua phù hợp.', icon: ShoppingCart, value: '8', label: 'yêu cầu đang mở' },
-    { title: 'Vận hành', desc: 'Cấp phát, theo dõi vị trí và người sử dụng.', icon: PlayCircle, value: '187', label: 'tài sản hoạt động' },
-    { title: 'Bảo trì', desc: 'Sửa chữa, nâng cấp và vá lỗi định kỳ.', icon: Wrench, value: '5', label: 'đang xử lý' },
-    { title: 'Thanh lý', desc: 'Thu hồi, xóa dữ liệu an toàn và thanh lý.', icon: Recycle, value: '12', label: 'chờ đánh giá' },
-  ]
-  const recentIT = assets.filter(a => ['Máy tính','Laptop','PC / Desktop','Màn hình','Điện thoại','Mobile','Máy tính bảng','Tablet','Thiết bị mạng','Server','Switch','Firewall','Router / Wi-Fi','Phần mềm & Bản quyền','Tài sản số & Dữ liệu','Thiết bị BYOD'].includes(a.category)).slice(-5).reverse()
-  return <main className="page it-page">
-    <section className="page-heading"><div><h1>Quản lý tài sản CNTT</h1><p>Kiểm soát tập trung tài sản công nghệ trong suốt vòng đời sử dụng.</p></div><div className="heading-actions"><button className="btn secondary"><ShieldCheck size={17}/>Kiểm tra tuân thủ</button><button className="btn primary" onClick={openBook}><Plus size={18}/>Quản lý tài sản</button></div></section>
-    <section className="it-hero"><div><span className="eyebrow"><ShieldCheck size={14}/>IT ASSET MANAGEMENT</span><h2>Nắm rõ mọi tài sản.<br/>Giảm chi phí và rủi ro.</h2><p>Theo dõi phần cứng, phần mềm, dữ liệu và thiết bị BYOD trên một nền tảng duy nhất.</p><button className="hero-button" onClick={openBook}>Mở sổ tài sản <ChevronRight size={16}/></button></div><div className="health-score"><div className="score-ring"><div><b>92</b><span>/100</span></div></div><strong>Mức độ kiểm soát tốt</strong><small>+4 điểm so với tháng trước</small></div></section>
-    <div className="section-label"><div><h3>Danh mục tài sản CNTT</h3><p>Phân loại theo đặc tính và hình thức quản lý</p></div><button className="text-link" onClick={openBook}>Xem trong sổ tài sản <ChevronRight size={16}/></button></div>
-    <section className="it-groups">{groups.map(g => <article className="card it-group" key={g.title}><div className={`it-group-icon ${g.tone}`}><g.icon size={22}/></div><span className="group-count">{g.count}</span><h3>{g.title}</h3><p>{g.desc}</p><div className="tag-list">{g.tags.map(t => <span key={t}>{t}</span>)}</div></article>)}</section>
-    <div className="section-label"><div><h3>Vòng đời tài sản CNTT</h3><p>Theo dõi xuyên suốt từ nhu cầu đến khi kết thúc sử dụng</p></div></div>
-    <section className="card lifecycle"><div className="life-line"/>{lifecycle.map((l, index) => <div className="life-step" key={l.title}><div className="life-top"><span>{index + 1}</span><l.icon size={20}/></div><h4>{l.title}</h4><p>{l.desc}</p><div className="life-stat"><b>{l.value}</b><span>{l.label}</span></div></div>)}</section>
-    <section className="it-bottom">
-      <div className="card benefits"><div className="card-head"><div><h3>Giá trị quản trị</h3><p>Hiệu quả từ dữ liệu tài sản tập trung</p></div><BadgeCheck size={21}/></div><div className="benefit"><span><WalletCards size={19}/></span><div><b>Tiết kiệm chi phí</b><p>Tránh mua trùng thiết bị và lãng phí giấy phép chưa sử dụng.</p></div></div><div className="benefit"><span><LockKeyhole size={19}/></span><div><b>Bảo mật tốt hơn</b><p>Phát hiện phần mềm cần vá và kiểm soát thiết bị kết nối mạng.</p></div></div><div className="benefit"><span><ClipboardCheck size={19}/></span><div><b>Tuân thủ pháp lý</b><p>Sẵn sàng kiểm toán bản quyền và truy xuất lịch sử sử dụng.</p></div></div></div>
-      <div className="card it-recent"><div className="card-head"><div><h3>Tài sản CNTT mới cập nhật</h3><p>Dữ liệu phần cứng, phần mềm và BYOD</p></div><button className="text-link" onClick={openBook}>Xem tất cả <ChevronRight size={16}/></button></div>{recentIT.map(a => <div className="it-recent-row" key={a.id}><span className="asset-icon">{iconFor(a.icon)}</span><div><b>{a.name}</b><small>{a.category} · {a.code}</small></div><span className={`status ${statusClass[a.status]}`}><i/>{a.status}</span></div>)}</div>
-    </section>
-  </main>
-}
-
-function CatalogSettings({ departments, sites, people, assets, saveDepartment, removeDepartment, saveSite, removeSite }: { departments: Department[]; sites: Site[]; people:ApiPerson[]; assets: Asset[]; saveDepartment: (item: Department) => void; removeDepartment: (id: number) => void; saveSite: (item: Site) => void; removeSite: (id: number) => void }) {
-  const [tab, setTab] = useState<'departments'|'sites'>('departments')
+function CatalogSettings({
+  departments,
+  sites,
+  people,
+  assets,
+  saveDepartment,
+  removeDepartment,
+  saveSite,
+  removeSite,
+}: {
+  departments: Department[]
+  sites: Site[]
+  people: ApiPerson[]
+  assets: Asset[]
+  saveDepartment: (item: Department) => void
+  removeDepartment: (id: number) => void
+  saveSite: (item: Site) => void
+  removeSite: (id: number) => void
+}) {
+  const [tab, setTab] = useState<'departments' | 'sites'>('departments')
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null)
   const [editingSite, setEditingSite] = useState<Site | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const startAdd = () => { setEditingDepartment(null); setEditingSite(null); setShowForm(true) }
-  const submitDepartment = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const data=new FormData(e.currentTarget),name=String(data.get('name')).trim(),code=editingDepartment?.code||createInternalDepartmentCode(name,departments),managerId=String(data.get('managerId')||''),manager=people.find(person=>person.id===managerId)?.fullName||'',normalized=normalizeSearchText(`${code} ${name}`).toUpperCase(),tokens=normalized.split(/[^A-Z0-9]+/),responseNames=['HE THONG THONG TIN','CONG NGHE THONG TIN','INFORMATION TECHNOLOGY','INFORMATION SYSTEMS'],isIncidentResponseTeam=editingDepartment?.isIncidentResponseTeam??(['IT','CNTT','ICT','HTTT'].some(value=>tokens.includes(value))||responseNames.some(value=>normalized.includes(value)));saveDepartment({id:editingDepartment?.id||Date.now(),name,code,manager,managerId:managerId||undefined,isIncidentResponseTeam});setShowForm(false) }
-  const submitSite = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const data=new FormData(e.currentTarget); saveSite({id:editingSite?.id||Date.now(),name:String(data.get('name')),code:String(data.get('code')).toUpperCase(),address:String(data.get('address'))});setShowForm(false) }
-  const departmentPeople=editingDepartment?people.filter(person=>numericId(person.department.id)===editingDepartment.id):[]
-  return <main className="page admin-page"><section className="page-heading"><div><h1>Cấu hình hệ thống</h1><p>Quản trị các danh mục dùng chung trong toàn bộ quy trình tài sản.</p></div><button className="btn primary" onClick={startAdd}><Plus size={18}/>Thêm {tab==='departments'?'phòng ban':'site'}</button></section><div className="settings-layout"><aside className="card settings-menu"><button className={tab==='departments'?'active':''} onClick={()=>{setTab('departments');setShowForm(false)}}><Building2 size={19}/><span><b>Phòng ban</b><small>{departments.length} phòng ban</small></span><ChevronRight size={16}/></button><button className={tab==='sites'?'active':''} onClick={()=>{setTab('sites');setShowForm(false)}}><MapPin size={19}/><span><b>Site & Địa điểm</b><small>{sites.length} địa điểm</small></span><ChevronRight size={16}/></button></aside><section className="card settings-content"><div className="settings-head"><div><h2>{tab==='departments'?'Danh sách phòng ban':'Danh sách site và địa điểm'}</h2><p>{tab==='departments'?'Danh mục được dùng khi cấp phát tài sản cho nhân viên.':'Quản lý văn phòng, kho và địa điểm đặt tài sản.'}</p></div></div>{showForm&&(tab==='departments'?<form className="inline-admin-form department-admin-form" onSubmit={submitDepartment}><label>Tên phòng ban<input name="name" required defaultValue={editingDepartment?.name}/></label><label>Người phụ trách<select name="managerId" defaultValue={editingDepartment?.managerId||''} disabled={!editingDepartment}><option value="">{editingDepartment?'Chưa chỉ định':'Tạo phòng ban trước khi chọn'}</option>{departmentPeople.map(person=><option key={person.id} value={person.id}>{person.fullName}{person.email?` · ${person.email}`:''}</option>)}</select><small>{editingDepartment&&!departmentPeople.length?'Chưa có nhân sự hoạt động thuộc phòng ban này. Hãy thêm tại Danh tính & người dùng.':'Chỉ hiển thị nhân sự đang hoạt động thuộc phòng ban.'}</small></label><div><button type="button" className="btn secondary" onClick={()=>setShowForm(false)}>Hủy</button><button className="btn primary"><Check size={16}/>Lưu</button></div></form>:<form className="inline-admin-form" onSubmit={submitSite}><label>Tên site<input name="name" required defaultValue={editingSite?.name}/></label><label>Mã site<input name="code" required defaultValue={editingSite?.code}/></label><label>Địa chỉ<input name="address" required defaultValue={editingSite?.address}/></label><div><button type="button" className="btn secondary" onClick={()=>setShowForm(false)}>Hủy</button><button className="btn primary"><Check size={16}/>Lưu</button></div></form>)}<div className="admin-list">{tab==='departments'?departments.map(d=>{const count=assets.filter(a=>a.department===d.name).length;return <div className="admin-row" key={d.id}><span className="admin-icon department"><Building2 size={19}/></span><div><b>{d.name}</b><small>Phụ trách: {d.manager||'Chưa chỉ định'}</small></div><span className="usage-count">{count} tài sản</span><div className="row-actions"><button onClick={()=>{setEditingDepartment(d);setShowForm(true)}}><Pencil size={16}/></button><button disabled={count>0} title={count>0?'Không thể xóa phòng ban đang có tài sản':'Xóa'} onClick={()=>removeDepartment(d.id)}><Trash2 size={16}/></button></div></div>}):sites.map(s=>{const count=assets.filter(a=>a.location.toLowerCase().includes(s.name.toLowerCase().replace('văn phòng ',''))).length;return <div className="admin-row" key={s.id}><span className="admin-icon site"><MapPin size={19}/></span><div><b>{s.name}</b><small>Mã: {s.code} · {s.address}</small></div><span className="usage-count">{count} tài sản</span><div className="row-actions"><button onClick={()=>{setEditingSite(s);setShowForm(true)}}><Pencil size={16}/></button><button disabled={count>0} title={count>0?'Không thể xóa site đang có tài sản':'Xóa'} onClick={()=>removeSite(s.id)}><Trash2 size={16}/></button></div></div>})}</div></section></div></main>
+  const startAdd = () => {
+    setEditingDepartment(null)
+    setEditingSite(null)
+    setShowForm(true)
+  }
+  const submitDepartment = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const data = new FormData(e.currentTarget),
+      name = String(data.get('name')).trim(),
+      code = editingDepartment?.code || createInternalDepartmentCode(name, departments),
+      managerId = String(data.get('managerId') || ''),
+      manager = people.find(person => person.id === managerId)?.fullName || '',
+      normalized = normalizeSearchText(`${code} ${name}`).toUpperCase(),
+      tokens = normalized.split(/[^A-Z0-9]+/),
+      responseNames = ['HE THONG THONG TIN', 'CONG NGHE THONG TIN', 'INFORMATION TECHNOLOGY', 'INFORMATION SYSTEMS'],
+      isIncidentResponseTeam =
+        editingDepartment?.isIncidentResponseTeam ??
+        (['IT', 'CNTT', 'ICT', 'HTTT'].some(value => tokens.includes(value)) ||
+          responseNames.some(value => normalized.includes(value)))
+    saveDepartment({
+      id: editingDepartment?.id || Date.now(),
+      name,
+      code,
+      manager,
+      managerId: managerId || undefined,
+      isIncidentResponseTeam,
+    })
+    setShowForm(false)
+  }
+  const submitSite = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const data = new FormData(e.currentTarget)
+    saveSite({
+      id: editingSite?.id || Date.now(),
+      name: String(data.get('name')),
+      code: String(data.get('code')).toUpperCase(),
+      address: String(data.get('address')),
+    })
+    setShowForm(false)
+  }
+  const departmentPeople = editingDepartment
+    ? people.filter(person => numericId(person.department.id) === editingDepartment.id)
+    : []
+  return (
+    <main className="page admin-page">
+      <section className="page-heading">
+        <div>
+          <h1>Cấu hình hệ thống</h1>
+          <p>Quản trị các danh mục dùng chung trong toàn bộ quy trình tài sản.</p>
+        </div>
+        <button className="btn primary" onClick={startAdd}>
+          <Plus size={18} />
+          Thêm {tab === 'departments' ? 'phòng ban' : 'site'}
+        </button>
+      </section>
+      <div className="settings-layout">
+        <aside className="card settings-menu">
+          <button
+            className={tab === 'departments' ? 'active' : ''}
+            onClick={() => {
+              setTab('departments')
+              setShowForm(false)
+            }}
+          >
+            <Building2 size={19} />
+            <span>
+              <b>Phòng ban</b>
+              <small>{departments.length} phòng ban</small>
+            </span>
+            <ChevronRight size={16} />
+          </button>
+          <button
+            className={tab === 'sites' ? 'active' : ''}
+            onClick={() => {
+              setTab('sites')
+              setShowForm(false)
+            }}
+          >
+            <MapPin size={19} />
+            <span>
+              <b>Site & Địa điểm</b>
+              <small>{sites.length} địa điểm</small>
+            </span>
+            <ChevronRight size={16} />
+          </button>
+        </aside>
+        <section className="card settings-content">
+          <div className="settings-head">
+            <div>
+              <h2>{tab === 'departments' ? 'Danh sách phòng ban' : 'Danh sách site và địa điểm'}</h2>
+              <p>
+                {tab === 'departments'
+                  ? 'Danh mục được dùng khi cấp phát tài sản cho nhân viên.'
+                  : 'Quản lý văn phòng, kho và địa điểm đặt tài sản.'}
+              </p>
+            </div>
+          </div>
+          {showForm &&
+            (tab === 'departments' ? (
+              <form className="inline-admin-form department-admin-form" onSubmit={submitDepartment}>
+                <label>
+                  Tên phòng ban
+                  <input name="name" required defaultValue={editingDepartment?.name} />
+                </label>
+                <label>
+                  Người phụ trách
+                  <select
+                    name="managerId"
+                    defaultValue={editingDepartment?.managerId || ''}
+                    disabled={!editingDepartment}
+                  >
+                    <option value="">{editingDepartment ? 'Chưa chỉ định' : 'Tạo phòng ban trước khi chọn'}</option>
+                    {departmentPeople.map(person => (
+                      <option key={person.id} value={person.id}>
+                        {person.fullName}
+                        {person.email ? ` · ${person.email}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <small>
+                    {editingDepartment && !departmentPeople.length
+                      ? 'Chưa có nhân sự hoạt động thuộc phòng ban này. Hãy thêm tại Danh tính & người dùng.'
+                      : 'Chỉ hiển thị nhân sự đang hoạt động thuộc phòng ban.'}
+                  </small>
+                </label>
+                <div>
+                  <button type="button" className="btn secondary" onClick={() => setShowForm(false)}>
+                    Hủy
+                  </button>
+                  <button className="btn primary">
+                    <Check size={16} />
+                    Lưu
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form className="inline-admin-form" onSubmit={submitSite}>
+                <label>
+                  Tên site
+                  <input name="name" required defaultValue={editingSite?.name} />
+                </label>
+                <label>
+                  Mã site
+                  <input name="code" required defaultValue={editingSite?.code} />
+                </label>
+                <label>
+                  Địa chỉ
+                  <input name="address" required defaultValue={editingSite?.address} />
+                </label>
+                <div>
+                  <button type="button" className="btn secondary" onClick={() => setShowForm(false)}>
+                    Hủy
+                  </button>
+                  <button className="btn primary">
+                    <Check size={16} />
+                    Lưu
+                  </button>
+                </div>
+              </form>
+            ))}
+          <div className="admin-list">
+            {tab === 'departments'
+              ? departments.map(d => {
+                  const count = assets.filter(a => a.department === d.name).length
+                  return (
+                    <div className="admin-row" key={d.id}>
+                      <span className="admin-icon department">
+                        <Building2 size={19} />
+                      </span>
+                      <div>
+                        <b>{d.name}</b>
+                        <small>Phụ trách: {d.manager || 'Chưa chỉ định'}</small>
+                      </div>
+                      <span className="usage-count">{count} tài sản</span>
+                      <div className="row-actions">
+                        <button
+                          onClick={() => {
+                            setEditingDepartment(d)
+                            setShowForm(true)
+                          }}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          disabled={count > 0}
+                          title={count > 0 ? 'Không thể xóa phòng ban đang có tài sản' : 'Xóa'}
+                          onClick={() => removeDepartment(d.id)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })
+              : sites.map(s => {
+                  const count = assets.filter(a =>
+                    a.location.toLowerCase().includes(s.name.toLowerCase().replace('văn phòng ', '')),
+                  ).length
+                  return (
+                    <div className="admin-row" key={s.id}>
+                      <span className="admin-icon site">
+                        <MapPin size={19} />
+                      </span>
+                      <div>
+                        <b>{s.name}</b>
+                        <small>
+                          Mã: {s.code} · {s.address}
+                        </small>
+                      </div>
+                      <span className="usage-count">{count} tài sản</span>
+                      <div className="row-actions">
+                        <button
+                          onClick={() => {
+                            setEditingSite(s)
+                            setShowForm(true)
+                          }}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          disabled={count > 0}
+                          title={count > 0 ? 'Không thể xóa site đang có tài sản' : 'Xóa'}
+                          onClick={() => removeSite(s.id)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+          </div>
+        </section>
+      </div>
+    </main>
+  )
 }
 
-type DirectoryProvider='m365'|'ldap'
-interface DirectorySettings {provider:DirectoryProvider;enabled:boolean;tenantId:string;clientId:string;clientSecret:string;ldapUrl:string;baseDn:string;bindDn:string;bindPassword:string;caCertificate:string;userFilter:string;useTls:boolean;schedule:string;syncDisabled:boolean;syncLicenses:boolean;groupMapping:string;departmentAttribute:string;emailAttribute:string;employeeCodeAttribute:string;usernameAttribute:string;lastSync:string;lastTestAt?:string;lastTestOk?:boolean;lastTestMessage?:string;lastLicenseSyncAt?:string;lastLicenseSyncStatus?:string;lastLicenseSyncMessage?:string;hasSecret?:boolean}
-const defaultDirectorySettings:DirectorySettings={provider:'m365',enabled:false,tenantId:'',clientId:'',clientSecret:'',ldapUrl:'ldaps://ad.company.local:636',baseDn:'DC=company,DC=local',bindDn:'CN=svc_assetflow,OU=Service Accounts,DC=company,DC=local',bindPassword:'',caCertificate:'',userFilter:'(&(objectCategory=person)(objectClass=user))',useTls:true,schedule:'EVERY_6_HOURS',syncDisabled:false,syncLicenses:false,groupMapping:'IT-Asset-Admins = ADMIN\nIT-Asset-Team = IT\nHR-Team = HCNS',departmentAttribute:'department',emailAttribute:'mail',employeeCodeAttribute:'employeeID',usernameAttribute:'sAMAccountName',lastSync:''}
-
-function DirectoryConfigurationPreview(){
-  const [form,setForm]=useState<DirectorySettings>(()=>{try{return {...defaultDirectorySettings,...JSON.parse(localStorage.getItem('assetflow-directory-settings')||'{}')}}catch{return defaultDirectorySettings}})
-  const [testing,setTesting]=useState(false),[message,setMessage]=useState('')
-  const update=<K extends keyof DirectorySettings>(key:K,value:DirectorySettings[K])=>setForm(current=>({...current,[key]:value}))
-  const valid=form.provider==='m365'?Boolean(form.tenantId&&form.clientId&&form.clientSecret):Boolean(form.ldapUrl&&form.baseDn&&form.bindDn&&form.bindPassword)
-  const save=(e:React.FormEvent)=>{e.preventDefault();const safe={...form,clientSecret:'',bindPassword:''};localStorage.setItem('assetflow-directory-settings',JSON.stringify(safe));setMessage('Đã lưu cấu hình không nhạy cảm. Secret/mật khẩu không được lưu trong trình duyệt và phải chuyển tới secret store qua backend.')}
-  const test=()=>{setTesting(true);setMessage('');window.setTimeout(()=>{setTesting(false);setMessage(valid?'Cấu hình bắt buộc đã đầy đủ. Backend sẽ thực hiện kết nối thật và xác minh quyền đọc người dùng.':'Chưa đủ thông tin bắt buộc để kiểm tra kết nối.')},650)}
-  return <main className="page directory-settings"><section className="page-heading"><div><h1>Danh tính & đồng bộ người dùng</h1><p>Kết nối Microsoft 365/Entra ID hoặc LDAP/Active Directory để đồng bộ hồ sơ, phòng ban và phạm vi phân quyền.</p></div><span className={`directory-state ${form.enabled?'enabled':'disabled'}`}>{form.enabled?'Đang bật':'Đang tắt'}</span></section><section className="directory-layout"><aside className="card directory-providers"><button className={form.provider==='m365'?'active':''} onClick={()=>update('provider','m365')}><Cloud size={19}/><span><b>Microsoft 365</b><small>Microsoft Graph · Entra ID</small></span><ChevronRight size={16}/></button><button className={form.provider==='ldap'?'active':''} onClick={()=>update('provider','ldap')}><Server size={19}/><span><b>LDAP / Active Directory</b><small>LDAPS hoặc StartTLS</small></span><ChevronRight size={16}/></button><div className="directory-security"><ShieldCheck size={18}/><p><b>Nguyên tắc bảo mật</b>Client secret và mật khẩu bind không được trả về trình duyệt sau khi lưu. Bản production phải giữ chúng trong secret store phía server.</p></div></aside><form className="card directory-form" onSubmit={save}><div className="settings-head"><div><h2>{form.provider==='m365'?'Kết nối Microsoft 365 / Entra ID':'Kết nối LDAP / Active Directory'}</h2><p>{form.provider==='m365'?'Sử dụng ứng dụng Entra ID với quyền Microsoft Graph User.Read.All và GroupMember.Read.All.':'Tài khoản dịch vụ chỉ cần quyền đọc OU và thuộc tính người dùng được chọn.'}</p></div><label className="switch-field"><input type="checkbox" checked={form.enabled} onChange={e=>update('enabled',e.target.checked)}/><span/>Bật đồng bộ</label></div><div className="directory-fields">{form.provider==='m365'?<><label>Tenant ID <input required value={form.tenantId} onChange={e=>update('tenantId',e.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"/></label><label>Client ID <input required value={form.clientId} onChange={e=>update('clientId',e.target.value)} placeholder="Application (client) ID"/></label><label className="span-2">Client secret <input required type="password" value={form.clientSecret} onChange={e=>update('clientSecret',e.target.value)} placeholder="Nhập secret mới hoặc giữ nguyên giá trị đã cấu hình"/></label></>:<><label className="span-2">LDAP URL <input required value={form.ldapUrl} onChange={e=>update('ldapUrl',e.target.value)} placeholder="ldaps://ad.company.local:636"/></label><label className="span-2">Base DN <input required value={form.baseDn} onChange={e=>update('baseDn',e.target.value)} placeholder="DC=company,DC=local"/></label><label>Bind DN / Tài khoản dịch vụ <input required value={form.bindDn} onChange={e=>update('bindDn',e.target.value)}/></label><label>Mật khẩu bind <input required type="password" value={form.bindPassword} onChange={e=>update('bindPassword',e.target.value)}/></label><label className="span-2">User filter <input value={form.userFilter} onChange={e=>update('userFilter',e.target.value)}/></label><label className="checkbox-label span-2"><input type="checkbox" checked={form.useTls} onChange={e=>update('useTls',e.target.checked)}/>Bắt buộc TLS và xác minh chứng chỉ máy chủ</label></>}<h3 className="form-section span-2">Ánh xạ và lịch đồng bộ</h3><label>Thuộc tính phòng ban <input value={form.departmentAttribute} onChange={e=>update('departmentAttribute',e.target.value)}/></label><label>Thuộc tính email <input value={form.emailAttribute} onChange={e=>update('emailAttribute',e.target.value)}/></label><label>Mã nhân viên <input value={form.employeeCodeAttribute} onChange={e=>update('employeeCodeAttribute',e.target.value)}/></label><label>Lịch đồng bộ <select value={form.schedule} onChange={e=>update('schedule',e.target.value)}>{['Thủ công','Mỗi giờ','Mỗi 6 giờ','Mỗi 12 giờ','Hằng ngày 02:00'].map(x=><option key={x}>{x}</option>)}</select></label><label className="span-2">Ánh xạ nhóm sang vai trò <textarea value={form.groupMapping} onChange={e=>update('groupMapping',e.target.value)} rows={3}/><small>Mỗi dòng: Tên nhóm = Admin | IT | HCNS</small></label><label className="checkbox-label span-2"><input type="checkbox" checked={form.syncDisabled} onChange={e=>update('syncDisabled',e.target.checked)}/>Đồng bộ cả tài khoản đã vô hiệu hóa để phục vụ lịch sử kiểm toán</label></div>{message&&<div className={`directory-message ${valid?'info':'error'}`}><AlertTriangle size={16}/>{message}</div>}<div className="directory-audit"><div><small>Lần đồng bộ gần nhất</small><b>{form.lastSync||'Chưa từng đồng bộ'}</b></div><div><small>Quy tắc cập nhật</small><b>Không xóa lịch sử · Khóa tài khoản không còn hiệu lực</b></div></div><div className="modal-actions"><button type="button" className="btn secondary" onClick={test} disabled={testing}>{testing?'Đang kiểm tra...':'Kiểm tra kết nối'}</button><button className="btn primary"><Check size={17}/>Lưu cấu hình</button></div></form></section></main>
+type DirectoryProvider = 'm365' | 'ldap'
+interface DirectorySettings {
+  provider: DirectoryProvider
+  enabled: boolean
+  tenantId: string
+  clientId: string
+  clientSecret: string
+  ldapUrl: string
+  baseDn: string
+  bindDn: string
+  bindPassword: string
+  caCertificate: string
+  userFilter: string
+  useTls: boolean
+  schedule: string
+  syncDisabled: boolean
+  syncLicenses: boolean
+  groupMapping: string
+  departmentAttribute: string
+  emailAttribute: string
+  employeeCodeAttribute: string
+  usernameAttribute: string
+  lastSync: string
+  lastTestAt?: string
+  lastTestOk?: boolean
+  lastTestMessage?: string
+  lastLicenseSyncAt?: string
+  lastLicenseSyncStatus?: string
+  lastLicenseSyncMessage?: string
+  hasSecret?: boolean
+}
+const defaultDirectorySettings: DirectorySettings = {
+  provider: 'm365',
+  enabled: false,
+  tenantId: '',
+  clientId: '',
+  clientSecret: '',
+  ldapUrl: 'ldaps://ad.company.local:636',
+  baseDn: 'DC=company,DC=local',
+  bindDn: 'CN=svc_assetflow,OU=Service Accounts,DC=company,DC=local',
+  bindPassword: '',
+  caCertificate: '',
+  userFilter: '(&(objectCategory=person)(objectClass=user))',
+  useTls: true,
+  schedule: 'EVERY_6_HOURS',
+  syncDisabled: false,
+  syncLicenses: false,
+  groupMapping: 'IT-Asset-Admins = ADMIN\nIT-Asset-Team = IT\nHR-Team = HCNS',
+  departmentAttribute: 'department',
+  emailAttribute: 'mail',
+  employeeCodeAttribute: 'employeeID',
+  usernameAttribute: 'sAMAccountName',
+  lastSync: '',
 }
 
-interface DirectorySyncRun {id:string;status:'RUNNING'|'SUCCESS'|'FAILED';startedAt:string;finishedAt?:string;discovered:number;created:number;updated:number;disabled:number;skipped:number;errorMessage?:string;triggeredBy?:string;configuration:{provider:'M365'|'LDAP'}}
-const providerCode=(provider:DirectoryProvider)=>provider==='m365'?'M365':'LDAP'
-const freshDirectoryForm=(provider:DirectoryProvider):DirectorySettings=>({...defaultDirectorySettings,provider,clientSecret:'',bindPassword:''})
-
-function DirectorySyncConfiguration(){
-  const [provider,setProvider]=useState<DirectoryProvider>('m365')
-  const [forms,setForms]=useState<Record<DirectoryProvider,DirectorySettings>>({m365:freshDirectoryForm('m365'),ldap:freshDirectoryForm('ldap')})
-  const [runs,setRuns]=useState<DirectorySyncRun[]>([]),[loading,setLoading]=useState(true),[working,setWorking]=useState(''),[message,setMessage]=useState(''),[error,setError]=useState(false)
-  const form=forms[provider]
-  const update=<K extends keyof DirectorySettings>(key:K,value:DirectorySettings[K])=>setForms(current=>({...current,[provider]:{...current[provider],[key]:value}}))
-  const mergeConfig=(raw:any)=>{const key:DirectoryProvider=raw.provider==='M365'?'m365':'ldap';setForms(current=>({...current,[key]:{...current[key],...raw,provider:key,clientSecret:'',bindPassword:'',lastSync:raw.lastSyncAt||''}}))}
-  const load=async()=>{setLoading(true);try{const [configs,history]=await Promise.all([api.get<{data:any[]}>('/directory/configs'),api.get<{data:DirectorySyncRun[]}>('/directory/runs?limit=10')]);configs.data.forEach(mergeConfig);setRuns(history.data);setError(false)}catch(e:any){setError(true);setMessage(e?.message||'Không thể tải cấu hình đồng bộ từ API.')}finally{setLoading(false)}}
-  useEffect(()=>{void load()},[])
-  const payload=()=>({enabled:form.enabled,tenantId:form.tenantId,clientId:form.clientId,secret:provider==='m365'?form.clientSecret:form.bindPassword,ldapUrl:form.ldapUrl,baseDn:form.baseDn,bindDn:form.bindDn,caCertificate:form.caCertificate,userFilter:form.userFilter,useTls:form.useTls,schedule:form.schedule,syncDisabled:form.syncDisabled,syncLicenses:form.syncLicenses,groupMapping:form.groupMapping,departmentAttribute:form.departmentAttribute,emailAttribute:form.emailAttribute,employeeCodeAttribute:form.employeeCodeAttribute,usernameAttribute:form.usernameAttribute})
-  const save=async(silent=false)=>{const result=await api.put<{data:any}>(`/directory/configs/${providerCode(provider)}`,payload());mergeConfig(result.data);if(!silent){setError(false);setMessage('Đã lưu cấu hình an toàn trên server. Secret được mã hóa và không trả lại trình duyệt.')}return result}
-  const submit=async(e:React.FormEvent)=>{e.preventDefault();setWorking('save');try{await save()}catch(e:any){setError(true);setMessage(e?.message||'Không thể lưu cấu hình.')}finally{setWorking('')}}
-  const test=async()=>{setWorking('test');try{await save(true);const result=await api.post<{ok:boolean;message:string}>(`/directory/configs/${providerCode(provider)}/test`);setError(false);setMessage(result.message);await load()}catch(e:any){setError(true);setMessage(e?.message||'Kiểm tra kết nối thất bại.')}finally{setWorking('')}}
-  const sync=async()=>{setWorking('sync');try{await save(true);const result=await api.post<{data:DirectorySyncRun}>(`/directory/configs/${providerCode(provider)}/sync`);setError(false);setMessage(`Đồng bộ hoàn tất: ${result.data.discovered} phát hiện, ${result.data.created} tạo mới, ${result.data.updated} cập nhật, ${result.data.skipped} bỏ qua.`);await load()}catch(e:any){setError(true);setMessage(e?.message||'Đồng bộ thất bại.')}finally{setWorking('')}}
-  const syncLicenses=async()=>{setWorking('licenses');try{await save(true);const result=await api.post<{message:string}>('/directory/configs/m365/sync-licenses');setError(false);setMessage(result.message);await load()}catch(e:any){setError(true);setMessage(e?.message||'Đồng bộ license Microsoft 365 thất bại.')}finally{setWorking('')}}
-  const scheduleOptions=[['MANUAL','Thủ công'],['HOURLY','Mỗi giờ'],['EVERY_6_HOURS','Mỗi 6 giờ'],['EVERY_12_HOURS','Mỗi 12 giờ'],['DAILY_02','Hằng ngày 02:00']]
-  if(loading)return <main className="page directory-settings"><section className="card"><p>Đang tải cấu hình đồng bộ…</p></section></main>
-  return <main className="page directory-settings"><section className="page-heading"><div><h1>Danh tính & đồng bộ người dùng</h1><p>Kết nối thật Microsoft 365/Entra ID hoặc LDAP/Active Directory; cấu hình và secret được xử lý tại backend.</p></div><span className={`directory-state ${form.enabled?'enabled':'disabled'}`}>{form.enabled?'Đang bật':'Đang tắt'}</span></section><section className="directory-layout"><aside className="card directory-providers"><button type="button" className={provider==='m365'?'active':''} onClick={()=>{setProvider('m365');setMessage('')}}><Cloud size={19}/><span><b>Microsoft 365</b><small>Microsoft Graph · Entra ID</small></span><ChevronRight size={16}/></button><button type="button" className={provider==='ldap'?'active':''} onClick={()=>{setProvider('ldap');setMessage('')}}><Server size={19}/><span><b>LDAP / Active Directory</b><small>LDAPS hoặc StartTLS</small></span><ChevronRight size={16}/></button><div className="directory-security"><ShieldCheck size={18}/><p><b>Bảo mật secret</b>Secret được mã hóa AES-256-GCM trong PostgreSQL. Giá trị đã lưu không bao giờ được gửi lại trình duyệt.</p></div></aside><form className="card directory-form" onSubmit={submit}><div className="settings-head"><div><h2>{provider==='m365'?'Microsoft 365 / Entra ID':'LDAP / Active Directory'}</h2><p>{provider==='m365'?'App-only Microsoft Graph: User.Read.All và GroupMember.Read.All.':'Dùng tài khoản dịch vụ chỉ đọc; bắt buộc LDAPS hoặc StartTLS.'}</p></div><label className="switch-field"><input type="checkbox" checked={form.enabled} onChange={e=>update('enabled',e.target.checked)}/><span/>Bật lịch đồng bộ</label></div><div className="directory-fields">{provider==='m365'?<><label>Tenant ID<input required value={form.tenantId} onChange={e=>update('tenantId',e.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"/></label><label>Client ID<input required value={form.clientId} onChange={e=>update('clientId',e.target.value)} placeholder="Application (client) ID"/></label><label className="span-2">Client secret<input required={!form.hasSecret} type="password" autoComplete="new-password" value={form.clientSecret} onChange={e=>update('clientSecret',e.target.value)} placeholder={form.hasSecret?'Đã cấu hình · để trống nếu không thay đổi':'Nhập client secret'}/></label></>:<><label className="span-2">LDAP URL<input required value={form.ldapUrl} onChange={e=>update('ldapUrl',e.target.value)} placeholder="ldaps://ad.company.local:636"/></label><label className="span-2">Base DN<input required value={form.baseDn} onChange={e=>update('baseDn',e.target.value)} placeholder="DC=company,DC=local"/></label><label>Bind DN / tài khoản dịch vụ<input required value={form.bindDn} onChange={e=>update('bindDn',e.target.value)}/></label><label>Mật khẩu bind<input required={!form.hasSecret} type="password" autoComplete="new-password" value={form.bindPassword} onChange={e=>update('bindPassword',e.target.value)} placeholder={form.hasSecret?'Đã cấu hình · để trống nếu không thay đổi':'Nhập mật khẩu bind'}/></label><label className="span-2">User filter<input required value={form.userFilter} onChange={e=>update('userFilter',e.target.value)}/></label><label className="span-2">CA certificate PEM (nếu dùng CA nội bộ)<textarea rows={4} value={form.caCertificate} onChange={e=>update('caCertificate',e.target.value)} placeholder="-----BEGIN CERTIFICATE-----"/></label><label className="checkbox-label span-2"><input type="checkbox" checked={form.useTls} onChange={e=>update('useTls',e.target.checked)}/>Bắt buộc StartTLS khi URL dùng ldap://</label></>}<h3 className="form-section span-2">Ánh xạ và lịch đồng bộ</h3><label>Thuộc tính phòng ban<input value={form.departmentAttribute} onChange={e=>update('departmentAttribute',e.target.value)}/></label><label>Thuộc tính email<input value={form.emailAttribute} onChange={e=>update('emailAttribute',e.target.value)}/></label><label>Mã nhân viên<input value={form.employeeCodeAttribute} onChange={e=>update('employeeCodeAttribute',e.target.value)}/></label><label>Tên đăng nhập<input value={form.usernameAttribute} onChange={e=>update('usernameAttribute',e.target.value)}/></label><label>Lịch đồng bộ<select value={form.schedule} onChange={e=>update('schedule',e.target.value)}>{scheduleOptions.map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label><label className="checkbox-label"><input type="checkbox" checked={form.syncDisabled} onChange={e=>update('syncDisabled',e.target.checked)}/>Lưu cả tài khoản bị vô hiệu hóa</label><label className="span-2">Ánh xạ nhóm sang vai trò<textarea value={form.groupMapping} onChange={e=>update('groupMapping',e.target.value)} rows={4}/><small>Mỗi dòng: Tên nhóm = ADMIN | IT | HCNS | USER</small></label></div>{message&&<div className={`directory-message ${error?'error':'info'}`}><AlertTriangle size={16}/>{message}</div>}<div className="directory-audit"><div><small>Lần kiểm tra gần nhất</small><b>{form.lastTestAt?`${new Date(form.lastTestAt).toLocaleString('vi-VN')} · ${form.lastTestOk?'Thành công':'Thất bại'}`:'Chưa kiểm tra'}</b></div><div><small>Lần đồng bộ gần nhất</small><b>{form.lastSync?new Date(form.lastSync).toLocaleString('vi-VN'):'Chưa từng đồng bộ'}</b></div></div><div className="modal-actions"><button type="button" className="btn secondary" disabled={Boolean(working)} onClick={test}>{working==='test'?'Đang kết nối...':'Lưu & kiểm tra kết nối'}</button><button type="button" className="btn secondary" disabled={Boolean(working)} onClick={sync}>{working==='sync'?'Đang đồng bộ...':'Đồng bộ ngay'}</button><button className="btn primary" disabled={Boolean(working)}><Check size={17}/>{working==='save'?'Đang lưu...':'Lưu cấu hình'}</button></div></form></section><section className="card directory-sync-history"><div className="enterprise-table-title"><div><h2>Lịch sử đồng bộ</h2><span>{runs.length} lần gần nhất</span></div></div><div className="table-scroll"><table><thead><tr><th>NGUỒN</th><th>BẮT ĐẦU</th><th>TRẠNG THÁI</th><th>PHÁT HIỆN</th><th>TẠO</th><th>CẬP NHẬT</th><th>VÔ HIỆU</th><th>BỎ QUA</th></tr></thead><tbody>{runs.map(run=><tr key={run.id}><td>{run.configuration.provider}</td><td>{new Date(run.startedAt).toLocaleString('vi-VN')}</td><td><span className={`enterprise-status ${run.status==='SUCCESS'?'using':run.status==='FAILED'?'broken':'maintenance'}`}>{run.status}</span></td><td>{run.discovered}</td><td>{run.created}</td><td>{run.updated}</td><td>{run.disabled}</td><td title={run.errorMessage||''}>{run.skipped}</td></tr>)}</tbody></table></div>{!runs.length&&<div className="enterprise-empty">Chưa có lần đồng bộ nào.</div>}</section></main>
+interface DirectorySyncRun {
+  id: string
+  status: 'RUNNING' | 'SUCCESS' | 'FAILED'
+  startedAt: string
+  finishedAt?: string
+  discovered: number
+  created: number
+  updated: number
+  disabled: number
+  skipped: number
+  errorMessage?: string
+  triggeredBy?: string
+  configuration: { provider: 'M365' | 'LDAP' }
 }
+const providerCode = (provider: DirectoryProvider) => (provider === 'm365' ? 'M365' : 'LDAP')
+const freshDirectoryForm = (provider: DirectoryProvider): DirectorySettings => ({
+  ...defaultDirectorySettings,
+  provider,
+  clientSecret: '',
+  bindPassword: '',
+})
 
-interface ManagedUser {id:string;employeeCode:string;username:string;fullName:string;email:string;phone?:string;role:'ADMIN'|'IT'|'HCNS'|'USER';authSource:'LOCAL'|'LDAP'|'ENTRA_ID';mustChangePassword:boolean;lastLoginAt?:string;departmentId?:string;status:'ACTIVE'|'INACTIVE';department?:{id:string;code:string;name:string}}
-interface ReferenceDepartment {id:string;code:string;name:string}
-interface AssetPerson {id:string;employeeCode:string;fullName:string;email?:string;phone?:string;jobTitle?:string;departmentId:string;source:'LOCAL'|'LDAP'|'ENTRA_ID';status:'ACTIVE'|'INACTIVE';department:{id:string;code:string;name:string};linkedUser?:{id:string;username:string;role:string}}
-const demoManagedUsersKey='assetflow-demo-managed-users'
-const demoPeopleKey='assetflow-demo-people'
-const referenceDepartments=(items:Department[]):ReferenceDepartment[]=>items.map(item=>({id:String(item.id),code:item.code,name:item.name}))
-const readDemoRecords=<T,>(key:string):T[]=>{try{const value=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(value)?value:[]}catch{return []}}
-const saveDemoRecords=<T,>(key:string,items:T[])=>localStorage.setItem(key,JSON.stringify(items))
-
-function PeopleManagement({catalogDepartments}:{catalogDepartments:Department[]}){
-  const [people,setPeople]=useState<AssetPerson[]>([]),[departments,setDepartments]=useState<ReferenceDepartment[]>([])
-  const [showForm,setShowForm]=useState(false),[loading,setLoading]=useState(true),[working,setWorking]=useState(false),[message,setMessage]=useState(''),[search,setSearch]=useState('')
-  const load=async()=>{setLoading(true);if(env.demoMode){setPeople(readDemoRecords<AssetPerson>(demoPeopleKey));setDepartments(referenceDepartments(catalogDepartments));setMessage('');setLoading(false);return}try{const [peopleResult,departmentResult]=await Promise.all([api.get<ApiCollectionResponse<AssetPerson>>('/admin/people?limit=200'),api.get<ApiCollectionResponse<ReferenceDepartment>>('/departments')]);setPeople(readApiCollection(peopleResult));setDepartments(readApiCollection(departmentResult));setMessage('')}catch(error:any){setMessage(error?.message||'Không thể tải danh bạ người nhận tài sản.')}finally{setLoading(false)}}
-  useEffect(()=>{void load()},[catalogDepartments])
-  const visible=people.filter(person=>normalizeSearchText([person.employeeCode,person.fullName,person.email,person.phone,person.jobTitle,person.department?.name].join(' ')).includes(normalizeSearchText(search)))
-  const submit=async(event:React.FormEvent<HTMLFormElement>)=>{event.preventDefault();setWorking(true);const form=event.currentTarget,data=new FormData(form),departmentId=String(data.get('departmentId'));try{if(env.demoMode){const department=departments.find(item=>item.id===departmentId);if(!department)throw new Error('Phòng ban không tồn tại hoặc đã ngừng hoạt động.');const created:AssetPerson={id:`demo-person-${Date.now()}`,employeeCode:String(data.get('employeeCode')),fullName:String(data.get('fullName')),email:String(data.get('email')||''),phone:String(data.get('phone')||''),jobTitle:String(data.get('jobTitle')||''),departmentId,department,source:'LOCAL',status:'ACTIVE'};setPeople(items=>{const next=[created,...items];saveDemoRecords(demoPeopleKey,next);return next})}else await api.post('/admin/people',{employeeCode:String(data.get('employeeCode')),fullName:String(data.get('fullName')),email:String(data.get('email')||''),phone:String(data.get('phone')||''),jobTitle:String(data.get('jobTitle')||''),departmentId});form.reset();setShowForm(false);if(!env.demoMode)await load()}catch(error:any){setMessage(error?.message||'Không thể thêm người nhận tài sản.')}finally{setWorking(false)}}
-  const deactivate=async(person:AssetPerson)=>{if(!window.confirm(`Ngừng sử dụng hồ sơ ${person.fullName}?`))return;try{if(env.demoMode){setPeople(items=>{const next=items.map(item=>item.id===person.id?{...item,status:'INACTIVE' as const}:item);saveDemoRecords(demoPeopleKey,next);return next})}else{await api.patch(`/admin/people/${person.id}`,{status:'INACTIVE'});await load()}}catch(error:any){setMessage(error?.message||'Không thể vô hiệu hóa. Hãy thu hồi tài sản đang cấp phát trước.')}}
-  return <main className="page user-management"><section className="page-heading"><div><h1>Danh bạ người nhận tài sản</h1><p>Nhân viên và đối tượng có thể được cấp phát hoặc cho mượn tài sản; không bắt buộc có tài khoản đăng nhập.</p></div><button className="btn primary" onClick={()=>setShowForm(value=>!value)}><UserPlus size={17}/>Thêm nhân sự</button></section>
-    {message&&<div className="directory-message info">{message}</div>}
-    {showForm&&<form className="card manual-user-form" onSubmit={submit}><div className="settings-head"><div><h2>Thêm người nhận tài sản</h2><p>Hồ sơ này chỉ dùng cho nghiệp vụ cấp phát, không tạo quyền đăng nhập.</p></div><button type="button" className="more-action" onClick={()=>setShowForm(false)}><X size={17}/></button></div><div className="directory-fields"><label>Họ và tên *<input name="fullName" required minLength={2} maxLength={150}/></label><label>Mã nhân viên *<input name="employeeCode" required pattern="[A-Za-z0-9._-]{2,50}"/></label><label>Email<input name="email" type="email" maxLength={255}/></label><label>Số điện thoại<input name="phone" maxLength={30}/></label><label>Chức danh<input name="jobTitle" maxLength={150}/></label><label>Phòng ban *<select name="departmentId" required defaultValue="" disabled={loading||!departments.length}><option value="" disabled>{loading?'Đang tải phòng ban...':departments.length?'Chọn phòng ban':'Chưa có phòng ban hoạt động'}</option>{departments.map(item=><option key={item.id} value={item.id}>{item.name} ({item.code})</option>)}</select></label></div><div className="modal-actions"><button type="button" className="btn secondary" onClick={()=>setShowForm(false)}>Hủy</button><button className="btn primary" disabled={working||loading||!departments.length}><Check size={17}/>{working?'Đang lưu...':'Lưu nhân sự'}</button></div></form>}
-    <section className="card enterprise-table user-table"><div className="enterprise-table-title"><div><h2>Người có thể nhận tài sản</h2><span>{people.length} hồ sơ</span></div><label className="user-search"><Search size={15}/><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Tìm họ tên, mã NV, email, phòng ban..."/></label></div><div className="table-scroll"><table><thead><tr><th>MÃ NV</th><th>HỌ VÀ TÊN</th><th>LIÊN HỆ</th><th>CHỨC DANH</th><th>PHÒNG BAN</th><th>NGUỒN</th><th>ĐĂNG NHẬP</th><th>THAO TÁC</th></tr></thead><tbody>{visible.map(person=><tr key={person.id}><td>{person.employeeCode}</td><td><b>{person.fullName}</b></td><td>{person.email||'—'}<small>{person.phone||''}</small></td><td>{person.jobTitle||'—'}</td><td>{person.department?.name}</td><td><span className="enterprise-status ready">{person.source==='ENTRA_ID'?'Microsoft 365':person.source}</span></td><td>{person.linkedUser?<span className="enterprise-status using">Có · {person.linkedUser.username}</span>:<span className="muted">Không</span>}</td><td>{person.source==='LOCAL'&&person.status==='ACTIVE'?<button className="btn secondary" onClick={()=>deactivate(person)}>Vô hiệu hóa</button>:<span className="muted">Directory quản lý</span>}</td></tr>)}</tbody></table></div>{loading&&<div className="enterprise-empty">Đang tải danh bạ…</div>}{!loading&&!visible.length&&<div className="enterprise-empty">Không tìm thấy hồ sơ phù hợp.</div>}</section>
-  </main>
-}
-
-function UserManagement({catalogDepartments}:{catalogDepartments:Department[]}){
-  const [users,setUsers]=useState<ManagedUser[]>([]),[departments,setDepartments]=useState<ReferenceDepartment[]>([])
-  const [loading,setLoading]=useState(true),[showForm,setShowForm]=useState(false),[working,setWorking]=useState(false),[message,setMessage]=useState(''),[search,setSearch]=useState('')
-  const load=async()=>{setLoading(true);if(env.demoMode){setUsers(readDemoRecords<ManagedUser>(demoManagedUsersKey));setDepartments(referenceDepartments(catalogDepartments));setMessage('');setLoading(false);return}try{const [userResult,departmentResult]=await Promise.all([api.get<ApiCollectionResponse<ManagedUser>>('/admin/users?limit=200'),api.get<ApiCollectionResponse<ReferenceDepartment>>('/departments')]);setUsers(readApiCollection(userResult));setDepartments(readApiCollection(departmentResult));setMessage('')}catch(error:any){setMessage(error?.message||'Không thể tải danh sách người dùng.')}finally{setLoading(false)}}
-  useEffect(()=>{void load()},[catalogDepartments])
-  const visible=users.filter(user=>normalizeSearchText([user.fullName,user.employeeCode,user.username,user.email,user.department?.name,user.role,user.authSource].join(' ')).includes(normalizeSearchText(search)))
-  const submit=async(event:React.FormEvent<HTMLFormElement>)=>{event.preventDefault();setWorking(true);setMessage('');const form=event.currentTarget,data=new FormData(form),departmentId=String(data.get('departmentId'));try{if(env.demoMode){const department=departments.find(item=>item.id===departmentId);if(!department)throw new Error('Phòng ban không tồn tại hoặc đã ngừng hoạt động.');const created:ManagedUser={id:`demo-user-${Date.now()}`,fullName:String(data.get('fullName')),employeeCode:String(data.get('employeeCode')),username:String(data.get('username')),email:String(data.get('email')),phone:String(data.get('phone')||''),departmentId,department,role:String(data.get('role')) as ManagedUser['role'],authSource:'LOCAL',mustChangePassword:true,status:'ACTIVE'};setUsers(items=>{const next=[created,...items];saveDemoRecords(demoManagedUsersKey,next);return next})}else await api.post('/admin/users',{fullName:String(data.get('fullName')),employeeCode:String(data.get('employeeCode')),username:String(data.get('username')),email:String(data.get('email')),phone:String(data.get('phone')||''),departmentId,role:String(data.get('role')),temporaryPassword:String(data.get('temporaryPassword'))});form.reset();setShowForm(false);if(!env.demoMode)await load()}catch(error:any){setMessage(error?.message||'Không thể tạo người dùng.')}finally{setWorking(false)}}
-  const deactivate=async(user:ManagedUser)=>{if(!window.confirm(`Vô hiệu hóa tài khoản ${user.username}? Các phiên đang đăng nhập sẽ bị thu hồi.`))return;try{if(env.demoMode){setUsers(items=>{const next=items.map(item=>item.id===user.id?{...item,status:'INACTIVE' as const}:item);saveDemoRecords(demoManagedUsersKey,next);return next})}else{await api.patch(`/admin/users/${user.id}`,{status:'INACTIVE'});await load()}}catch(error:any){setMessage(error?.message||'Không thể vô hiệu hóa tài khoản.')}}
-  const resetPassword=async(user:ManagedUser)=>{const password=window.prompt(`Nhập mật khẩu tạm mới cho ${user.username}. Tối thiểu 8 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt:`);if(!password)return;try{if(!env.demoMode){await api.post(`/admin/users/${user.id}/reset-password`,{temporaryPassword:password});await load()}setMessage('Đã đặt mật khẩu tạm. Người dùng bắt buộc đổi mật khẩu ở lần đăng nhập tiếp theo.')}catch(error:any){setMessage(error?.message||'Không thể đặt lại mật khẩu.')}}
-  return <main className="page user-management"><section className="page-heading"><div><h1>Người dùng hệ thống</h1><p>Thêm tài khoản local hoặc theo dõi tài khoản được đồng bộ từ Microsoft 365 và LDAP.</p></div><button className="btn primary" onClick={()=>setShowForm(value=>!value)}><UserPlus size={17}/>Thêm người dùng</button></section>
-    {message&&<div className="directory-message info">{message}</div>}
-    {showForm&&<form className="card manual-user-form" onSubmit={submit}><div className="settings-head"><div><h2>Tạo tài khoản local</h2><p>Các trường có dấu * là bắt buộc. Tài khoản phải đổi mật khẩu ngay lần đăng nhập đầu tiên.</p></div><button type="button" className="more-action" onClick={()=>setShowForm(false)}><X size={17}/></button></div><div className="directory-fields">
-      <label>Họ và tên *<input name="fullName" required minLength={2} maxLength={150} autoComplete="off"/></label><label>Mã nhân viên *<input name="employeeCode" required pattern="[A-Za-z0-9._-]{2,50}" maxLength={50}/></label>
-      <label>Tên đăng nhập *<input name="username" required pattern="[a-z0-9._-]{3,100}" maxLength={100} autoCapitalize="none"/></label><label>Email *<input name="email" type="email" required maxLength={255}/></label>
-      <label>Phòng ban *<select name="departmentId" required defaultValue="" disabled={loading||!departments.length}><option value="" disabled>{loading?'Đang tải phòng ban...':departments.length?'Chọn phòng ban':'Chưa có phòng ban hoạt động'}</option>{departments.map(item=><option key={item.id} value={item.id}>{item.name} ({item.code})</option>)}</select></label><label>Vai trò *<select name="role" required defaultValue="USER"><option value="USER">Người dùng</option><option value="HCNS">HCNS</option><option value="IT">IT</option><option value="ADMIN">Admin</option></select></label>
-      <label>Số điện thoại<input name="phone" maxLength={30}/></label><label>Mật khẩu tạm *<input name="temporaryPassword" type="password" required minLength={8} maxLength={200} autoComplete="new-password"/><small>Tối thiểu 8 ký tự; có chữ hoa, chữ thường, số và ký tự đặc biệt.</small></label>
-    </div><div className="modal-actions"><button type="button" className="btn secondary" onClick={()=>setShowForm(false)}>Hủy</button><button className="btn primary" disabled={working||loading||!departments.length}><Check size={17}/>{working?'Đang tạo...':'Tạo người dùng'}</button></div></form>}
-    <section className="card enterprise-table user-table"><div className="enterprise-table-title"><div><h2>Danh sách người dùng</h2><span>{users.length} tài khoản</span></div><label className="user-search"><Search size={15}/><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Tìm họ tên, mã NV, email, phòng ban..."/></label></div><div className="table-scroll"><table><thead><tr><th>MÃ NV</th><th>HỌ VÀ TÊN</th><th>TÀI KHOẢN / EMAIL</th><th>PHÒNG BAN</th><th>VAI TRÒ</th><th>NGUỒN</th><th>TRẠNG THÁI</th><th>THAO TÁC</th></tr></thead><tbody>{visible.map(user=><tr key={user.id}><td>{user.employeeCode}</td><td><b>{user.fullName}</b></td><td>{user.username}<small>{user.email}</small></td><td>{user.department?.name||'—'}</td><td>{user.role}</td><td><span className="enterprise-status ready">{user.authSource==='ENTRA_ID'?'Microsoft 365':user.authSource}</span></td><td><span className={`enterprise-status ${user.status==='ACTIVE'?'using':'broken'}`}>{user.status==='ACTIVE'?'Hoạt động':'Vô hiệu'}</span>{user.mustChangePassword&&<small>Phải đổi mật khẩu</small>}</td><td><div className="user-actions">{user.authSource==='LOCAL'?<><button className="btn secondary" onClick={()=>resetPassword(user)}>Đặt lại mật khẩu</button>{user.status==='ACTIVE'&&<button className="btn secondary" onClick={()=>deactivate(user)}>Vô hiệu hóa</button>}</>:<span title="Sửa thông tin tại hệ thống nguồn"><LockKeyhole size={15}/> Directory quản lý</span>}</div></td></tr>)}</tbody></table></div>{loading&&<div className="enterprise-empty">Đang tải người dùng…</div>}{!loading&&!visible.length&&<div className="enterprise-empty">Không tìm thấy người dùng phù hợp.</div>}</section>
-  </main>
-}
-
-function DirectoryConfiguration({departments}:{departments:Department[]}){
-  const [tab,setTab]=useState<'people'|'users'|'sync'>('people')
-  return <div className="identity-settings"><div className="identity-tabs"><button className={tab==='people'?'active':''} onClick={()=>setTab('people')}><UserPlus size={17}/>Người nhận tài sản</button><button className={tab==='users'?'active':''} onClick={()=>setTab('users')}><UserRound size={17}/>Tài khoản hệ thống</button><button className={tab==='sync'?'active':''} onClick={()=>setTab('sync')}><Cloud size={17}/>Đồng bộ Microsoft 365 / LDAP</button></div>{tab==='people'?<PeopleManagement catalogDepartments={departments}/>:tab==='users'?<UserManagement catalogDepartments={departments}/>:<DirectorySyncConfiguration/>}</div>
-}
-
-function RegionalConfiguration({ settings, onSave }: { settings: RegionalSettings; onSave: (value:RegionalSettings) => void }) {
-  const [form,setForm]=useState(settings)
-  useEffect(()=>setForm(settings),[settings])
-  const update=<K extends keyof RegionalSettings>(key:K,value:RegionalSettings[K])=>setForm(current=>({...current,[key]:value}))
-  const changeLanguage=(language:string)=>{const next={...form,language};setForm(next);onSave(next)}
-  const previewParts=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:form.timeFormat==='12h',timeZone:form.timezone}).formatToParts(new Date()).reduce<Record<string,string>>((result,part)=>({...result,[part.type]:part.value}),{})
-  const previewDate=form.dateFormat==='MM/DD/YYYY'?`${previewParts.month}/${previewParts.day}/${previewParts.year}`:form.dateFormat==='YYYY-MM-DD'?`${previewParts.year}-${previewParts.month}-${previewParts.day}`:`${previewParts.day}/${previewParts.month}/${previewParts.year}`
-  const preview=`${previewDate} ${previewParts.hour}:${previewParts.minute}:${previewParts.second}${previewParts.dayPeriod?` ${previewParts.dayPeriod}`:''}`
-  return <main className="page regional-settings"><section className="page-heading"><div><h1>Ngày giờ & ngôn ngữ</h1><p>Thiết lập ngôn ngữ mặc định, múi giờ và cách hiển thị ngày giờ trên toàn hệ thống.</p></div></section><form className="card regional-form" onSubmit={e=>{e.preventDefault();onSave(form);alert('Đã lưu cài đặt khu vực và ngôn ngữ.')}}><div className="settings-head"><div><h2>Cấu hình khu vực</h2><p>Các thay đổi được áp dụng cho tài khoản hiện tại và dùng làm mặc định khi tạo người dùng mới.</p></div><span className="regional-code"><Languages size={16}/>{form.language}</span></div><div className="regional-fields"><label>Ngôn ngữ hiển thị<select value={form.language} onChange={e=>changeLanguage(e.target.value)}>{supportedLanguages.map(([code,label])=><option value={code} key={code}>{label} — {code}</option>)}</select><small>{supportedLanguages.length} ngôn ngữ phổ biến được hỗ trợ. Thay đổi ngôn ngữ được áp dụng ngay.</small></label><label>Múi giờ<select value={form.timezone} onChange={e=>update('timezone',e.target.value)}>{supportedTimezones.map(([code,label])=><option value={code} key={code}>{label} — {code}</option>)}</select></label><label>Định dạng ngày<select value={form.dateFormat} onChange={e=>update('dateFormat',e.target.value as RegionalSettings['dateFormat'])}><option>DD/MM/YYYY</option><option>MM/DD/YYYY</option><option>YYYY-MM-DD</option></select></label><label>Định dạng giờ<select value={form.timeFormat} onChange={e=>update('timeFormat',e.target.value as RegionalSettings['timeFormat'])}><option value="24h">24 giờ (14:30)</option><option value="12h">12 giờ (02:30 PM)</option></select></label><label>Ngày đầu tuần<select value={form.firstDayOfWeek} onChange={e=>update('firstDayOfWeek',e.target.value as RegionalSettings['firstDayOfWeek'])}><option value="monday">Thứ Hai</option><option value="sunday">Chủ Nhật</option></select></label><div className="regional-preview"><Clock3 size={20}/><span><small>Xem trước theo múi giờ đã chọn</small><b>{preview}</b></span></div></div><div className="regional-note"><ShieldCheck size={17}/><span>Thời điểm nghiệp vụ vẫn được lưu theo UTC trong cơ sở dữ liệu. Cài đặt này chỉ thay đổi cách hiển thị, không làm thay đổi dữ liệu audit.</span></div><div className="modal-actions"><button type="button" className="btn secondary" onClick={()=>{setForm(seedRegionalSettings);onSave(seedRegionalSettings)}}>Khôi phục mặc định</button><button className="btn primary"><Check size={17}/>Lưu cấu hình</button></div></form></main>
-}
-
-function AdminSettings({ departments, sites, people, assets, regional, branding, email, onSaveRegional, onSaveBranding, onSaveEmail, saveDepartment, removeDepartment, saveSite, removeSite }: { departments: Department[]; sites: Site[]; people:ApiPerson[]; assets: Asset[]; regional: RegionalSettings; branding:BrandingSettings; email:EmailSettings; onSaveRegional:(value:RegionalSettings)=>void; onSaveBranding:(value:BrandingSettings)=>void; onSaveEmail:(value:EmailSettings)=>void; saveDepartment: (item: Department) => void; removeDepartment: (id: number) => void; saveSite: (item: Site) => void; removeSite: (id: number) => void }) {
-  const [section,setSection]=useState<'catalog'|'directory'|'regional'|'branding'|'email'>('catalog')
-  const [localBranding,setLocalBranding]=useState<BrandingSettings>(branding)
-  const [localEmail,setLocalEmail]=useState<EmailSettings>(email)
-  useEffect(()=>setLocalBranding(branding),[branding])
-  useEffect(()=>setLocalEmail(email),[email])
-  const saveBranding=(value:BrandingSettings)=>{setLocalBranding(value);onSaveBranding(value)}
-  const saveEmail=(value:EmailSettings)=>{setLocalEmail(value);onSaveEmail(value)}
-  const sections=[
-    {id:'catalog' as const,label:'Danh mục hệ thống',desc:'Phòng ban và site',icon:Settings},
-    {id:'directory' as const,label:'Danh tính & người dùng',desc:'Microsoft 365 hoặc LDAP',icon:UserRound},
-    {id:'regional' as const,label:'Ngày giờ & ngôn ngữ',desc:'Múi giờ và định dạng',icon:Languages},
-    {id:'branding' as const,label:'Thương hiệu',desc:'Logo và tên công ty',icon:Palette},
-    {id:'email' as const,label:'Email',desc:'Thông tin gửi biên bản',icon:Mail},
+function DirectorySyncConfiguration() {
+  const [provider, setProvider] = useState<DirectoryProvider>('m365')
+  const [forms, setForms] = useState<Record<DirectoryProvider, DirectorySettings>>({
+    m365: freshDirectoryForm('m365'),
+    ldap: freshDirectoryForm('ldap'),
+  })
+  const [runs, setRuns] = useState<DirectorySyncRun[]>([]),
+    [loading, setLoading] = useState(true),
+    [working, setWorking] = useState(''),
+    [message, setMessage] = useState(''),
+    [error, setError] = useState(false)
+  const form = forms[provider]
+  const update = <K extends keyof DirectorySettings>(key: K, value: DirectorySettings[K]) =>
+    setForms(current => ({ ...current, [provider]: { ...current[provider], [key]: value } }))
+  const mergeConfig = (raw: any) => {
+    const key: DirectoryProvider = raw.provider === 'M365' ? 'm365' : 'ldap'
+    setForms(current => ({
+      ...current,
+      [key]: {
+        ...current[key],
+        ...raw,
+        provider: key,
+        clientSecret: '',
+        bindPassword: '',
+        lastSync: raw.lastSyncAt || '',
+      },
+    }))
+  }
+  const load = async () => {
+    setLoading(true)
+    try {
+      const [configs, history] = await Promise.all([
+        api.get<{ data: any[] }>('/directory/configs'),
+        api.get<{ data: DirectorySyncRun[] }>('/directory/runs?limit=10'),
+      ])
+      configs.data.forEach(mergeConfig)
+      setRuns(history.data)
+      setError(false)
+    } catch (e: any) {
+      setError(true)
+      setMessage(e?.message || 'Không thể tải cấu hình đồng bộ từ API.')
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => {
+    void load()
+  }, [])
+  const payload = () => ({
+    enabled: form.enabled,
+    tenantId: form.tenantId,
+    clientId: form.clientId,
+    secret: provider === 'm365' ? form.clientSecret : form.bindPassword,
+    ldapUrl: form.ldapUrl,
+    baseDn: form.baseDn,
+    bindDn: form.bindDn,
+    caCertificate: form.caCertificate,
+    userFilter: form.userFilter,
+    useTls: form.useTls,
+    schedule: form.schedule,
+    syncDisabled: form.syncDisabled,
+    syncLicenses: form.syncLicenses,
+    groupMapping: form.groupMapping,
+    departmentAttribute: form.departmentAttribute,
+    emailAttribute: form.emailAttribute,
+    employeeCodeAttribute: form.employeeCodeAttribute,
+    usernameAttribute: form.usernameAttribute,
+  })
+  const save = async (silent = false) => {
+    const result = await api.put<{ data: any }>(`/directory/configs/${providerCode(provider)}`, payload())
+    mergeConfig(result.data)
+    if (!silent) {
+      setError(false)
+      setMessage('Đã lưu cấu hình an toàn trên server. Secret được mã hóa và không trả lại trình duyệt.')
+    }
+    return result
+  }
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setWorking('save')
+    try {
+      await save()
+    } catch (e: any) {
+      setError(true)
+      setMessage(e?.message || 'Không thể lưu cấu hình.')
+    } finally {
+      setWorking('')
+    }
+  }
+  const test = async () => {
+    setWorking('test')
+    try {
+      await save(true)
+      const result = await api.post<{ ok: boolean; message: string }>(
+        `/directory/configs/${providerCode(provider)}/test`,
+      )
+      setError(false)
+      setMessage(result.message)
+      await load()
+    } catch (e: any) {
+      setError(true)
+      setMessage(e?.message || 'Kiểm tra kết nối thất bại.')
+    } finally {
+      setWorking('')
+    }
+  }
+  const sync = async () => {
+    setWorking('sync')
+    try {
+      await save(true)
+      const result = await api.post<{ data: DirectorySyncRun }>(`/directory/configs/${providerCode(provider)}/sync`)
+      setError(false)
+      setMessage(
+        `Đồng bộ hoàn tất: ${result.data.discovered} phát hiện, ${result.data.created} tạo mới, ${result.data.updated} cập nhật, ${result.data.skipped} bỏ qua.`,
+      )
+      await load()
+    } catch (e: any) {
+      setError(true)
+      setMessage(e?.message || 'Đồng bộ thất bại.')
+    } finally {
+      setWorking('')
+    }
+  }
+  const syncLicenses = async () => {
+    setWorking('licenses')
+    try {
+      await save(true)
+      const result = await api.post<{ message: string }>('/directory/configs/m365/sync-licenses')
+      setError(false)
+      setMessage(result.message)
+      await load()
+    } catch (e: any) {
+      setError(true)
+      setMessage(e?.message || 'Đồng bộ license Microsoft 365 thất bại.')
+    } finally {
+      setWorking('')
+    }
+  }
+  const scheduleOptions = [
+    ['MANUAL', 'Thủ công'],
+    ['HOURLY', 'Mỗi giờ'],
+    ['EVERY_6_HOURS', 'Mỗi 6 giờ'],
+    ['EVERY_12_HOURS', 'Mỗi 12 giờ'],
+    ['DAILY_02', 'Hằng ngày 02:00'],
   ]
-  return <div className="settings-hub"><aside className="card settings-hub-nav"><div><b>TRUNG TÂM CÀI ĐẶT</b><small>Cấu hình toàn hệ thống</small></div>{sections.map(item=><button className={section===item.id?'active':''} onClick={()=>setSection(item.id)} key={item.id}><item.icon size={19}/><span><b>{item.label}</b><small>{item.desc}</small></span><ChevronRight size={16}/></button>)}</aside><section className="settings-hub-content">{section==='catalog'?<CatalogSettings departments={departments} sites={sites} people={people} assets={assets} saveDepartment={saveDepartment} removeDepartment={removeDepartment} saveSite={saveSite} removeSite={removeSite}/>:section==='directory'?<DirectoryConfiguration departments={departments}/>:section==='regional'?<RegionalConfiguration settings={regional} onSave={onSaveRegional}/>:section==='branding'?<BrandingConfiguration settings={localBranding} onSave={saveBranding}/>:<EmailConfiguration settings={localEmail} onSave={saveEmail}/>}</section></div>
+  if (loading)
+    return (
+      <main className="page directory-settings">
+        <section className="card">
+          <p>Đang tải cấu hình đồng bộ…</p>
+        </section>
+      </main>
+    )
+  return (
+    <main className="page directory-settings">
+      <section className="page-heading">
+        <div>
+          <h1>Danh tính & đồng bộ người dùng</h1>
+          <p>
+            Kết nối thật Microsoft 365/Entra ID hoặc LDAP/Active Directory; cấu hình và secret được xử lý tại backend.
+          </p>
+        </div>
+        <span className={`directory-state ${form.enabled ? 'enabled' : 'disabled'}`}>
+          {form.enabled ? 'Đang bật' : 'Đang tắt'}
+        </span>
+      </section>
+      <section className="directory-layout">
+        <aside className="card directory-providers">
+          <button
+            type="button"
+            className={provider === 'm365' ? 'active' : ''}
+            onClick={() => {
+              setProvider('m365')
+              setMessage('')
+            }}
+          >
+            <Cloud size={19} />
+            <span>
+              <b>Microsoft 365</b>
+              <small>Microsoft Graph · Entra ID</small>
+            </span>
+            <ChevronRight size={16} />
+          </button>
+          <button
+            type="button"
+            className={provider === 'ldap' ? 'active' : ''}
+            onClick={() => {
+              setProvider('ldap')
+              setMessage('')
+            }}
+          >
+            <Server size={19} />
+            <span>
+              <b>LDAP / Active Directory</b>
+              <small>LDAPS hoặc StartTLS</small>
+            </span>
+            <ChevronRight size={16} />
+          </button>
+          <div className="directory-security">
+            <ShieldCheck size={18} />
+            <p>
+              <b>Bảo mật secret</b>Secret được mã hóa AES-256-GCM trong PostgreSQL. Giá trị đã lưu không bao giờ được
+              gửi lại trình duyệt.
+            </p>
+          </div>
+        </aside>
+        <form className="card directory-form" onSubmit={submit}>
+          <div className="settings-head">
+            <div>
+              <h2>{provider === 'm365' ? 'Microsoft 365 / Entra ID' : 'LDAP / Active Directory'}</h2>
+              <p>
+                {provider === 'm365'
+                  ? 'App-only Microsoft Graph: User.Read.All và GroupMember.Read.All.'
+                  : 'Dùng tài khoản dịch vụ chỉ đọc; bắt buộc LDAPS hoặc StartTLS.'}
+              </p>
+            </div>
+            <label className="switch-field">
+              <input type="checkbox" checked={form.enabled} onChange={e => update('enabled', e.target.checked)} />
+              <span />
+              Bật lịch đồng bộ
+            </label>
+          </div>
+          <div className="directory-fields">
+            {provider === 'm365' ? (
+              <>
+                <label>
+                  Tenant ID
+                  <input
+                    required
+                    value={form.tenantId}
+                    onChange={e => update('tenantId', e.target.value)}
+                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  />
+                </label>
+                <label>
+                  Client ID
+                  <input
+                    required
+                    value={form.clientId}
+                    onChange={e => update('clientId', e.target.value)}
+                    placeholder="Application (client) ID"
+                  />
+                </label>
+                <label className="span-2">
+                  Client secret
+                  <input
+                    required={!form.hasSecret}
+                    type="password"
+                    autoComplete="new-password"
+                    value={form.clientSecret}
+                    onChange={e => update('clientSecret', e.target.value)}
+                    placeholder={form.hasSecret ? 'Đã cấu hình · để trống nếu không thay đổi' : 'Nhập client secret'}
+                  />
+                </label>
+              </>
+            ) : (
+              <>
+                <label className="span-2">
+                  LDAP URL
+                  <input
+                    required
+                    value={form.ldapUrl}
+                    onChange={e => update('ldapUrl', e.target.value)}
+                    placeholder="ldaps://ad.company.local:636"
+                  />
+                </label>
+                <label className="span-2">
+                  Base DN
+                  <input
+                    required
+                    value={form.baseDn}
+                    onChange={e => update('baseDn', e.target.value)}
+                    placeholder="DC=company,DC=local"
+                  />
+                </label>
+                <label>
+                  Bind DN / tài khoản dịch vụ
+                  <input required value={form.bindDn} onChange={e => update('bindDn', e.target.value)} />
+                </label>
+                <label>
+                  Mật khẩu bind
+                  <input
+                    required={!form.hasSecret}
+                    type="password"
+                    autoComplete="new-password"
+                    value={form.bindPassword}
+                    onChange={e => update('bindPassword', e.target.value)}
+                    placeholder={form.hasSecret ? 'Đã cấu hình · để trống nếu không thay đổi' : 'Nhập mật khẩu bind'}
+                  />
+                </label>
+                <label className="span-2">
+                  User filter
+                  <input required value={form.userFilter} onChange={e => update('userFilter', e.target.value)} />
+                </label>
+                <label className="span-2">
+                  CA certificate PEM (nếu dùng CA nội bộ)
+                  <textarea
+                    rows={4}
+                    value={form.caCertificate}
+                    onChange={e => update('caCertificate', e.target.value)}
+                    placeholder="-----BEGIN CERTIFICATE-----"
+                  />
+                </label>
+                <label className="checkbox-label span-2">
+                  <input type="checkbox" checked={form.useTls} onChange={e => update('useTls', e.target.checked)} />
+                  Bắt buộc StartTLS khi URL dùng ldap://
+                </label>
+              </>
+            )}
+            <h3 className="form-section span-2">Ánh xạ và lịch đồng bộ</h3>
+            <label>
+              Thuộc tính phòng ban
+              <input value={form.departmentAttribute} onChange={e => update('departmentAttribute', e.target.value)} />
+            </label>
+            <label>
+              Thuộc tính email
+              <input value={form.emailAttribute} onChange={e => update('emailAttribute', e.target.value)} />
+            </label>
+            <label>
+              Mã nhân viên
+              <input
+                value={form.employeeCodeAttribute}
+                onChange={e => update('employeeCodeAttribute', e.target.value)}
+              />
+            </label>
+            <label>
+              Tên đăng nhập
+              <input value={form.usernameAttribute} onChange={e => update('usernameAttribute', e.target.value)} />
+            </label>
+            <label>
+              Lịch đồng bộ
+              <select value={form.schedule} onChange={e => update('schedule', e.target.value)}>
+                {scheduleOptions.map(([value, label]) => (
+                  <option value={value} key={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={form.syncDisabled}
+                onChange={e => update('syncDisabled', e.target.checked)}
+              />
+              Lưu cả tài khoản bị vô hiệu hóa
+            </label>
+            <label className="span-2">
+              Ánh xạ nhóm sang vai trò
+              <textarea value={form.groupMapping} onChange={e => update('groupMapping', e.target.value)} rows={4} />
+              <small>Mỗi dòng: Tên nhóm = ADMIN | IT | HCNS | USER</small>
+            </label>
+          </div>
+          {message && (
+            <div className={`directory-message ${error ? 'error' : 'info'}`}>
+              <AlertTriangle size={16} />
+              {message}
+            </div>
+          )}
+          <div className="directory-audit">
+            <div>
+              <small>Lần kiểm tra gần nhất</small>
+              <b>
+                {form.lastTestAt
+                  ? `${new Date(form.lastTestAt).toLocaleString('vi-VN')} · ${form.lastTestOk ? 'Thành công' : 'Thất bại'}`
+                  : 'Chưa kiểm tra'}
+              </b>
+            </div>
+            <div>
+              <small>Lần đồng bộ gần nhất</small>
+              <b>{form.lastSync ? new Date(form.lastSync).toLocaleString('vi-VN') : 'Chưa từng đồng bộ'}</b>
+            </div>
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn secondary" disabled={Boolean(working)} onClick={test}>
+              {working === 'test' ? 'Đang kết nối...' : 'Lưu & kiểm tra kết nối'}
+            </button>
+            <button type="button" className="btn secondary" disabled={Boolean(working)} onClick={sync}>
+              {working === 'sync' ? 'Đang đồng bộ...' : 'Đồng bộ ngay'}
+            </button>
+            {provider === 'm365' && (
+              <button type="button" className="btn secondary" disabled={Boolean(working)} onClick={syncLicenses}>
+                {working === 'licenses' ? 'Đang đồng bộ license...' : 'Đồng bộ license M365'}
+              </button>
+            )}
+            <button className="btn primary" disabled={Boolean(working)}>
+              <Check size={17} />
+              {working === 'save' ? 'Đang lưu...' : 'Lưu cấu hình'}
+            </button>
+          </div>
+        </form>
+      </section>
+      <section className="card directory-sync-history">
+        <div className="enterprise-table-title">
+          <div>
+            <h2>Lịch sử đồng bộ</h2>
+            <span>{runs.length} lần gần nhất</span>
+          </div>
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>NGUỒN</th>
+                <th>BẮT ĐẦU</th>
+                <th>TRẠNG THÁI</th>
+                <th>PHÁT HIỆN</th>
+                <th>TẠO</th>
+                <th>CẬP NHẬT</th>
+                <th>VÔ HIỆU</th>
+                <th>BỎ QUA</th>
+              </tr>
+            </thead>
+            <tbody>
+              {runs.map(run => (
+                <tr key={run.id}>
+                  <td>{run.configuration.provider}</td>
+                  <td>{new Date(run.startedAt).toLocaleString('vi-VN')}</td>
+                  <td>
+                    <span
+                      className={`enterprise-status ${run.status === 'SUCCESS' ? 'using' : run.status === 'FAILED' ? 'broken' : 'maintenance'}`}
+                    >
+                      {run.status}
+                    </span>
+                  </td>
+                  <td>{run.discovered}</td>
+                  <td>{run.created}</td>
+                  <td>{run.updated}</td>
+                  <td>{run.disabled}</td>
+                  <td title={run.errorMessage || ''}>{run.skipped}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!runs.length && <div className="enterprise-empty">Chưa có lần đồng bộ nào.</div>}
+      </section>
+    </main>
+  )
+}
+
+interface ManagedUser {
+  id: string
+  employeeCode: string
+  username: string
+  fullName: string
+  email: string
+  phone?: string
+  role: 'ADMIN' | 'IT' | 'HCNS' | 'USER'
+  authSource: 'LOCAL' | 'LDAP' | 'ENTRA_ID'
+  mustChangePassword: boolean
+  lastLoginAt?: string
+  departmentId?: string
+  status: 'ACTIVE' | 'INACTIVE'
+  department?: { id: string; code: string; name: string }
+}
+interface ReferenceDepartment {
+  id: string
+  code: string
+  name: string
+}
+interface AssetPerson {
+  id: string
+  employeeCode: string
+  fullName: string
+  email?: string
+  phone?: string
+  jobTitle?: string
+  departmentId: string
+  source: 'LOCAL' | 'LDAP' | 'ENTRA_ID'
+  status: 'ACTIVE' | 'INACTIVE'
+  department: { id: string; code: string; name: string }
+  linkedUser?: { id: string; username: string; role: string }
+}
+const demoManagedUsersKey = 'assetflow-demo-managed-users'
+const demoPeopleKey = 'assetflow-demo-people'
+const referenceDepartments = (items: Department[]): ReferenceDepartment[] =>
+  items.map(item => ({ id: String(item.id), code: item.code, name: item.name }))
+const readDemoRecords = <T,>(key: string): T[] => {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || '[]')
+    return Array.isArray(value) ? value : []
+  } catch {
+    return []
+  }
+}
+const saveDemoRecords = <T,>(key: string, items: T[]) => localStorage.setItem(key, JSON.stringify(items))
+
+function PeopleManagement({ catalogDepartments }: { catalogDepartments: Department[] }) {
+  const [people, setPeople] = useState<AssetPerson[]>([]),
+    [departments, setDepartments] = useState<ReferenceDepartment[]>([])
+  const [showForm, setShowForm] = useState(false),
+    [loading, setLoading] = useState(true),
+    [working, setWorking] = useState(false),
+    [message, setMessage] = useState(''),
+    [search, setSearch] = useState('')
+  const load = async () => {
+    setLoading(true)
+    if (env.demoMode) {
+      setPeople(readDemoRecords<AssetPerson>(demoPeopleKey))
+      setDepartments(referenceDepartments(catalogDepartments))
+      setMessage('')
+      setLoading(false)
+      return
+    }
+    try {
+      const [peopleResult, departmentResult] = await Promise.all([
+        api.get<ApiCollectionResponse<AssetPerson>>('/admin/people?limit=200'),
+        api.get<ApiCollectionResponse<ReferenceDepartment>>('/departments'),
+      ])
+      setPeople(readApiCollection(peopleResult))
+      setDepartments(readApiCollection(departmentResult))
+      setMessage('')
+    } catch (error: any) {
+      setMessage(error?.message || 'Không thể tải danh bạ người nhận tài sản.')
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => {
+    void load()
+  }, [catalogDepartments])
+  const visible = people.filter(person =>
+    normalizeSearchText(
+      [person.employeeCode, person.fullName, person.email, person.phone, person.jobTitle, person.department?.name].join(
+        ' ',
+      ),
+    ).includes(normalizeSearchText(search)),
+  )
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setWorking(true)
+    const form = event.currentTarget,
+      data = new FormData(form),
+      departmentId = String(data.get('departmentId'))
+    try {
+      if (env.demoMode) {
+        const department = departments.find(item => item.id === departmentId)
+        if (!department) throw new Error('Phòng ban không tồn tại hoặc đã ngừng hoạt động.')
+        const created: AssetPerson = {
+          id: `demo-person-${Date.now()}`,
+          employeeCode: String(data.get('employeeCode')),
+          fullName: String(data.get('fullName')),
+          email: String(data.get('email') || ''),
+          phone: String(data.get('phone') || ''),
+          jobTitle: String(data.get('jobTitle') || ''),
+          departmentId,
+          department,
+          source: 'LOCAL',
+          status: 'ACTIVE',
+        }
+        setPeople(items => {
+          const next = [created, ...items]
+          saveDemoRecords(demoPeopleKey, next)
+          return next
+        })
+      } else
+        await api.post('/admin/people', {
+          employeeCode: String(data.get('employeeCode')),
+          fullName: String(data.get('fullName')),
+          email: String(data.get('email') || ''),
+          phone: String(data.get('phone') || ''),
+          jobTitle: String(data.get('jobTitle') || ''),
+          departmentId,
+        })
+      form.reset()
+      setShowForm(false)
+      if (!env.demoMode) await load()
+    } catch (error: any) {
+      setMessage(error?.message || 'Không thể thêm người nhận tài sản.')
+    } finally {
+      setWorking(false)
+    }
+  }
+  const deactivate = async (person: AssetPerson) => {
+    if (!window.confirm(`Ngừng sử dụng hồ sơ ${person.fullName}?`)) return
+    try {
+      if (env.demoMode) {
+        setPeople(items => {
+          const next = items.map(item => (item.id === person.id ? { ...item, status: 'INACTIVE' as const } : item))
+          saveDemoRecords(demoPeopleKey, next)
+          return next
+        })
+      } else {
+        await api.patch(`/admin/people/${person.id}`, { status: 'INACTIVE' })
+        await load()
+      }
+    } catch (error: any) {
+      setMessage(error?.message || 'Không thể vô hiệu hóa. Hãy thu hồi tài sản đang cấp phát trước.')
+    }
+  }
+  return (
+    <main className="page user-management">
+      <section className="page-heading">
+        <div>
+          <h1>Danh bạ người nhận tài sản</h1>
+          <p>
+            Nhân viên và đối tượng có thể được cấp phát hoặc cho mượn tài sản; không bắt buộc có tài khoản đăng nhập.
+          </p>
+        </div>
+        <button className="btn primary" onClick={() => setShowForm(value => !value)}>
+          <UserPlus size={17} />
+          Thêm nhân sự
+        </button>
+      </section>
+      {message && <div className="directory-message info">{message}</div>}
+      {showForm && (
+        <form className="card manual-user-form" onSubmit={submit}>
+          <div className="settings-head">
+            <div>
+              <h2>Thêm người nhận tài sản</h2>
+              <p>Hồ sơ này chỉ dùng cho nghiệp vụ cấp phát, không tạo quyền đăng nhập.</p>
+            </div>
+            <button type="button" className="more-action" onClick={() => setShowForm(false)}>
+              <X size={17} />
+            </button>
+          </div>
+          <div className="directory-fields">
+            <label>
+              Họ và tên *<input name="fullName" required minLength={2} maxLength={150} />
+            </label>
+            <label>
+              Mã nhân viên *<input name="employeeCode" required pattern="[A-Za-z0-9._-]{2,50}" />
+            </label>
+            <label>
+              Email
+              <input name="email" type="email" maxLength={255} />
+            </label>
+            <label>
+              Số điện thoại
+              <input name="phone" maxLength={30} />
+            </label>
+            <label>
+              Chức danh
+              <input name="jobTitle" maxLength={150} />
+            </label>
+            <label>
+              Phòng ban *
+              <select name="departmentId" required defaultValue="" disabled={loading || !departments.length}>
+                <option value="" disabled>
+                  {loading
+                    ? 'Đang tải phòng ban...'
+                    : departments.length
+                      ? 'Chọn phòng ban'
+                      : 'Chưa có phòng ban hoạt động'}
+                </option>
+                {departments.map(item => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} ({item.code})
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn secondary" onClick={() => setShowForm(false)}>
+              Hủy
+            </button>
+            <button className="btn primary" disabled={working || loading || !departments.length}>
+              <Check size={17} />
+              {working ? 'Đang lưu...' : 'Lưu nhân sự'}
+            </button>
+          </div>
+        </form>
+      )}
+      <section className="card enterprise-table user-table">
+        <div className="enterprise-table-title">
+          <div>
+            <h2>Người có thể nhận tài sản</h2>
+            <span>{people.length} hồ sơ</span>
+          </div>
+          <label className="user-search">
+            <Search size={15} />
+            <input
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="Tìm họ tên, mã NV, email, phòng ban..."
+            />
+          </label>
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>MÃ NV</th>
+                <th>HỌ VÀ TÊN</th>
+                <th>LIÊN HỆ</th>
+                <th>CHỨC DANH</th>
+                <th>PHÒNG BAN</th>
+                <th>NGUỒN</th>
+                <th>ĐĂNG NHẬP</th>
+                <th>THAO TÁC</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map(person => (
+                <tr key={person.id}>
+                  <td>{person.employeeCode}</td>
+                  <td>
+                    <b>{person.fullName}</b>
+                  </td>
+                  <td>
+                    {person.email || '—'}
+                    <small>{person.phone || ''}</small>
+                  </td>
+                  <td>{person.jobTitle || '—'}</td>
+                  <td>{person.department?.name}</td>
+                  <td>
+                    <span className="enterprise-status ready">
+                      {person.source === 'ENTRA_ID' ? 'Microsoft 365' : person.source}
+                    </span>
+                  </td>
+                  <td>
+                    {person.linkedUser ? (
+                      <span className="enterprise-status using">Có · {person.linkedUser.username}</span>
+                    ) : (
+                      <span className="muted">Không</span>
+                    )}
+                  </td>
+                  <td>
+                    {person.source === 'LOCAL' && person.status === 'ACTIVE' ? (
+                      <button className="btn secondary" onClick={() => deactivate(person)}>
+                        Vô hiệu hóa
+                      </button>
+                    ) : (
+                      <span className="muted">Directory quản lý</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {loading && <div className="enterprise-empty">Đang tải danh bạ…</div>}
+        {!loading && !visible.length && <div className="enterprise-empty">Không tìm thấy hồ sơ phù hợp.</div>}
+      </section>
+    </main>
+  )
+}
+
+function UserManagement({ catalogDepartments }: { catalogDepartments: Department[] }) {
+  const [users, setUsers] = useState<ManagedUser[]>([]),
+    [departments, setDepartments] = useState<ReferenceDepartment[]>([])
+  const [loading, setLoading] = useState(true),
+    [showForm, setShowForm] = useState(false),
+    [working, setWorking] = useState(false),
+    [message, setMessage] = useState(''),
+    [search, setSearch] = useState('')
+  const load = async () => {
+    setLoading(true)
+    if (env.demoMode) {
+      setUsers(readDemoRecords<ManagedUser>(demoManagedUsersKey))
+      setDepartments(referenceDepartments(catalogDepartments))
+      setMessage('')
+      setLoading(false)
+      return
+    }
+    try {
+      const [userResult, departmentResult] = await Promise.all([
+        api.get<ApiCollectionResponse<ManagedUser>>('/admin/users?limit=200'),
+        api.get<ApiCollectionResponse<ReferenceDepartment>>('/departments'),
+      ])
+      setUsers(readApiCollection(userResult))
+      setDepartments(readApiCollection(departmentResult))
+      setMessage('')
+    } catch (error: any) {
+      setMessage(error?.message || 'Không thể tải danh sách người dùng.')
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => {
+    void load()
+  }, [catalogDepartments])
+  const visible = users.filter(user =>
+    normalizeSearchText(
+      [
+        user.fullName,
+        user.employeeCode,
+        user.username,
+        user.email,
+        user.department?.name,
+        user.role,
+        user.authSource,
+      ].join(' '),
+    ).includes(normalizeSearchText(search)),
+  )
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setWorking(true)
+    setMessage('')
+    const form = event.currentTarget,
+      data = new FormData(form),
+      departmentId = String(data.get('departmentId'))
+    try {
+      if (env.demoMode) {
+        const department = departments.find(item => item.id === departmentId)
+        if (!department) throw new Error('Phòng ban không tồn tại hoặc đã ngừng hoạt động.')
+        const created: ManagedUser = {
+          id: `demo-user-${Date.now()}`,
+          fullName: String(data.get('fullName')),
+          employeeCode: String(data.get('employeeCode')),
+          username: String(data.get('username')),
+          email: String(data.get('email')),
+          phone: String(data.get('phone') || ''),
+          departmentId,
+          department,
+          role: String(data.get('role')) as ManagedUser['role'],
+          authSource: 'LOCAL',
+          mustChangePassword: true,
+          status: 'ACTIVE',
+        }
+        setUsers(items => {
+          const next = [created, ...items]
+          saveDemoRecords(demoManagedUsersKey, next)
+          return next
+        })
+      } else
+        await api.post('/admin/users', {
+          fullName: String(data.get('fullName')),
+          employeeCode: String(data.get('employeeCode')),
+          username: String(data.get('username')),
+          email: String(data.get('email')),
+          phone: String(data.get('phone') || ''),
+          departmentId,
+          role: String(data.get('role')),
+          temporaryPassword: String(data.get('temporaryPassword')),
+        })
+      form.reset()
+      setShowForm(false)
+      if (!env.demoMode) await load()
+    } catch (error: any) {
+      setMessage(error?.message || 'Không thể tạo người dùng.')
+    } finally {
+      setWorking(false)
+    }
+  }
+  const deactivate = async (user: ManagedUser) => {
+    if (!window.confirm(`Vô hiệu hóa tài khoản ${user.username}? Các phiên đang đăng nhập sẽ bị thu hồi.`)) return
+    try {
+      if (env.demoMode) {
+        setUsers(items => {
+          const next = items.map(item => (item.id === user.id ? { ...item, status: 'INACTIVE' as const } : item))
+          saveDemoRecords(demoManagedUsersKey, next)
+          return next
+        })
+      } else {
+        await api.patch(`/admin/users/${user.id}`, { status: 'INACTIVE' })
+        await load()
+      }
+    } catch (error: any) {
+      setMessage(error?.message || 'Không thể vô hiệu hóa tài khoản.')
+    }
+  }
+  const resetPassword = async (user: ManagedUser) => {
+    const password = window.prompt(
+      `Nhập mật khẩu tạm mới cho ${user.username}. Tối thiểu 8 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt:`,
+    )
+    if (!password) return
+    try {
+      if (!env.demoMode) {
+        await api.post(`/admin/users/${user.id}/reset-password`, { temporaryPassword: password })
+        await load()
+      }
+      setMessage('Đã đặt mật khẩu tạm. Người dùng bắt buộc đổi mật khẩu ở lần đăng nhập tiếp theo.')
+    } catch (error: any) {
+      setMessage(error?.message || 'Không thể đặt lại mật khẩu.')
+    }
+  }
+  return (
+    <main className="page user-management">
+      <section className="page-heading">
+        <div>
+          <h1>Người dùng hệ thống</h1>
+          <p>Thêm tài khoản local hoặc theo dõi tài khoản được đồng bộ từ Microsoft 365 và LDAP.</p>
+        </div>
+        <button className="btn primary" onClick={() => setShowForm(value => !value)}>
+          <UserPlus size={17} />
+          Thêm người dùng
+        </button>
+      </section>
+      {message && <div className="directory-message info">{message}</div>}
+      {showForm && (
+        <form className="card manual-user-form" onSubmit={submit}>
+          <div className="settings-head">
+            <div>
+              <h2>Tạo tài khoản local</h2>
+              <p>Các trường có dấu * là bắt buộc. Tài khoản phải đổi mật khẩu ngay lần đăng nhập đầu tiên.</p>
+            </div>
+            <button type="button" className="more-action" onClick={() => setShowForm(false)}>
+              <X size={17} />
+            </button>
+          </div>
+          <div className="directory-fields">
+            <label>
+              Họ và tên *<input name="fullName" required minLength={2} maxLength={150} autoComplete="off" />
+            </label>
+            <label>
+              Mã nhân viên *<input name="employeeCode" required pattern="[A-Za-z0-9._-]{2,50}" maxLength={50} />
+            </label>
+            <label>
+              Tên đăng nhập *
+              <input name="username" required pattern="[a-z0-9._-]{3,100}" maxLength={100} autoCapitalize="none" />
+            </label>
+            <label>
+              Email *<input name="email" type="email" required maxLength={255} />
+            </label>
+            <label>
+              Phòng ban *
+              <select name="departmentId" required defaultValue="" disabled={loading || !departments.length}>
+                <option value="" disabled>
+                  {loading
+                    ? 'Đang tải phòng ban...'
+                    : departments.length
+                      ? 'Chọn phòng ban'
+                      : 'Chưa có phòng ban hoạt động'}
+                </option>
+                {departments.map(item => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} ({item.code})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Vai trò *
+              <select name="role" required defaultValue="USER">
+                <option value="USER">Người dùng</option>
+                <option value="HCNS">HCNS</option>
+                <option value="IT">IT</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </label>
+            <label>
+              Số điện thoại
+              <input name="phone" maxLength={30} />
+            </label>
+            <label>
+              Mật khẩu tạm *
+              <input
+                name="temporaryPassword"
+                type="password"
+                required
+                minLength={8}
+                maxLength={200}
+                autoComplete="new-password"
+              />
+              <small>Tối thiểu 8 ký tự; có chữ hoa, chữ thường, số và ký tự đặc biệt.</small>
+            </label>
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn secondary" onClick={() => setShowForm(false)}>
+              Hủy
+            </button>
+            <button className="btn primary" disabled={working || loading || !departments.length}>
+              <Check size={17} />
+              {working ? 'Đang tạo...' : 'Tạo người dùng'}
+            </button>
+          </div>
+        </form>
+      )}
+      <section className="card enterprise-table user-table">
+        <div className="enterprise-table-title">
+          <div>
+            <h2>Danh sách người dùng</h2>
+            <span>{users.length} tài khoản</span>
+          </div>
+          <label className="user-search">
+            <Search size={15} />
+            <input
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="Tìm họ tên, mã NV, email, phòng ban..."
+            />
+          </label>
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>MÃ NV</th>
+                <th>HỌ VÀ TÊN</th>
+                <th>TÀI KHOẢN / EMAIL</th>
+                <th>PHÒNG BAN</th>
+                <th>VAI TRÒ</th>
+                <th>NGUỒN</th>
+                <th>TRẠNG THÁI</th>
+                <th>THAO TÁC</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map(user => (
+                <tr key={user.id}>
+                  <td>{user.employeeCode}</td>
+                  <td>
+                    <b>{user.fullName}</b>
+                  </td>
+                  <td>
+                    {user.username}
+                    <small>{user.email}</small>
+                  </td>
+                  <td>{user.department?.name || '—'}</td>
+                  <td>{user.role}</td>
+                  <td>
+                    <span className="enterprise-status ready">
+                      {user.authSource === 'ENTRA_ID' ? 'Microsoft 365' : user.authSource}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`enterprise-status ${user.status === 'ACTIVE' ? 'using' : 'broken'}`}>
+                      {user.status === 'ACTIVE' ? 'Hoạt động' : 'Vô hiệu'}
+                    </span>
+                    {user.mustChangePassword && <small>Phải đổi mật khẩu</small>}
+                  </td>
+                  <td>
+                    <div className="user-actions">
+                      {user.authSource === 'LOCAL' ? (
+                        <>
+                          <button className="btn secondary" onClick={() => resetPassword(user)}>
+                            Đặt lại mật khẩu
+                          </button>
+                          {user.status === 'ACTIVE' && (
+                            <button className="btn secondary" onClick={() => deactivate(user)}>
+                              Vô hiệu hóa
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <span title="Sửa thông tin tại hệ thống nguồn">
+                          <LockKeyhole size={15} /> Directory quản lý
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {loading && <div className="enterprise-empty">Đang tải người dùng…</div>}
+        {!loading && !visible.length && <div className="enterprise-empty">Không tìm thấy người dùng phù hợp.</div>}
+      </section>
+    </main>
+  )
+}
+
+function DirectoryConfiguration({ departments }: { departments: Department[] }) {
+  const [tab, setTab] = useState<'people' | 'users' | 'sync'>('people')
+  return (
+    <div className="identity-settings">
+      <div className="identity-tabs">
+        <button className={tab === 'people' ? 'active' : ''} onClick={() => setTab('people')}>
+          <UserPlus size={17} />
+          Người nhận tài sản
+        </button>
+        <button className={tab === 'users' ? 'active' : ''} onClick={() => setTab('users')}>
+          <UserRound size={17} />
+          Tài khoản hệ thống
+        </button>
+        <button className={tab === 'sync' ? 'active' : ''} onClick={() => setTab('sync')}>
+          <Cloud size={17} />
+          Đồng bộ Microsoft 365 / LDAP
+        </button>
+      </div>
+      {tab === 'people' ? (
+        <PeopleManagement catalogDepartments={departments} />
+      ) : tab === 'users' ? (
+        <UserManagement catalogDepartments={departments} />
+      ) : (
+        <DirectorySyncConfiguration />
+      )}
+    </div>
+  )
+}
+
+function RegionalConfiguration({
+  settings,
+  onSave,
+}: {
+  settings: RegionalSettings
+  onSave: (value: RegionalSettings) => void
+}) {
+  const [form, setForm] = useState(settings)
+  useEffect(() => setForm(settings), [settings])
+  const update = <K extends keyof RegionalSettings>(key: K, value: RegionalSettings[K]) =>
+    setForm(current => ({ ...current, [key]: value }))
+  const changeLanguage = (language: string) => {
+    const next = { ...form, language }
+    setForm(next)
+    onSave(next)
+  }
+  const previewParts = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: form.timeFormat === '12h',
+    timeZone: form.timezone,
+  })
+    .formatToParts(new Date())
+    .reduce<Record<string, string>>((result, part) => ({ ...result, [part.type]: part.value }), {})
+  const previewDate =
+    form.dateFormat === 'MM/DD/YYYY'
+      ? `${previewParts.month}/${previewParts.day}/${previewParts.year}`
+      : form.dateFormat === 'YYYY-MM-DD'
+        ? `${previewParts.year}-${previewParts.month}-${previewParts.day}`
+        : `${previewParts.day}/${previewParts.month}/${previewParts.year}`
+  const preview = `${previewDate} ${previewParts.hour}:${previewParts.minute}:${previewParts.second}${previewParts.dayPeriod ? ` ${previewParts.dayPeriod}` : ''}`
+  return (
+    <main className="page regional-settings">
+      <section className="page-heading">
+        <div>
+          <h1>Ngày giờ & ngôn ngữ</h1>
+          <p>Thiết lập ngôn ngữ mặc định, múi giờ và cách hiển thị ngày giờ trên toàn hệ thống.</p>
+        </div>
+      </section>
+      <form
+        className="card regional-form"
+        onSubmit={e => {
+          e.preventDefault()
+          onSave(form)
+          alert('Đã lưu cài đặt khu vực và ngôn ngữ.')
+        }}
+      >
+        <div className="settings-head">
+          <div>
+            <h2>Cấu hình khu vực</h2>
+            <p>Các thay đổi được áp dụng cho tài khoản hiện tại và dùng làm mặc định khi tạo người dùng mới.</p>
+          </div>
+          <span className="regional-code">
+            <Languages size={16} />
+            {form.language}
+          </span>
+        </div>
+        <div className="regional-fields">
+          <label>
+            Ngôn ngữ hiển thị
+            <select value={form.language} onChange={e => changeLanguage(e.target.value)}>
+              {supportedLanguages.map(([code, label]) => (
+                <option value={code} key={code}>
+                  {label} — {code}
+                </option>
+              ))}
+            </select>
+            <small>
+              {supportedLanguages.length} ngôn ngữ phổ biến được hỗ trợ. Thay đổi ngôn ngữ được áp dụng ngay.
+            </small>
+          </label>
+          <label>
+            Múi giờ
+            <select value={form.timezone} onChange={e => update('timezone', e.target.value)}>
+              {supportedTimezones.map(([code, label]) => (
+                <option value={code} key={code}>
+                  {label} — {code}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Định dạng ngày
+            <select
+              value={form.dateFormat}
+              onChange={e => update('dateFormat', e.target.value as RegionalSettings['dateFormat'])}
+            >
+              <option>DD/MM/YYYY</option>
+              <option>MM/DD/YYYY</option>
+              <option>YYYY-MM-DD</option>
+            </select>
+          </label>
+          <label>
+            Định dạng giờ
+            <select
+              value={form.timeFormat}
+              onChange={e => update('timeFormat', e.target.value as RegionalSettings['timeFormat'])}
+            >
+              <option value="24h">24 giờ (14:30)</option>
+              <option value="12h">12 giờ (02:30 PM)</option>
+            </select>
+          </label>
+          <label>
+            Ngày đầu tuần
+            <select
+              value={form.firstDayOfWeek}
+              onChange={e => update('firstDayOfWeek', e.target.value as RegionalSettings['firstDayOfWeek'])}
+            >
+              <option value="monday">Thứ Hai</option>
+              <option value="sunday">Chủ Nhật</option>
+            </select>
+          </label>
+          <div className="regional-preview">
+            <Clock3 size={20} />
+            <span>
+              <small>Xem trước theo múi giờ đã chọn</small>
+              <b>{preview}</b>
+            </span>
+          </div>
+        </div>
+        <div className="regional-note">
+          <ShieldCheck size={17} />
+          <span>
+            Thời điểm nghiệp vụ vẫn được lưu theo UTC trong cơ sở dữ liệu. Cài đặt này chỉ thay đổi cách hiển thị, không
+            làm thay đổi dữ liệu audit.
+          </span>
+        </div>
+        <div className="modal-actions">
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => {
+              setForm(seedRegionalSettings)
+              onSave(seedRegionalSettings)
+            }}
+          >
+            Khôi phục mặc định
+          </button>
+          <button className="btn primary">
+            <Check size={17} />
+            Lưu cấu hình
+          </button>
+        </div>
+      </form>
+    </main>
+  )
+}
+
+function AdminSettings({
+  departments,
+  sites,
+  people,
+  assets,
+  regional,
+  branding,
+  email,
+  onSaveRegional,
+  onSaveBranding,
+  onSaveEmail,
+  saveDepartment,
+  removeDepartment,
+  saveSite,
+  removeSite,
+}: {
+  departments: Department[]
+  sites: Site[]
+  people: ApiPerson[]
+  assets: Asset[]
+  regional: RegionalSettings
+  branding: BrandingSettings
+  email: EmailSettings
+  onSaveRegional: (value: RegionalSettings) => void
+  onSaveBranding: (value: BrandingSettings) => void
+  onSaveEmail: (value: EmailSettings) => void
+  saveDepartment: (item: Department) => void
+  removeDepartment: (id: number) => void
+  saveSite: (item: Site) => void
+  removeSite: (id: number) => void
+}) {
+  const [section, setSection] = useState<'catalog' | 'directory' | 'regional' | 'branding' | 'email'>('catalog')
+  const [localBranding, setLocalBranding] = useState<BrandingSettings>(branding)
+  const [localEmail, setLocalEmail] = useState<EmailSettings>(email)
+  useEffect(() => setLocalBranding(branding), [branding])
+  useEffect(() => setLocalEmail(email), [email])
+  const saveBranding = (value: BrandingSettings) => {
+    setLocalBranding(value)
+    onSaveBranding(value)
+  }
+  const saveEmail = (value: EmailSettings) => {
+    setLocalEmail(value)
+    onSaveEmail(value)
+  }
+  const sections = [
+    { id: 'catalog' as const, label: 'Danh mục hệ thống', desc: 'Phòng ban và site', icon: Settings },
+    { id: 'directory' as const, label: 'Danh tính & người dùng', desc: 'Microsoft 365 hoặc LDAP', icon: UserRound },
+    { id: 'regional' as const, label: 'Ngày giờ & ngôn ngữ', desc: 'Múi giờ và định dạng', icon: Languages },
+    { id: 'branding' as const, label: 'Thương hiệu', desc: 'Logo và tên công ty', icon: Palette },
+    { id: 'email' as const, label: 'Email', desc: 'Thông tin gửi biên bản', icon: Mail },
+  ]
+  return (
+    <div className="settings-hub">
+      <aside className="card settings-hub-nav">
+        <div>
+          <b>TRUNG TÂM CÀI ĐẶT</b>
+          <small>Cấu hình toàn hệ thống</small>
+        </div>
+        {sections.map(item => (
+          <button className={section === item.id ? 'active' : ''} onClick={() => setSection(item.id)} key={item.id}>
+            <item.icon size={19} />
+            <span>
+              <b>{item.label}</b>
+              <small>{item.desc}</small>
+            </span>
+            <ChevronRight size={16} />
+          </button>
+        ))}
+      </aside>
+      <section className="settings-hub-content">
+        {section === 'catalog' ? (
+          <CatalogSettings
+            departments={departments}
+            sites={sites}
+            people={people}
+            assets={assets}
+            saveDepartment={saveDepartment}
+            removeDepartment={removeDepartment}
+            saveSite={saveSite}
+            removeSite={removeSite}
+          />
+        ) : section === 'directory' ? (
+          <DirectoryConfiguration departments={departments} />
+        ) : section === 'regional' ? (
+          <RegionalConfiguration settings={regional} onSave={onSaveRegional} />
+        ) : section === 'branding' ? (
+          <BrandingConfiguration settings={localBranding} onSave={saveBranding} />
+        ) : (
+          <EmailConfiguration settings={localEmail} onSave={saveEmail} />
+        )}
+      </section>
+    </div>
+  )
 }
 
 function EmailConfiguration({ settings, onSave }: { settings: EmailSettings; onSave: (value: EmailSettings) => void }) {
-  const [form,setForm]=useState(settings)
-  const update=(key:keyof EmailSettings,value:string)=>setForm(f=>({...f,[key]:value}))
-  return <main className="page"><section className="page-heading"><div><h1>Cấu hình email</h1><p>Thiết lập thông tin sử dụng khi gửi biên bản bàn giao tài sản.</p></div></section><section className="card email-settings-card"><div className="email-settings-intro"><span><Mail size={25}/></span><div><h2>Email biên bản bàn giao</h2><p>Bản frontend mở ứng dụng email mặc định với nội dung được soạn sẵn. Gửi tự động sẽ được kích hoạt khi kết nối API email ở backend.</p></div></div><form onSubmit={e=>{e.preventDefault();onSave(form);alert('Đã lưu cấu hình email.')}}><div className="form-grid"><label>Tên người gửi <input required value={form.senderName} onChange={e=>update('senderName',e.target.value)}/></label><label>Email phản hồi <input required type="email" value={form.replyTo} onChange={e=>update('replyTo',e.target.value)}/></label><label>CC mặc định <input type="email" value={form.cc} onChange={e=>update('cc',e.target.value)} placeholder="quanly@company.vn"/></label><label>Tiêu đề email <input required value={form.subjectTemplate} onChange={e=>update('subjectTemplate',e.target.value)}/><small>Dùng {'{{asset_code}}'} để chèn mã tài sản.</small></label></div><div className="modal-actions"><button className="btn primary"><Check size={17}/>Lưu cấu hình</button></div></form></section></main>
+  const [form, setForm] = useState(settings)
+  const update = (key: keyof EmailSettings, value: string) => setForm(f => ({ ...f, [key]: value }))
+  return (
+    <main className="page">
+      <section className="page-heading">
+        <div>
+          <h1>Cấu hình email</h1>
+          <p>Thiết lập thông tin sử dụng khi gửi biên bản bàn giao tài sản.</p>
+        </div>
+      </section>
+      <section className="card email-settings-card">
+        <div className="email-settings-intro">
+          <span>
+            <Mail size={25} />
+          </span>
+          <div>
+            <h2>Email biên bản bàn giao</h2>
+            <p>
+              Bản frontend mở ứng dụng email mặc định với nội dung được soạn sẵn. Gửi tự động sẽ được kích hoạt khi kết
+              nối API email ở backend.
+            </p>
+          </div>
+        </div>
+        <form
+          onSubmit={e => {
+            e.preventDefault()
+            onSave(form)
+            alert('Đã lưu cấu hình email.')
+          }}
+        >
+          <div className="form-grid">
+            <label>
+              Tên người gửi{' '}
+              <input required value={form.senderName} onChange={e => update('senderName', e.target.value)} />
+            </label>
+            <label>
+              Email phản hồi{' '}
+              <input required type="email" value={form.replyTo} onChange={e => update('replyTo', e.target.value)} />
+            </label>
+            <label>
+              CC mặc định{' '}
+              <input
+                type="email"
+                value={form.cc}
+                onChange={e => update('cc', e.target.value)}
+                placeholder="quanly@company.vn"
+              />
+            </label>
+            <label>
+              Tiêu đề email{' '}
+              <input required value={form.subjectTemplate} onChange={e => update('subjectTemplate', e.target.value)} />
+              <small>Dùng {'{{asset_code}}'} để chèn mã tài sản.</small>
+            </label>
+          </div>
+          <div className="modal-actions">
+            <button className="btn primary">
+              <Check size={17} />
+              Lưu cấu hình
+            </button>
+          </div>
+        </form>
+      </section>
+    </main>
+  )
 }
 
-function BrandingConfiguration({ settings, onSave }: { settings: BrandingSettings; onSave: (value: BrandingSettings) => void }) {
-  const [form,setForm]=useState(settings)
-  const update=(key:keyof BrandingSettings,value:string)=>setForm(f=>({...f,[key]:value}))
-  const uploadLogo=(file?:File)=>{if(!file)return;if(file.size>1024*1024){alert('Logo tối đa 1 MB.');return}if(!file.type.startsWith('image/')){alert('Vui lòng chọn file ảnh.');return}const reader=new FileReader();reader.onload=()=>update('logoDataUrl',String(reader.result));reader.readAsDataURL(file)}
-  return <main className="page"><section className="page-heading"><div><h1>Tùy chỉnh thương hiệu</h1><p>Thay đổi logo, thông tin công ty và mẫu biên bản bàn giao A4.</p></div></section><section className="branding-layout"><form className="card branding-form" onSubmit={e=>{e.preventDefault();onSave(form);alert('Đã lưu nhận diện thương hiệu và mẫu biên bản.')}}><div className="settings-head"><h2>Thông tin nhận diện</h2><p>Các trường công ty và bộ phận sẽ tự động xuất hiện trên biên bản bàn giao.</p></div><div className="branding-fields"><label>Logo công ty<div className="logo-uploader"><span>{form.logoDataUrl?<img src={form.logoDataUrl} alt="Logo preview"/>:<ImageIcon size={25}/>}</span><div><label className="btn secondary">Chọn ảnh<input hidden type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onChange={e=>uploadLogo(e.target.files?.[0])}/></label>{form.logoDataUrl&&<button type="button" className="text-link" onClick={()=>update('logoDataUrl','')}>Xóa logo</button>}</div></div></label><label>Tên phần mềm<input required value={form.appName} onChange={e=>update('appName',e.target.value)} placeholder="AssetFlow"/></label><label>Tên công ty<input required value={form.companyName} onChange={e=>update('companyName',e.target.value)} placeholder="Công ty ABC"/></label><label>Địa chỉ công ty<input value={form.companyAddress} onChange={e=>update('companyAddress',e.target.value)} placeholder="Địa chỉ in trên biên bản"/></label><label>Bộ phận quản lý / bàn giao<input required value={form.handoverDepartment} onChange={e=>update('handoverDepartment',e.target.value)} placeholder="Bộ phận IT / Quản lý tài sản"/></label><label>Mã mẫu biên bản<input required value={form.handoverFormCode} onChange={e=>update('handoverFormCode',e.target.value.toUpperCase())} placeholder="AF-BB-01"/></label><label>Dòng mô tả<input value={form.tagline} onChange={e=>update('tagline',e.target.value)} placeholder="Quản lý tài sản"/></label><label>Màu thương hiệu<div className="color-field"><input type="color" value={form.primaryColor} onChange={e=>update('primaryColor',e.target.value)}/><input value={form.primaryColor} onChange={e=>update('primaryColor',e.target.value)}/></div></label></div><div className="modal-actions"><button className="btn primary"><Check size={17}/>Lưu thay đổi</button></div></form><aside className="card brand-preview"><small>XEM TRƯỚC</small><div className="preview-brand" style={{'--preview-color':form.primaryColor} as React.CSSProperties}><span>{form.logoDataUrl?<img src={form.logoDataUrl}/>:<Box size={24}/>}</span><div><b>{form.appName||'Tên phần mềm'}</b><small>{form.companyName||'Tên công ty'}</small></div></div><div className="preview-document"><FileText size={23}/><div><b>Biên bản bàn giao A4</b><small>{form.handoverFormCode} · {form.handoverDepartment}</small></div></div><div className="preview-login" style={{background:`linear-gradient(135deg,#182957,${form.primaryColor})`}}><ShieldCheck size={28}/><h3>{form.appName||'Tên phần mềm'}</h3><p>{form.tagline||'Quản lý tài sản'}</p></div></aside></section></main>
+function BrandingConfiguration({
+  settings,
+  onSave,
+}: {
+  settings: BrandingSettings
+  onSave: (value: BrandingSettings) => void
+}) {
+  const [form, setForm] = useState(settings)
+  const update = (key: keyof BrandingSettings, value: string) => setForm(f => ({ ...f, [key]: value }))
+  const uploadLogo = (file?: File) => {
+    if (!file) return
+    if (file.size > 1024 * 1024) {
+      alert('Logo tối đa 1 MB.')
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn file ảnh.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => update('logoDataUrl', String(reader.result))
+    reader.readAsDataURL(file)
+  }
+  return (
+    <main className="page">
+      <section className="page-heading">
+        <div>
+          <h1>Tùy chỉnh thương hiệu</h1>
+          <p>Thay đổi logo, thông tin công ty và mẫu biên bản bàn giao A4.</p>
+        </div>
+      </section>
+      <section className="branding-layout">
+        <form
+          className="card branding-form"
+          onSubmit={e => {
+            e.preventDefault()
+            onSave(form)
+            alert('Đã lưu nhận diện thương hiệu và mẫu biên bản.')
+          }}
+        >
+          <div className="settings-head">
+            <h2>Thông tin nhận diện</h2>
+            <p>Các trường công ty và bộ phận sẽ tự động xuất hiện trên biên bản bàn giao.</p>
+          </div>
+          <div className="branding-fields">
+            <label>
+              Logo công ty
+              <div className="logo-uploader">
+                <span>
+                  {form.logoDataUrl ? <img src={form.logoDataUrl} alt="Logo preview" /> : <ImageIcon size={25} />}
+                </span>
+                <div>
+                  <label className="btn secondary">
+                    Chọn ảnh
+                    <input
+                      hidden
+                      type="file"
+                      accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                      onChange={e => uploadLogo(e.target.files?.[0])}
+                    />
+                  </label>
+                  {form.logoDataUrl && (
+                    <button type="button" className="text-link" onClick={() => update('logoDataUrl', '')}>
+                      Xóa logo
+                    </button>
+                  )}
+                </div>
+              </div>
+            </label>
+            <label>
+              Tên phần mềm
+              <input
+                required
+                value={form.appName}
+                onChange={e => update('appName', e.target.value)}
+                placeholder="AssetFlow"
+              />
+            </label>
+            <label>
+              Tên công ty
+              <input
+                required
+                value={form.companyName}
+                onChange={e => update('companyName', e.target.value)}
+                placeholder="Công ty ABC"
+              />
+            </label>
+            <label>
+              Địa chỉ công ty
+              <input
+                value={form.companyAddress}
+                onChange={e => update('companyAddress', e.target.value)}
+                placeholder="Địa chỉ in trên biên bản"
+              />
+            </label>
+            <label>
+              Bộ phận quản lý / bàn giao
+              <input
+                required
+                value={form.handoverDepartment}
+                onChange={e => update('handoverDepartment', e.target.value)}
+                placeholder="Bộ phận IT / Quản lý tài sản"
+              />
+            </label>
+            <label>
+              Mã mẫu biên bản
+              <input
+                required
+                value={form.handoverFormCode}
+                onChange={e => update('handoverFormCode', e.target.value.toUpperCase())}
+                placeholder="AF-BB-01"
+              />
+            </label>
+            <label>
+              Dòng mô tả
+              <input
+                value={form.tagline}
+                onChange={e => update('tagline', e.target.value)}
+                placeholder="Quản lý tài sản"
+              />
+            </label>
+            <label>
+              Màu thương hiệu
+              <div className="color-field">
+                <input type="color" value={form.primaryColor} onChange={e => update('primaryColor', e.target.value)} />
+                <input value={form.primaryColor} onChange={e => update('primaryColor', e.target.value)} />
+              </div>
+            </label>
+          </div>
+          <div className="modal-actions">
+            <button className="btn primary">
+              <Check size={17} />
+              Lưu thay đổi
+            </button>
+          </div>
+        </form>
+        <aside className="card brand-preview">
+          <small>XEM TRƯỚC</small>
+          <div className="preview-brand" style={{ '--preview-color': form.primaryColor } as React.CSSProperties}>
+            <span>{form.logoDataUrl ? <img src={form.logoDataUrl} /> : <Box size={24} />}</span>
+            <div>
+              <b>{form.appName || 'Tên phần mềm'}</b>
+              <small>{form.companyName || 'Tên công ty'}</small>
+            </div>
+          </div>
+          <div className="preview-document">
+            <FileText size={23} />
+            <div>
+              <b>Biên bản bàn giao A4</b>
+              <small>
+                {form.handoverFormCode} · {form.handoverDepartment}
+              </small>
+            </div>
+          </div>
+          <div className="preview-login" style={{ background: `linear-gradient(135deg,#182957,${form.primaryColor})` }}>
+            <ShieldCheck size={28} />
+            <h3>{form.appName || 'Tên phần mềm'}</h3>
+            <p>{form.tagline || 'Quản lý tài sản'}</p>
+          </div>
+        </aside>
+      </section>
+    </main>
+  )
 }
 
-function SupplierFormModal({supplier,onClose,onSave}:{supplier:Supplier|null;onClose:()=>void;onSave:(value:Supplier,evaluateAfter:boolean)=>void|Promise<void>}){
-  const initial:Supplier=supplier||{id:Date.now(),code:`NCC-${String(Date.now()).slice(-4)}`,name:'',taxCode:'',category:'Máy tính & máy chủ',contact:'',email:'',phone:'',address:'',certifications:'',lifecycleStatus:'ACTIVE',status:'Chưa đánh giá',lastEvaluation:'',score:0,scores:emptySupplierScores,notes:''}
-  const [form,setForm]=useState(initial)
-  const update=(key:keyof Supplier,value:string)=>setForm(current=>({...current,[key]:value}))
-  const submit=(event:React.FormEvent<HTMLFormElement>)=>{event.preventDefault();const submitter=(event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement|null;void onSave(form,submitter?.value==='evaluate')}
-  return <div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><form className="modal supplier-form-modal" onSubmit={submit}><div className="modal-head"><div><h2>{supplier?'Cập nhật nhà cung cấp':'Thêm nhà cung cấp'}</h2><p>Hồ sơ pháp lý, liên hệ và phạm vi cung ứng.</p></div><button type="button" className="icon-btn" onClick={onClose}><X size={20}/></button></div><div className="form-grid"><label>Mã nhà cung cấp<input required value={form.code} onChange={e=>update('code',e.target.value.toUpperCase())}/></label><label>Mã số thuế<input value={form.taxCode} onChange={e=>update('taxCode',e.target.value)}/></label><label className="span-2">Tên nhà cung cấp<input autoFocus required value={form.name} onChange={e=>update('name',e.target.value)}/></label><label>Nhóm hàng / dịch vụ<select value={form.category} onChange={e=>update('category',e.target.value)}>{['Máy tính & máy chủ','Phụ kiện CNTT','Thiết bị mạng','Cloud & phần mềm','Bảo trì & dịch vụ','Thiết bị văn phòng','Khác'].map(x=><option key={x}>{x}</option>)}</select></label><label>Trạng thái sử dụng<select value={form.lifecycleStatus} onChange={e=>update('lifecycleStatus',e.target.value)}><option value="ACTIVE">Đang hợp tác</option><option value="SUSPENDED">Tạm ngưng</option><option value="BLOCKED">Ngừng hợp tác</option></select><small>Kiểm soát việc được phép tiếp tục giao dịch với nhà cung cấp.</small></label><label>Người liên hệ<input required value={form.contact} onChange={e=>update('contact',e.target.value)}/></label><label>Kết quả đánh giá<input value={form.status} disabled/><small>Kết quả được tính từ phiếu chấm điểm, không nhập thủ công.</small></label><label>Số điện thoại<input value={form.phone} onChange={e=>update('phone',e.target.value)}/></label><label>Email<input type="email" value={form.email} onChange={e=>update('email',e.target.value)}/></label><label>Địa chỉ<input value={form.address} onChange={e=>update('address',e.target.value)}/></label><label className="span-2">Chứng nhận / hồ sơ năng lực<input value={form.certifications} onChange={e=>update('certifications',e.target.value)} placeholder="Ví dụ: ISO 9001, ISO/IEC 27001"/></label><label className="span-2">Ghi chú<input value={form.notes} onChange={e=>update('notes',e.target.value)}/></label></div><div className="supplier-workflow-note"><ClipboardCheck size={18}/><span><b>Quy trình:</b> lưu hồ sơ → chấm 6 tiêu chí → hệ thống tính điểm và kết quả phê duyệt.</span></div><div className="modal-actions"><button type="button" className="btn secondary" onClick={onClose}>Hủy</button><button className="btn secondary" value="save"><Check size={17}/>Chỉ lưu hồ sơ</button><button className="btn primary" value="evaluate"><ClipboardCheck size={17}/>Lưu & đánh giá</button></div></form></div>
+function SupplierFormModal({
+  supplier,
+  onClose,
+  onSave,
+}: {
+  supplier: Supplier | null
+  onClose: () => void
+  onSave: (value: Supplier, evaluateAfter: boolean) => void | Promise<void>
+}) {
+  const initial: Supplier = supplier || {
+    id: Date.now(),
+    code: `NCC-${String(Date.now()).slice(-4)}`,
+    name: '',
+    taxCode: '',
+    category: 'Máy tính & máy chủ',
+    contact: '',
+    email: '',
+    phone: '',
+    address: '',
+    certifications: '',
+    lifecycleStatus: 'ACTIVE',
+    status: 'Chưa đánh giá',
+    lastEvaluation: '',
+    score: 0,
+    scores: emptySupplierScores,
+    notes: '',
+  }
+  const [form, setForm] = useState(initial)
+  const update = (key: keyof Supplier, value: string) => setForm(current => ({ ...current, [key]: value }))
+  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
+    void onSave(form, submitter?.value === 'evaluate')
+  }
+  return (
+    <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <form className="modal supplier-form-modal" onSubmit={submit}>
+        <div className="modal-head">
+          <div>
+            <h2>{supplier ? 'Cập nhật nhà cung cấp' : 'Thêm nhà cung cấp'}</h2>
+            <p>Hồ sơ pháp lý, liên hệ và phạm vi cung ứng.</p>
+          </div>
+          <button type="button" className="icon-btn" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="form-grid">
+          <label>
+            Mã nhà cung cấp
+            <input required value={form.code} onChange={e => update('code', e.target.value.toUpperCase())} />
+          </label>
+          <label>
+            Mã số thuế
+            <input value={form.taxCode} onChange={e => update('taxCode', e.target.value)} />
+          </label>
+          <label className="span-2">
+            Tên nhà cung cấp
+            <input autoFocus required value={form.name} onChange={e => update('name', e.target.value)} />
+          </label>
+          <label>
+            Nhóm hàng / dịch vụ
+            <select value={form.category} onChange={e => update('category', e.target.value)}>
+              {[
+                'Máy tính & máy chủ',
+                'Phụ kiện CNTT',
+                'Thiết bị mạng',
+                'Cloud & phần mềm',
+                'Bảo trì & dịch vụ',
+                'Thiết bị văn phòng',
+                'Khác',
+              ].map(x => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Trạng thái sử dụng
+            <select value={form.lifecycleStatus} onChange={e => update('lifecycleStatus', e.target.value)}>
+              <option value="ACTIVE">Đang hợp tác</option>
+              <option value="SUSPENDED">Tạm ngưng</option>
+              <option value="BLOCKED">Ngừng hợp tác</option>
+            </select>
+            <small>Kiểm soát việc được phép tiếp tục giao dịch với nhà cung cấp.</small>
+          </label>
+          <label>
+            Người liên hệ
+            <input required value={form.contact} onChange={e => update('contact', e.target.value)} />
+          </label>
+          <label>
+            Kết quả đánh giá
+            <input value={form.status} disabled />
+            <small>Kết quả được tính từ phiếu chấm điểm, không nhập thủ công.</small>
+          </label>
+          <label>
+            Số điện thoại
+            <input value={form.phone} onChange={e => update('phone', e.target.value)} />
+          </label>
+          <label>
+            Email
+            <input type="email" value={form.email} onChange={e => update('email', e.target.value)} />
+          </label>
+          <label>
+            Địa chỉ
+            <input value={form.address} onChange={e => update('address', e.target.value)} />
+          </label>
+          <label className="span-2">
+            Chứng nhận / hồ sơ năng lực
+            <input
+              value={form.certifications}
+              onChange={e => update('certifications', e.target.value)}
+              placeholder="Ví dụ: ISO 9001, ISO/IEC 27001"
+            />
+          </label>
+          <label className="span-2">
+            Ghi chú
+            <input value={form.notes} onChange={e => update('notes', e.target.value)} />
+          </label>
+        </div>
+        <div className="supplier-workflow-note">
+          <ClipboardCheck size={18} />
+          <span>
+            <b>Quy trình:</b> lưu hồ sơ → chấm 6 tiêu chí → hệ thống tính điểm và kết quả phê duyệt.
+          </span>
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="btn secondary" onClick={onClose}>
+            Hủy
+          </button>
+          <button className="btn secondary" value="save">
+            <Check size={17} />
+            Chỉ lưu hồ sơ
+          </button>
+          <button className="btn primary" value="evaluate">
+            <ClipboardCheck size={17} />
+            Lưu & đánh giá
+          </button>
+        </div>
+      </form>
+    </div>
+  )
 }
 
-function SupplierEvaluationModal({supplier,onClose,onSave}:{supplier:Supplier;onClose:()=>void;onSave:(value:Supplier)=>void}){
-  const [scores,setScores]=useState<SupplierScores>(supplier.lastEvaluation?supplier.scores:defaultSupplierScores)
-  const weighted=Math.round(supplierCriteria.reduce((total,item)=>total+scores[item.key]*item.weight/100,0))
-  const status:SupplierStatus=weighted>=85?'Đã phê duyệt':weighted>=70?'Có điều kiện':'Cần cải thiện'
-  return <div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><form className="modal supplier-evaluation-modal" onSubmit={e=>{e.preventDefault();onSave({...supplier,scores,score:weighted,status,lastEvaluation:new Date().toISOString().slice(0,10)})}}><div className="modal-head"><div><h2>Đánh giá nhà cung cấp</h2><p>{supplier.name} · Khung tham chiếu ISO theo rủi ro</p></div><button type="button" className="icon-btn" onClick={onClose}><X size={20}/></button></div><div className="evaluation-summary"><div className={`score-ring-small ${weighted>=85?'good':weighted>=70?'medium':'low'}`}><b>{weighted}</b><small>/100</small></div><div><b>Kết quả: {status}</b><p>Điểm tổng được tính theo trọng số. Đây là công cụ đánh giá nội bộ, không thay thế chứng nhận ISO.</p></div></div><div className="evaluation-list">{supplierCriteria.map(item=><label key={item.key}><div><b>{item.label}</b><span>{item.standard} · Trọng số {item.weight}%</span><p>{item.description}</p></div><div className="criterion-score"><input type="range" min="0" max="100" step="5" value={scores[item.key]} onChange={e=>setScores(current=>({...current,[item.key]:Number(e.target.value)}))}/><strong>{scores[item.key]}</strong></div></label>)}</div><div className="modal-actions"><button type="button" className="btn secondary" onClick={onClose}>Hủy</button><button className="btn primary"><ClipboardCheck size={17}/>Lưu kết quả đánh giá</button></div></form></div>
+function SupplierEvaluationModal({
+  supplier,
+  onClose,
+  onSave,
+}: {
+  supplier: Supplier
+  onClose: () => void
+  onSave: (value: Supplier) => void
+}) {
+  const [scores, setScores] = useState<SupplierScores>(
+    supplier.lastEvaluation ? supplier.scores : defaultSupplierScores,
+  )
+  const weighted = Math.round(
+    supplierCriteria.reduce((total, item) => total + (scores[item.key] * item.weight) / 100, 0),
+  )
+  const status: SupplierStatus = weighted >= 85 ? 'Đã phê duyệt' : weighted >= 70 ? 'Có điều kiện' : 'Cần cải thiện'
+  return (
+    <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <form
+        className="modal supplier-evaluation-modal"
+        onSubmit={e => {
+          e.preventDefault()
+          onSave({
+            ...supplier,
+            scores,
+            score: weighted,
+            status,
+            lastEvaluation: new Date().toISOString().slice(0, 10),
+          })
+        }}
+      >
+        <div className="modal-head">
+          <div>
+            <h2>Đánh giá nhà cung cấp</h2>
+            <p>{supplier.name} · Khung tham chiếu ISO theo rủi ro</p>
+          </div>
+          <button type="button" className="icon-btn" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="evaluation-summary">
+          <div className={`score-ring-small ${weighted >= 85 ? 'good' : weighted >= 70 ? 'medium' : 'low'}`}>
+            <b>{weighted}</b>
+            <small>/100</small>
+          </div>
+          <div>
+            <b>Kết quả: {status}</b>
+            <p>Điểm tổng được tính theo trọng số. Đây là công cụ đánh giá nội bộ, không thay thế chứng nhận ISO.</p>
+          </div>
+        </div>
+        <div className="evaluation-list">
+          {supplierCriteria.map(item => (
+            <label key={item.key}>
+              <div>
+                <b>{item.label}</b>
+                <span>
+                  {item.standard} · Trọng số {item.weight}%
+                </span>
+                <p>{item.description}</p>
+              </div>
+              <div className="criterion-score">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={scores[item.key]}
+                  onChange={e => setScores(current => ({ ...current, [item.key]: Number(e.target.value) }))}
+                />
+                <strong>{scores[item.key]}</strong>
+              </div>
+            </label>
+          ))}
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="btn secondary" onClick={onClose}>
+            Hủy
+          </button>
+          <button className="btn primary">
+            <ClipboardCheck size={17} />
+            Lưu kết quả đánh giá
+          </button>
+        </div>
+      </form>
+    </div>
+  )
 }
 
-function SupplierManagement(){
-  const [suppliers,setSuppliers]=useState<Supplier[]>(()=>{if(!env.demoMode)return [];try{const stored=JSON.parse(localStorage.getItem('assetflow-suppliers')||'');return Array.isArray(stored)&&stored.length?stored:seedSuppliers}catch{return seedSuppliers}})
-  const previousSuppliers=useRef<Supplier[]>([])
-  const [query,setQuery]=useState('')
-  const [modal,setModal]=useState<Supplier|null|undefined>(undefined)
-  const [evaluating,setEvaluating]=useState<Supplier|undefined>()
-  useEffect(()=>{if(env.demoMode)localStorage.setItem('assetflow-suppliers',JSON.stringify(suppliers))},[suppliers])
-  useEffect(()=>{if(!env.demoMode){const currentIds=new Set(suppliers.map(item=>item.id));for(const removed of previousSuppliers.current.filter(item=>!currentIds.has(item.id)&&item.apiId))void api.delete(`/vendors/${removed.apiId}`).catch(error=>alert(apiErrorMessage(error)));previousSuppliers.current=suppliers}},[suppliers])
-  const mapVendor=(item:any):Supplier=>({id:numericId(item.id),apiId:item.id,code:item.code,name:item.name,taxCode:item.taxCode||'',category:item.category,contact:item.contact,email:item.email||'',phone:item.phone||'',address:item.address||'',certifications:item.certifications||'',lifecycleStatus:item.lifecycleStatus||'ACTIVE',status:item.status==='Tạm ngưng'?'Chưa đánh giá':item.status,lastEvaluation:item.lastEvaluation?String(item.lastEvaluation).slice(0,10):'',score:item.score||0,scores:{...defaultSupplierScores,...item.scores},notes:item.notes||''})
-  const reload=()=>api.get<any[]>('/vendors').then(items=>setSuppliers(items.map(mapVendor)))
-  useEffect(()=>{if(!env.demoMode)void reload().catch(error=>alert(apiErrorMessage(error)))},[])
-  const save=async(value:Supplier):Promise<Supplier|undefined>=>{if(env.demoMode){if(suppliers.some(x=>x.id!==value.id&&x.code.toLowerCase()===value.code.toLowerCase())){alert('Mã nhà cung cấp đã tồn tại.');return}setSuppliers(items=>items.some(x=>x.id===value.id)?items.map(x=>x.id===value.id?value:x):[value,...items]);setModal(undefined);return value}try{const {id,apiId,...rawBody}=value;const body={...rawBody,...(rawBody.lastEvaluation?{lastEvaluation:rawBody.lastEvaluation}:{lastEvaluation:undefined})};const saved=apiId?await api.patch<any>(`/vendors/${apiId}`,body):await api.post<any>('/vendors',body);await reload();setModal(undefined);return mapVendor(saved)}catch(error){alert(apiErrorMessage(error))}}
-  const saveEvaluation=async(value:Supplier)=>{const saved=await save(value);if(saved)setEvaluating(undefined)}
-  const saveProfile=async(value:Supplier,evaluateAfter:boolean)=>{const saved=await save(value);if(saved&&evaluateAfter)setEvaluating(saved)}
-  const shown=suppliers.filter(x=>`${x.code} ${x.name} ${x.taxCode} ${x.category} ${x.contact}`.toLowerCase().includes(query.toLowerCase()))
-  const average=suppliers.length?Math.round(suppliers.reduce((sum,x)=>sum+x.score,0)/suppliers.length):0
-  const tone=(status:SupplierStatus)=>status==='Đã phê duyệt'?'green':status==='Có điều kiện'?'amber':status==='Chưa đánh giá'?'gray':'orange'
-  return <main className="page supplier-page"><section className="page-heading"><div><h1>Quản lý nhà cung cấp</h1><p>Hồ sơ, phê duyệt và đánh giá hiệu suất nhà cung cấp theo khung tiêu chí ISO.</p></div><button className="btn primary" onClick={()=>setModal(null)}><Plus size={18}/>Thêm nhà cung cấp</button></section><section className="supplier-stats"><article className="card"><span><Building2 size={20}/></span><div><small>Tổng nhà cung cấp</small><b>{suppliers.length}</b></div></article><article className="card"><span className="approved"><BadgeCheck size={20}/></span><div><small>Đã phê duyệt</small><b>{suppliers.filter(x=>x.status==='Đã phê duyệt').length}</b></div></article><article className="card"><span className="conditional"><AlertTriangle size={20}/></span><div><small>Cần theo dõi</small><b>{suppliers.filter(x=>x.status!=='Đã phê duyệt'||x.lifecycleStatus!=='ACTIVE').length}</b></div></article><article className="card"><span className="score"><ClipboardCheck size={20}/></span><div><small>Điểm trung bình</small><b>{average}/100</b></div></article></section><section className="card supplier-table-card"><div className="supplier-toolbar"><label className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tìm tên, mã, MST, nhóm hàng hoặc người liên hệ..."/></label><div className="iso-reference"><ShieldCheck size={17}/><span>ISO 9001 · ISO/IEC 27036 · ISO 20400</span></div></div><div className="table-scroll"><table><thead><tr><th>NHÀ CUNG CẤP</th><th>NHÓM CUNG ỨNG</th><th>LIÊN HỆ</th><th>CHỨNG NHẬN</th><th>ĐIỂM ISO</th><th>KẾT QUẢ ĐÁNH GIÁ</th><th>TRẠNG THÁI SỬ DỤNG</th><th></th></tr></thead><tbody>{shown.map(item=><tr key={item.id}><td><b className="cell-main">{item.name}</b><small className="cell-sub">{item.code} · MST: {item.taxCode||'Chưa có'}</small></td><td>{item.category}</td><td><b className="cell-main">{item.contact}</b><small className="cell-sub">{item.email||item.phone}</small></td><td><span className="certification-text">{item.certifications||'Chưa cung cấp'}</span></td><td><button className={`supplier-score ${item.score>=85?'good':item.score>=70?'medium':'low'}`} onClick={()=>setEvaluating(item)}><b>{item.score||'—'}</b><small>{item.lastEvaluation?new Date(item.lastEvaluation).toLocaleDateString('vi-VN'):'Bấm để đánh giá'}</small></button></td><td><span className={`supplier-status ${tone(item.status)}`}>{item.status}</span></td><td><span className={`supplier-status ${item.lifecycleStatus==='ACTIVE'?'green':'red'}`}>{supplierLifecycleLabels[item.lifecycleStatus]}</span></td><td><div className="row-actions"><button title="Đánh giá" onClick={()=>setEvaluating(item)}><ClipboardCheck size={16}/></button><button title="Chỉnh sửa" onClick={()=>setModal(item)}><Pencil size={16}/></button><button title="Xóa" onClick={()=>window.confirm(`Xóa nhà cung cấp ${item.name}?`)&&setSuppliers(items=>items.filter(x=>x.id!==item.id))}><Trash2 size={16}/></button></div></td></tr>)}</tbody></table></div>{!shown.length&&<div className="empty"><Search size={30}/><h3>Không tìm thấy nhà cung cấp</h3></div>}</section><section className="card supplier-iso-note"><ShieldCheck size={22}/><div><b>Nguyên tắc đánh giá dựa trên rủi ro</b><p>Phê duyệt ban đầu, theo dõi hiệu suất và đánh giá lại định kỳ. Tần suất nên tăng với nhà cung cấp có quyền truy cập dữ liệu, hạ tầng hoặc dịch vụ trọng yếu.</p></div></section>{modal!==undefined&&<SupplierFormModal key={modal?.id||'new'} supplier={modal} onClose={()=>setModal(undefined)} onSave={saveProfile}/>} {evaluating&&<SupplierEvaluationModal key={evaluating.id} supplier={evaluating} onClose={()=>setEvaluating(undefined)} onSave={saveEvaluation}/>}</main>
+function SupplierManagement() {
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() => {
+    if (!env.demoMode) return []
+    try {
+      const stored = JSON.parse(localStorage.getItem('assetflow-suppliers') || '')
+      return Array.isArray(stored) && stored.length ? stored : seedSuppliers
+    } catch {
+      return seedSuppliers
+    }
+  })
+  const previousSuppliers = useRef<Supplier[]>([])
+  const [query, setQuery] = useState('')
+  const [modal, setModal] = useState<Supplier | null | undefined>(undefined)
+  const [evaluating, setEvaluating] = useState<Supplier | undefined>()
+  useEffect(() => {
+    if (env.demoMode) localStorage.setItem('assetflow-suppliers', JSON.stringify(suppliers))
+  }, [suppliers])
+  useEffect(() => {
+    if (!env.demoMode) {
+      const currentIds = new Set(suppliers.map(item => item.id))
+      for (const removed of previousSuppliers.current.filter(item => !currentIds.has(item.id) && item.apiId))
+        void api.delete(`/vendors/${removed.apiId}`).catch(error => alert(apiErrorMessage(error)))
+      previousSuppliers.current = suppliers
+    }
+  }, [suppliers])
+  const mapVendor = (item: any): Supplier => ({
+    id: numericId(item.id),
+    apiId: item.id,
+    code: item.code,
+    name: item.name,
+    taxCode: item.taxCode || '',
+    category: item.category,
+    contact: item.contact,
+    email: item.email || '',
+    phone: item.phone || '',
+    address: item.address || '',
+    certifications: item.certifications || '',
+    lifecycleStatus: item.lifecycleStatus || 'ACTIVE',
+    status: item.status === 'Tạm ngưng' ? 'Chưa đánh giá' : item.status,
+    lastEvaluation: item.lastEvaluation ? String(item.lastEvaluation).slice(0, 10) : '',
+    score: item.score || 0,
+    scores: { ...defaultSupplierScores, ...item.scores },
+    notes: item.notes || '',
+  })
+  const reload = () => api.get<any[]>('/vendors').then(items => setSuppliers(items.map(mapVendor)))
+  useEffect(() => {
+    if (!env.demoMode) void reload().catch(error => alert(apiErrorMessage(error)))
+  }, [])
+  const save = async (value: Supplier): Promise<Supplier | undefined> => {
+    if (env.demoMode) {
+      if (suppliers.some(x => x.id !== value.id && x.code.toLowerCase() === value.code.toLowerCase())) {
+        alert('Mã nhà cung cấp đã tồn tại.')
+        return
+      }
+      setSuppliers(items =>
+        items.some(x => x.id === value.id) ? items.map(x => (x.id === value.id ? value : x)) : [value, ...items],
+      )
+      setModal(undefined)
+      return value
+    }
+    try {
+      const { id, apiId, ...rawBody } = value
+      const body = {
+        ...rawBody,
+        ...(rawBody.lastEvaluation ? { lastEvaluation: rawBody.lastEvaluation } : { lastEvaluation: undefined }),
+      }
+      const saved = apiId ? await api.patch<any>(`/vendors/${apiId}`, body) : await api.post<any>('/vendors', body)
+      await reload()
+      setModal(undefined)
+      return mapVendor(saved)
+    } catch (error) {
+      alert(apiErrorMessage(error))
+    }
+  }
+  const saveEvaluation = async (value: Supplier) => {
+    const saved = await save(value)
+    if (saved) setEvaluating(undefined)
+  }
+  const saveProfile = async (value: Supplier, evaluateAfter: boolean) => {
+    const saved = await save(value)
+    if (saved && evaluateAfter) setEvaluating(saved)
+  }
+  const shown = suppliers.filter(x =>
+    `${x.code} ${x.name} ${x.taxCode} ${x.category} ${x.contact}`.toLowerCase().includes(query.toLowerCase()),
+  )
+  const average = suppliers.length ? Math.round(suppliers.reduce((sum, x) => sum + x.score, 0) / suppliers.length) : 0
+  const tone = (status: SupplierStatus) =>
+    status === 'Đã phê duyệt'
+      ? 'green'
+      : status === 'Có điều kiện'
+        ? 'amber'
+        : status === 'Chưa đánh giá'
+          ? 'gray'
+          : 'orange'
+  return (
+    <main className="page supplier-page">
+      <section className="page-heading">
+        <div>
+          <h1>Quản lý nhà cung cấp</h1>
+          <p>Hồ sơ, phê duyệt và đánh giá hiệu suất nhà cung cấp theo khung tiêu chí ISO.</p>
+        </div>
+        <button className="btn primary" onClick={() => setModal(null)}>
+          <Plus size={18} />
+          Thêm nhà cung cấp
+        </button>
+      </section>
+      <section className="supplier-stats">
+        <article className="card">
+          <span>
+            <Building2 size={20} />
+          </span>
+          <div>
+            <small>Tổng nhà cung cấp</small>
+            <b>{suppliers.length}</b>
+          </div>
+        </article>
+        <article className="card">
+          <span className="approved">
+            <BadgeCheck size={20} />
+          </span>
+          <div>
+            <small>Đã phê duyệt</small>
+            <b>{suppliers.filter(x => x.status === 'Đã phê duyệt').length}</b>
+          </div>
+        </article>
+        <article className="card">
+          <span className="conditional">
+            <AlertTriangle size={20} />
+          </span>
+          <div>
+            <small>Cần theo dõi</small>
+            <b>{suppliers.filter(x => x.status !== 'Đã phê duyệt' || x.lifecycleStatus !== 'ACTIVE').length}</b>
+          </div>
+        </article>
+        <article className="card">
+          <span className="score">
+            <ClipboardCheck size={20} />
+          </span>
+          <div>
+            <small>Điểm trung bình</small>
+            <b>{average}/100</b>
+          </div>
+        </article>
+      </section>
+      <section className="card supplier-table-card">
+        <div className="supplier-toolbar">
+          <label className="search-box">
+            <Search size={18} />
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Tìm tên, mã, MST, nhóm hàng hoặc người liên hệ..."
+            />
+          </label>
+          <div className="iso-reference">
+            <ShieldCheck size={17} />
+            <span>ISO 9001 · ISO/IEC 27036 · ISO 20400</span>
+          </div>
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>NHÀ CUNG CẤP</th>
+                <th>NHÓM CUNG ỨNG</th>
+                <th>LIÊN HỆ</th>
+                <th>CHỨNG NHẬN</th>
+                <th>ĐIỂM ISO</th>
+                <th>KẾT QUẢ ĐÁNH GIÁ</th>
+                <th>TRẠNG THÁI SỬ DỤNG</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map(item => (
+                <tr key={item.id}>
+                  <td>
+                    <b className="cell-main">{item.name}</b>
+                    <small className="cell-sub">
+                      {item.code} · MST: {item.taxCode || 'Chưa có'}
+                    </small>
+                  </td>
+                  <td>{item.category}</td>
+                  <td>
+                    <b className="cell-main">{item.contact}</b>
+                    <small className="cell-sub">{item.email || item.phone}</small>
+                  </td>
+                  <td>
+                    <span className="certification-text">{item.certifications || 'Chưa cung cấp'}</span>
+                  </td>
+                  <td>
+                    <button
+                      className={`supplier-score ${item.score >= 85 ? 'good' : item.score >= 70 ? 'medium' : 'low'}`}
+                      onClick={() => setEvaluating(item)}
+                    >
+                      <b>{item.score || '—'}</b>
+                      <small>
+                        {item.lastEvaluation
+                          ? new Date(item.lastEvaluation).toLocaleDateString('vi-VN')
+                          : 'Bấm để đánh giá'}
+                      </small>
+                    </button>
+                  </td>
+                  <td>
+                    <span className={`supplier-status ${tone(item.status)}`}>{item.status}</span>
+                  </td>
+                  <td>
+                    <span className={`supplier-status ${item.lifecycleStatus === 'ACTIVE' ? 'green' : 'red'}`}>
+                      {supplierLifecycleLabels[item.lifecycleStatus]}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="row-actions">
+                      <button title="Đánh giá" onClick={() => setEvaluating(item)}>
+                        <ClipboardCheck size={16} />
+                      </button>
+                      <button title="Chỉnh sửa" onClick={() => setModal(item)}>
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        title="Xóa"
+                        onClick={() =>
+                          window.confirm(`Xóa nhà cung cấp ${item.name}?`) &&
+                          setSuppliers(items => items.filter(x => x.id !== item.id))
+                        }
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!shown.length && (
+          <div className="empty">
+            <Search size={30} />
+            <h3>Không tìm thấy nhà cung cấp</h3>
+          </div>
+        )}
+      </section>
+      <section className="card supplier-iso-note">
+        <ShieldCheck size={22} />
+        <div>
+          <b>Nguyên tắc đánh giá dựa trên rủi ro</b>
+          <p>
+            Phê duyệt ban đầu, theo dõi hiệu suất và đánh giá lại định kỳ. Tần suất nên tăng với nhà cung cấp có quyền
+            truy cập dữ liệu, hạ tầng hoặc dịch vụ trọng yếu.
+          </p>
+        </div>
+      </section>
+      {modal !== undefined && (
+        <SupplierFormModal
+          key={modal?.id || 'new'}
+          supplier={modal}
+          onClose={() => setModal(undefined)}
+          onSave={saveProfile}
+        />
+      )}{' '}
+      {evaluating && (
+        <SupplierEvaluationModal
+          key={evaluating.id}
+          supplier={evaluating}
+          onClose={() => setEvaluating(undefined)}
+          onSave={saveEvaluation}
+        />
+      )}
+    </main>
+  )
 }
 
-function Placeholder({ title, language }: { title: string; language:string }) {
-  if(title==='Nhà cung cấp')return <SupplierManagement/>
+function Placeholder({ title, language }: { title: string; language: string }) {
+  if (title === 'Nhà cung cấp') return <SupplierManagement />
   const info: Record<string, [string, typeof Box]> = {
     'Mua sắm & PO': ['Quản lý kế hoạch mua sắm, nhà cung cấp và đơn đặt hàng.', FileText],
     'Kho & Điều chuyển': ['Theo dõi nhập kho, xuất kho và luân chuyển tài sản.', Warehouse],
@@ -690,286 +6068,1963 @@ function Placeholder({ title, language }: { title: string; language:string }) {
     'Báo cáo': ['Phân tích khấu hao, chi phí và tình trạng tài sản.', BarChart3],
   }
   const [desc, Icon] = info[title] || ['Phân hệ đang được xây dựng.', Archive]
-  return <main className="page"><section className="page-heading"><div><h1>{uiLabel(title,language)}</h1><p>{translateUiText(desc,language)}</p></div><button className="btn primary"><Plus size={18}/>{translateUiText('Tạo mới',language)}</button></section><section className="card coming"><span><Icon size={34}/></span><h2>{translateUiText('Phân hệ đã sẵn sàng để phát triển',language)}</h2><p>{translateUiText('Khung giao diện và điều hướng đã được thiết lập. Dữ liệu nghiệp vụ sẽ được kết nối trong sprint tiếp theo.',language)}</p><button className="btn secondary">{translateUiText('Xem đặc tả nghiệp vụ',language)}</button></section></main>
+  return (
+    <main className="page">
+      <section className="page-heading">
+        <div>
+          <h1>{uiLabel(title, language)}</h1>
+          <p>{translateUiText(desc, language)}</p>
+        </div>
+        <button className="btn primary">
+          <Plus size={18} />
+          {translateUiText('Tạo mới', language)}
+        </button>
+      </section>
+      <section className="card coming">
+        <span>
+          <Icon size={34} />
+        </span>
+        <h2>{translateUiText('Phân hệ đã sẵn sàng để phát triển', language)}</h2>
+        <p>
+          {translateUiText(
+            'Khung giao diện và điều hướng đã được thiết lập. Dữ liệu nghiệp vụ sẽ được kết nối trong sprint tiếp theo.',
+            language,
+          )}
+        </p>
+        <button className="btn secondary">{translateUiText('Xem đặc tả nghiệp vụ', language)}</button>
+      </section>
+    </main>
+  )
 }
 
-function AssetModal({ asset, departmentOptions, siteOptions, onClose, onSave }: { asset: Asset | null | undefined; departmentOptions: string[]; siteOptions: string[]; onClose: () => void; onSave: (a: Asset) => void|Promise<void> }) {
-  const categoryCatalog=useAssetCategoryCatalog()
+function AssetModal({
+  asset,
+  departmentOptions,
+  siteOptions,
+  onClose,
+  onSave,
+}: {
+  asset: Asset | null | undefined
+  departmentOptions: string[]
+  siteOptions: string[]
+  onClose: () => void
+  onSave: (a: Asset) => void | Promise<void>
+}) {
+  const categoryCatalog = useAssetCategoryCatalog()
   const editing = asset !== undefined && asset !== null
-  const blank: Asset = { id: Date.now(), code: `TS-2026-${String(Date.now()).slice(-3)}`, name: '', category: categoryCatalog.items[0]?.name||'', serial: '', department: departmentOptions[0] || '', location: siteOptions[0]||'', assignedTo: 'Chưa gán', purchaseDate: new Date().toISOString().slice(0, 10), purchaseCost: 0, status: 'Sẵn sàng', icon: 'laptop' }
+  const blank: Asset = {
+    id: Date.now(),
+    code: `TS-2026-${String(Date.now()).slice(-3)}`,
+    name: '',
+    category: categoryCatalog.items[0]?.name || '',
+    serial: '',
+    department: departmentOptions[0] || '',
+    location: siteOptions[0] || '',
+    assignedTo: 'Chưa gán',
+    purchaseDate: new Date().toISOString().slice(0, 10),
+    purchaseCost: 0,
+    status: 'Sẵn sàng',
+    icon: 'laptop',
+  }
   const [form, setForm] = useState<Asset>(asset || blank)
-  const update = (key: keyof Asset, value: string | number) => setForm(f => ({ ...f, [key]: value, ...(key==='category'?{icon:assetIconForCategory(String(value))}:{}) }))
-  const uploadImage=(file?:File)=>{if(!file)return;if(!file.type.startsWith('image/')){alert('Vui lòng chọn đúng file ảnh.');return}if(file.size>1_500_000){alert('Ảnh tài sản tối đa 1,5 MB.');return}const reader=new FileReader();reader.onload=()=>update('imageDataUrl',String(reader.result));reader.readAsDataURL(file)}
-  const submit = async(e: React.FormEvent) => { e.preventDefault(); if (!form.name.trim() || !form.code.trim()) return; if(!Number.isFinite(form.purchaseCost)||form.purchaseCost<0){alert('Nguyên giá phải là số không âm.');return}const protectedState=editing&&asset?{status:asset.status,assignedTo:asset.assignedTo,department:asset.department,location:asset.location,dueDate:asset.dueDate,assignmentType:asset.assignmentType}:{};await onSave({...form,...protectedState,name:form.name.trim(),code:form.code.trim(),serial:form.serial.trim()}) }
+  const update = (key: keyof Asset, value: string | number) =>
+    setForm(f => ({ ...f, [key]: value, ...(key === 'category' ? { icon: assetIconForCategory(String(value)) } : {}) }))
+  const uploadImage = (file?: File) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn đúng file ảnh.')
+      return
+    }
+    if (file.size > 1_500_000) {
+      alert('Ảnh tài sản tối đa 1,5 MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => update('imageDataUrl', String(reader.result))
+    reader.readAsDataURL(file)
+  }
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.name.trim() || !form.code.trim()) return
+    if (!Number.isFinite(form.purchaseCost) || form.purchaseCost < 0) {
+      alert('Nguyên giá phải là số không âm.')
+      return
+    }
+    const protectedState =
+      editing && asset
+        ? {
+            status: asset.status,
+            assignedTo: asset.assignedTo,
+            department: asset.department,
+            location: asset.location,
+            dueDate: asset.dueDate,
+            assignmentType: asset.assignmentType,
+          }
+        : {}
+    await onSave({
+      ...form,
+      ...protectedState,
+      name: form.name.trim(),
+      code: form.code.trim(),
+      serial: form.serial.trim(),
+    })
+  }
   const technical: Array<[keyof Asset, string, string]> = [
-    ['manufacturer', 'Hãng sản xuất', 'Apple, Dell, Lenovo...'], ['model', 'Model', 'Tên model thiết bị'],
-    ['cpu', 'CPU', 'Ví dụ: Intel Core i7-1365U'], ['ram', 'RAM', 'Ví dụ: 16 GB DDR5'],
-    ['storage', 'Ổ đĩa', 'Ví dụ: SSD 512 GB'], ['operatingSystem', 'Hệ điều hành', 'Windows 11 Pro, macOS...'],
-    ['ipAddress', 'Địa chỉ IP', '10.10.1.25'], ['macAddress', 'Địa chỉ MAC', '00:1A:2B:3C:4D:5E'],
+    ['manufacturer', 'Hãng sản xuất', 'Apple, Dell, Lenovo...'],
+    ['model', 'Model', 'Tên model thiết bị'],
+    ['cpu', 'CPU', 'Ví dụ: Intel Core i7-1365U'],
+    ['ram', 'RAM', 'Ví dụ: 16 GB DDR5'],
+    ['storage', 'Ổ đĩa', 'Ví dụ: SSD 512 GB'],
+    ['operatingSystem', 'Hệ điều hành', 'Windows 11 Pro, macOS...'],
+    ['ipAddress', 'Địa chỉ IP', '10.10.1.25'],
+    ['macAddress', 'Địa chỉ MAC', '00:1A:2B:3C:4D:5E'],
   ]
-  return <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-    <form className="modal asset-form-modal" onSubmit={submit}>
-      <div className="modal-head"><div><h2>{editing ? 'Cập nhật tài sản' : 'Phiếu nhập kho tài sản'}</h2><p>{editing?'Thông tin quản lý, cấp phát và cấu hình kỹ thuật.':'Khai báo đầy đủ hồ sơ tài sản trước khi ghi nhận nhập kho.'}</p></div><button type="button" className="icon-btn" onClick={onClose}><X size={20}/></button></div>
-      <div className="form-grid">
-        <h3 className="form-section span-2">Thông tin chung</h3>
-        <label className="span-2">Ảnh tài sản<div className="asset-image-uploader"><span>{form.imageDataUrl?<img src={form.imageDataUrl} alt="Ảnh tài sản"/>:<ImageIcon size={30}/>}</span><div><label className="btn secondary">Chọn ảnh<input hidden type="file" accept="image/*" onChange={e=>uploadImage(e.target.files?.[0])}/></label>{form.imageDataUrl&&<button type="button" className="text-link" onClick={()=>update('imageDataUrl','')}>Xóa ảnh</button>}</div></div></label>
-        <label className="span-2">Tên tài sản <input autoFocus required value={form.name} onChange={e => update('name', e.target.value)} placeholder="Ví dụ: MacBook Pro 14 inch"/></label>
-        <label>Mã tài sản <input required value={form.code} onChange={e => update('code', e.target.value)}/></label><label>Serial / IMEI <input value={form.serial} onChange={e => update('serial', e.target.value)} placeholder="Số serial thiết bị"/></label>
-        <label>Loại / Nhóm tài sản <select value={form.category} onChange={e => update('category', e.target.value)}>{categoryCatalog.items.map(c => <option key={c.id}>{c.name}</option>)}</select></label><label>Trạng thái <select disabled={editing} value={form.status} onChange={e => update('status', e.target.value)}>{['Đang sử dụng', 'Sẵn sàng', 'Bảo trì', 'Hỏng'].map(s => <option key={s}>{s}</option>)}</select></label>
-        <label>Phòng ban <select disabled={editing} value={form.department} onChange={e => update('department', e.target.value)}>{departmentOptions.map(d => <option key={d}>{d}</option>)}</select></label><label>Người sử dụng <input disabled={editing} value={form.assignedTo} onChange={e => update('assignedTo', e.target.value)}/></label>
-        <label className="span-2">Site / Vị trí <input disabled={editing} list="asset-sites" value={form.location} onChange={e => update('location', e.target.value)} placeholder="Chọn site hoặc nhập vị trí chi tiết"/><datalist id="asset-sites">{siteOptions.map(s=><option key={s} value={s}/>)}</datalist>{editing&&<small>Trạng thái, người sử dụng, phòng ban và vị trí chỉ thay đổi qua nghiệp vụ xử lý tài sản.</small>}</label><label>Ngày mua <input type="date" value={form.purchaseDate} onChange={e => update('purchaseDate', e.target.value)}/></label><label>Nguyên giá (VNĐ) <input type="number" min="0" value={form.purchaseCost} onChange={e => update('purchaseCost', Number(e.target.value))}/></label>
-        <h3 className="form-section span-2">Cấu hình kỹ thuật</h3>
-        {technical.map(([key,label,placeholder])=><label key={key}>{label}<input value={String(form[key] || '')} onChange={e=>update(key,e.target.value)} placeholder={placeholder}/></label>)}
-      </div>
-      <div className="modal-actions"><button type="button" className="btn secondary" onClick={onClose}>Hủy</button><button className="btn primary"><Check size={18}/>{editing ? 'Lưu thay đổi' : 'Xác nhận nhập kho'}</button></div>
-    </form>
-  </div>
+  return (
+    <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <form className="modal asset-form-modal" onSubmit={submit}>
+        <div className="modal-head">
+          <div>
+            <h2>{editing ? 'Cập nhật tài sản' : 'Phiếu nhập kho tài sản'}</h2>
+            <p>
+              {editing
+                ? 'Thông tin quản lý, cấp phát và cấu hình kỹ thuật.'
+                : 'Khai báo đầy đủ hồ sơ tài sản trước khi ghi nhận nhập kho.'}
+            </p>
+          </div>
+          <button type="button" className="icon-btn" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="form-grid">
+          <h3 className="form-section span-2">Thông tin chung</h3>
+          <label className="span-2">
+            Ảnh tài sản
+            <div className="asset-image-uploader">
+              <span>
+                {form.imageDataUrl ? <img src={form.imageDataUrl} alt="Ảnh tài sản" /> : <ImageIcon size={30} />}
+              </span>
+              <div>
+                <label className="btn secondary">
+                  Chọn ảnh
+                  <input hidden type="file" accept="image/*" onChange={e => uploadImage(e.target.files?.[0])} />
+                </label>
+                {form.imageDataUrl && (
+                  <button type="button" className="text-link" onClick={() => update('imageDataUrl', '')}>
+                    Xóa ảnh
+                  </button>
+                )}
+              </div>
+            </div>
+          </label>
+          <label className="span-2">
+            Tên tài sản{' '}
+            <input
+              autoFocus
+              required
+              value={form.name}
+              onChange={e => update('name', e.target.value)}
+              placeholder="Ví dụ: MacBook Pro 14 inch"
+            />
+          </label>
+          <label>
+            Mã tài sản <input required value={form.code} onChange={e => update('code', e.target.value)} />
+          </label>
+          <label>
+            Serial / IMEI{' '}
+            <input
+              value={form.serial}
+              onChange={e => update('serial', e.target.value)}
+              placeholder="Số serial thiết bị"
+            />
+          </label>
+          <label>
+            Loại / Nhóm tài sản{' '}
+            <select value={form.category} onChange={e => update('category', e.target.value)}>
+              {categoryCatalog.items.map(c => (
+                <option key={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Trạng thái{' '}
+            <select disabled={editing} value={form.status} onChange={e => update('status', e.target.value)}>
+              {['Đang sử dụng', 'Sẵn sàng', 'Bảo trì', 'Hỏng'].map(s => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Phòng ban{' '}
+            <select disabled={editing} value={form.department} onChange={e => update('department', e.target.value)}>
+              {departmentOptions.map(d => (
+                <option key={d}>{d}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Người sử dụng{' '}
+            <input disabled={editing} value={form.assignedTo} onChange={e => update('assignedTo', e.target.value)} />
+          </label>
+          <label className="span-2">
+            Site / Vị trí{' '}
+            <input
+              disabled={editing}
+              list="asset-sites"
+              value={form.location}
+              onChange={e => update('location', e.target.value)}
+              placeholder="Chọn site hoặc nhập vị trí chi tiết"
+            />
+            <datalist id="asset-sites">
+              {siteOptions.map(s => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+            {editing && (
+              <small>Trạng thái, người sử dụng, phòng ban và vị trí chỉ thay đổi qua nghiệp vụ xử lý tài sản.</small>
+            )}
+          </label>
+          <label>
+            Ngày mua{' '}
+            <input type="date" value={form.purchaseDate} onChange={e => update('purchaseDate', e.target.value)} />
+          </label>
+          <label>
+            Nguyên giá (VNĐ){' '}
+            <input
+              type="number"
+              min="0"
+              value={form.purchaseCost}
+              onChange={e => update('purchaseCost', Number(e.target.value))}
+            />
+          </label>
+          <h3 className="form-section span-2">Cấu hình kỹ thuật</h3>
+          {technical.map(([key, label, placeholder]) => (
+            <label key={key}>
+              {label}
+              <input
+                value={String(form[key] || '')}
+                onChange={e => update(key, e.target.value)}
+                placeholder={placeholder}
+              />
+            </label>
+          ))}
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="btn secondary" onClick={onClose}>
+            Hủy
+          </button>
+          <button className="btn primary">
+            <Check size={18} />
+            {editing ? 'Lưu thay đổi' : 'Xác nhận nhập kho'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
 }
 
-function AssetDetail({ asset, transactions, emailSettings, branding, onClose, onAssign, onBarcode, onEdit }: { asset: Asset; transactions: AssetTransaction[]; emailSettings:EmailSettings; branding:BrandingSettings; onClose: () => void; onAssign: () => void; onBarcode: () => void; onEdit: () => void }) {
-  const [tab, setTab] = useState<'Thông tin'|'Cấu hình'|'Lịch sử'>('Thông tin')
-  const history = transactions.filter(t=>t.assetId===asset.id)
-  const handoverRecords=history.filter(t=>['Cấp phát','Cho mượn','Thu hồi','Điều chuyển'].includes(t.type))
-  const specs = [['Hãng sản xuất',asset.manufacturer],['Model',asset.model],['CPU',asset.cpu],['RAM',asset.ram],['Ổ đĩa',asset.storage],['Hệ điều hành',asset.operatingSystem],['Địa chỉ IP',asset.ipAddress],['Địa chỉ MAC',asset.macAddress]]
-  return <main className="page asset-detail-page"><button className="back-link" onClick={onClose}><ChevronLeft size={16}/>Quay lại danh sách</button><section className="card asset-detail enterprise-detail">
-    <div className="detail-header"><span className={`asset-icon ${asset.imageDataUrl?'has-image':''}`}>{asset.imageDataUrl?<img src={asset.imageDataUrl} alt={asset.name}/>:iconFor(asset.icon,25)}</span><div><div className="detail-title"><h2>{asset.name}</h2><span className={`status ${statusClass[asset.status]}`}><i/>{asset.status}</span></div><p>{asset.code} · Serial / Service Tag: {asset.serial || 'Chưa cập nhật'}</p></div></div>
-    <div className="detail-actions"><button className="btn primary" onClick={onAssign}><UserPlus size={17}/>Xử lý tài sản</button><button className="btn secondary" onClick={onBarcode}><QrCode size={17}/>In Barcode / QR</button><button className="btn secondary" onClick={onEdit}><Pencil size={16}/>Chỉnh sửa</button></div>
-    <div className="detail-tabs"><button className={tab==='Thông tin'?'active':''} onClick={()=>setTab('Thông tin')}>Thông tin & sở hữu</button><button className={tab==='Cấu hình'?'active':''} onClick={()=>setTab('Cấu hình')}>Cấu hình kỹ thuật</button><button className={tab==='Lịch sử'?'active':''} onClick={()=>setTab('Lịch sử')}>Lịch sử tài sản <span>{history.length}</span></button></div>
-    {tab==='Thông tin'&&<div className="detail-content"><section><h3>Người sử dụng hiện tại</h3><div className="owner-panel"><span className="avatar">{asset.assignedTo.split(' ').slice(-2).map(x=>x[0]).join('')}</span><div><b>{asset.assignedTo}</b><small>{asset.department}</small></div></div><dl><div><dt>Vị trí</dt><dd>{asset.location}</dd></div><div><dt>Ngày dự kiến trả</dt><dd>{asset.dueDate?new Date(asset.dueDate).toLocaleDateString('vi-VN'):'Không giới hạn'}</dd></div><div><dt>Tình trạng bàn giao</dt><dd>{asset.condition||'Tốt'}</dd></div></dl></section><section><h3>Thông tin tài sản</h3><dl><div><dt>Nhóm tài sản</dt><dd>{asset.category}</dd></div><div><dt>Ngày mua</dt><dd>{new Date(asset.purchaseDate).toLocaleDateString('vi-VN')}</dd></div><div><dt>Nguyên giá</dt><dd>{money(asset.purchaseCost)}</dd></div><div><dt>Mã Barcode / QR</dt><dd>{asset.code}</dd></div></dl></section></div>}
-    {tab==='Cấu hình'&&<div className="specs-panel">{specs.map(([label,value])=><div key={label}><span>{label}</span><b className={value?'':'not-set'}>{value||'Chưa cập nhật'}</b></div>)}</div>}
-    {tab==='Lịch sử'&&<div className="detail-history">{history.length?history.map(t=><div key={t.id}><span className={`transaction-icon ${t.type==='Cấp phát'?'purple':t.type==='Thu hồi'?'orange':t.type==='Nhập kho'?'green':'blue'}`}><History size={16}/></span><div><b>{t.type}</b><p>{t.from} <ChevronRight size={11}/> {t.to}</p><small>{new Date(t.date).toLocaleString('vi-VN')} · {t.performedBy}{t.condition?` · Tình trạng: ${t.condition}`:''}</small><em>{t.note}</em></div></div>):<div className="empty"><History size={28}/><h3>Chưa có giao dịch</h3></div>}</div>}
-    <div className="detail-attachments"><h3>Hồ sơ đính kèm</h3><button className="attachment-row" disabled={!handoverRecords.length} onClick={()=>handoverRecords[0]&&printHandover(asset,handoverRecords[0],emailSettings,branding)}><FileText size={16}/><span><b>Biên bản bàn giao A4</b><small>{handoverRecords.length?'Bấm để xem và in biên bản gần nhất':'Chưa phát sinh nghiệp vụ bàn giao'}</small></span><em>{handoverRecords.length} hồ sơ</em></button><div><FileSpreadsheet size={16}/><span>Hóa đơn / Chứng từ mua hàng</span><b>Chưa cập nhật</b></div></div>
-  </section></main>
+function AssetDetail({
+  asset,
+  transactions,
+  emailSettings,
+  branding,
+  onClose,
+  onAssign,
+  onBarcode,
+  onEdit,
+}: {
+  asset: Asset
+  transactions: AssetTransaction[]
+  emailSettings: EmailSettings
+  branding: BrandingSettings
+  onClose: () => void
+  onAssign: () => void
+  onBarcode: () => void
+  onEdit: () => void
+}) {
+  const [tab, setTab] = useState<'Thông tin' | 'Cấu hình' | 'Lịch sử'>('Thông tin')
+  const history = transactions.filter(t => t.assetId === asset.id)
+  const handoverRecords = history.filter(t => ['Cấp phát', 'Cho mượn', 'Thu hồi', 'Điều chuyển'].includes(t.type))
+  const specs = [
+    ['Hãng sản xuất', asset.manufacturer],
+    ['Model', asset.model],
+    ['CPU', asset.cpu],
+    ['RAM', asset.ram],
+    ['Ổ đĩa', asset.storage],
+    ['Hệ điều hành', asset.operatingSystem],
+    ['Địa chỉ IP', asset.ipAddress],
+    ['Địa chỉ MAC', asset.macAddress],
+  ]
+  return (
+    <main className="page asset-detail-page">
+      <button className="back-link" onClick={onClose}>
+        <ChevronLeft size={16} />
+        Quay lại danh sách
+      </button>
+      <section className="card asset-detail enterprise-detail">
+        <div className="detail-header">
+          <span className={`asset-icon ${asset.imageDataUrl ? 'has-image' : ''}`}>
+            {asset.imageDataUrl ? <img src={asset.imageDataUrl} alt={asset.name} /> : iconFor(asset.icon, 25)}
+          </span>
+          <div>
+            <div className="detail-title">
+              <h2>{asset.name}</h2>
+              <span className={`status ${statusClass[asset.status]}`}>
+                <i />
+                {asset.status}
+              </span>
+            </div>
+            <p>
+              {asset.code} · Serial / Service Tag: {asset.serial || 'Chưa cập nhật'}
+            </p>
+          </div>
+        </div>
+        <div className="detail-actions">
+          <button className="btn primary" onClick={onAssign}>
+            <UserPlus size={17} />
+            Xử lý tài sản
+          </button>
+          <button className="btn secondary" onClick={onBarcode}>
+            <QrCode size={17} />
+            In Barcode / QR
+          </button>
+          <button className="btn secondary" onClick={onEdit}>
+            <Pencil size={16} />
+            Chỉnh sửa
+          </button>
+        </div>
+        <div className="detail-tabs">
+          <button className={tab === 'Thông tin' ? 'active' : ''} onClick={() => setTab('Thông tin')}>
+            Thông tin & sở hữu
+          </button>
+          <button className={tab === 'Cấu hình' ? 'active' : ''} onClick={() => setTab('Cấu hình')}>
+            Cấu hình kỹ thuật
+          </button>
+          <button className={tab === 'Lịch sử' ? 'active' : ''} onClick={() => setTab('Lịch sử')}>
+            Lịch sử tài sản <span>{history.length}</span>
+          </button>
+        </div>
+        {tab === 'Thông tin' && (
+          <div className="detail-content">
+            <section>
+              <h3>Người sử dụng hiện tại</h3>
+              <div className="owner-panel">
+                <span className="avatar">
+                  {asset.assignedTo
+                    .split(' ')
+                    .slice(-2)
+                    .map(x => x[0])
+                    .join('')}
+                </span>
+                <div>
+                  <b>{asset.assignedTo}</b>
+                  <small>{asset.department}</small>
+                </div>
+              </div>
+              <dl>
+                <div>
+                  <dt>Vị trí</dt>
+                  <dd>{asset.location}</dd>
+                </div>
+                <div>
+                  <dt>Ngày dự kiến trả</dt>
+                  <dd>{asset.dueDate ? new Date(asset.dueDate).toLocaleDateString('vi-VN') : 'Không giới hạn'}</dd>
+                </div>
+                <div>
+                  <dt>Tình trạng bàn giao</dt>
+                  <dd>{asset.condition || 'Tốt'}</dd>
+                </div>
+              </dl>
+            </section>
+            <section>
+              <h3>Thông tin tài sản</h3>
+              <dl>
+                <div>
+                  <dt>Nhóm tài sản</dt>
+                  <dd>{asset.category}</dd>
+                </div>
+                <div>
+                  <dt>Ngày mua</dt>
+                  <dd>{new Date(asset.purchaseDate).toLocaleDateString('vi-VN')}</dd>
+                </div>
+                <div>
+                  <dt>Nguyên giá</dt>
+                  <dd>{money(asset.purchaseCost)}</dd>
+                </div>
+                <div>
+                  <dt>Mã Barcode / QR</dt>
+                  <dd>{asset.code}</dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+        )}
+        {tab === 'Cấu hình' && (
+          <div className="specs-panel">
+            {specs.map(([label, value]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <b className={value ? '' : 'not-set'}>{value || 'Chưa cập nhật'}</b>
+              </div>
+            ))}
+          </div>
+        )}
+        {tab === 'Lịch sử' && (
+          <div className="detail-history">
+            {history.length ? (
+              history.map(t => (
+                <div key={t.id}>
+                  <span
+                    className={`transaction-icon ${t.type === 'Cấp phát' ? 'purple' : t.type === 'Thu hồi' ? 'orange' : t.type === 'Nhập kho' ? 'green' : 'blue'}`}
+                  >
+                    <History size={16} />
+                  </span>
+                  <div>
+                    <b>{t.type}</b>
+                    <p>
+                      {t.from} <ChevronRight size={11} /> {t.to}
+                    </p>
+                    <small>
+                      {new Date(t.date).toLocaleString('vi-VN')} · {t.performedBy}
+                      {t.condition ? ` · Tình trạng: ${t.condition}` : ''}
+                    </small>
+                    <em>{t.note}</em>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="empty">
+                <History size={28} />
+                <h3>Chưa có giao dịch</h3>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="detail-attachments">
+          <h3>Hồ sơ đính kèm</h3>
+          <button
+            className="attachment-row"
+            disabled={!handoverRecords.length}
+            onClick={() => handoverRecords[0] && printHandover(asset, handoverRecords[0], emailSettings, branding)}
+          >
+            <FileText size={16} />
+            <span>
+              <b>Biên bản bàn giao A4</b>
+              <small>
+                {handoverRecords.length ? 'Bấm để xem và in biên bản gần nhất' : 'Chưa phát sinh nghiệp vụ bàn giao'}
+              </small>
+            </span>
+            <em>{handoverRecords.length} hồ sơ</em>
+          </button>
+          <div>
+            <FileSpreadsheet size={16} />
+            <span>Hóa đơn / Chứng từ mua hàng</span>
+            <b>Chưa cập nhật</b>
+          </div>
+        </div>
+      </section>
+    </main>
+  )
 }
 
-function AssignmentModal({ asset, departmentOptions, siteOptions, onClose, onSave }: { asset: Asset; departmentOptions: string[]; siteOptions: string[]; onClose: () => void; onSave: (asset: Asset, transaction: AssetTransaction) => void|Promise<void> }) {
-  const inStock=asset.assignedTo==='Chưa gán'&&asset.status==='Sẵn sàng'
-  const hasCustodian=asset.assignedTo!=='Chưa gán'
-  const allowedTypes:TransactionType[]=inStock?['Cấp phát','Cho mượn','Điều chuyển']:hasCustodian?['Thu hồi','Điều chuyển']:['Điều chuyển']
-  const defaultType:TransactionType=allowedTypes[0]
+function AssignmentModal({
+  asset,
+  departmentOptions,
+  siteOptions,
+  onClose,
+  onSave,
+}: {
+  asset: Asset
+  departmentOptions: string[]
+  siteOptions: string[]
+  onClose: () => void
+  onSave: (asset: Asset, transaction: AssetTransaction) => void | Promise<void>
+}) {
+  const inStock = asset.assignedTo === 'Chưa gán' && asset.status === 'Sẵn sàng'
+  const hasCustodian = asset.assignedTo !== 'Chưa gán'
+  const allowedTypes: TransactionType[] = inStock
+    ? ['Cấp phát', 'Cho mượn', 'Điều chuyển']
+    : hasCustodian
+      ? ['Thu hồi', 'Điều chuyển']
+      : ['Điều chuyển']
+  const defaultType: TransactionType = allowedTypes[0]
   const [type, setType] = useState<TransactionType>(defaultType)
   const [person, setPerson] = useState('')
   const [department, setDepartment] = useState(asset.department)
-  const [location, setLocation] = useState(type==='Thu hồi'?(siteOptions.find(s=>s.includes('Kho'))||'Kho Tổng · Kệ A01'):asset.location)
+  const [location, setLocation] = useState(
+    type === 'Thu hồi' ? siteOptions.find(s => s.includes('Kho')) || 'Kho Tổng · Kệ A01' : asset.location,
+  )
   const [note, setNote] = useState('')
   const [condition, setCondition] = useState<string>(asset.condition || 'Tốt')
   const [dueDate, setDueDate] = useState('')
   const [recipientEmail, setRecipientEmail] = useState('')
-  const isIssue=type==='Cấp phát'||type==='Cho mượn', isReturn=type==='Thu hồi', isTransfer=type==='Điều chuyển'
-  const [recipientDirectory,setRecipientDirectory]=useState<AssetPerson[]>(()=>env.demoMode?Array.from(new Map(seedAssets.filter(item=>item.assignedTo&&item.assignedTo!=='Chưa gán').map((item,index)=>[item.assignedTo,{id:`demo-${index}`,employeeCode:`DEMO-${index+1}`,fullName:item.assignedTo,email:item.recipientEmail,departmentId:'demo',department:{id:'demo',code:'DEMO',name:item.department},source:'LOCAL' as const,status:'ACTIVE' as const}])).values()):[])
-  useEffect(()=>{if(env.demoMode)return;const controller=new AbortController();api.get<{items:AssetPerson[]}>('/people?limit=200',controller.signal).then(result=>setRecipientDirectory(result.items)).catch(()=>setRecipientDirectory([]));return()=>controller.abort()},[])
-  useEffect(()=>{
-    if(!isIssue)return
-    const input=document.querySelector<HTMLInputElement>('.assignment-modal input[placeholder="Nhập họ tên người nhận"]')
-    if(!input)return
-    input.setAttribute('list','asset-person-directory')
-    let list=document.getElementById('asset-person-directory') as HTMLDataListElement|null
-    if(!list){list=document.createElement('datalist');list.id='asset-person-directory';document.body.appendChild(list)}
-    list.replaceChildren(...recipientDirectory.map(item=>{const option=document.createElement('option');option.value=item.fullName;option.label=`${item.employeeCode} · ${item.department.name}${item.email?` · ${item.email}`:''}`;return option}))
-    const selectPerson=()=>{const selected=recipientDirectory.find(item=>item.fullName.toLocaleLowerCase('vi')===input.value.trim().toLocaleLowerCase('vi'));input.setCustomValidity(selected?'':'Vui lòng chọn người nhận có trong danh bạ nhân sự.');if(selected){setPerson(selected.fullName);setDepartment(selected.department.name);setRecipientEmail(selected.email||'')}}
-    input.addEventListener('input',selectPerson);input.setCustomValidity(input.value?'Vui lòng chọn người nhận có trong danh bạ nhân sự.':'')
-    return()=>{input.removeEventListener('input',selectPerson);input.setCustomValidity('')}
-  },[isIssue,recipientDirectory])
-  const submittingRef=useRef(false)
-  const documentCode=`${type==='Cấp phát'?'CAP':type==='Cho mượn'?'MUON':type==='Thu hồi'?'THU':'DC'}-${new Date().getFullYear()}-${String(asset.id).padStart(5,'0')}`
-  const submit = async(e: React.FormEvent) => {e.preventDefault();if(submittingRef.current)return;if(isIssue&&!inStock){alert('Tài sản không ở trạng thái Sẵn sàng trong kho. Hãy thu hồi trước khi cấp phát cho người khác.');return}if(isReturn&&!hasCustodian){alert('Tài sản chưa được cấp phát nên không thể thu hồi.');return}if(isIssue&&!person.trim()){alert('Vui lòng nhập người nhận tài sản.');return}if(type==='Cho mượn'&&dueDate<new Date().toISOString().slice(0,10)){alert('Ngày phải trả không được nằm trong quá khứ.');return}if(isTransfer&&location.trim().toLowerCase()===asset.location.trim().toLowerCase()){alert('Vị trí đích phải khác vị trí hiện tại.');return}submittingRef.current=true;const updated:Asset=isIssue?{...asset,assignedTo:person.trim(),department,location:location.trim(),status:'Đang sử dụng',condition:condition as Asset['condition'],dueDate:type==='Cho mượn'?dueDate:'',recipientEmail,assignmentType:type}:isReturn?{...asset,assignedTo:'Chưa gán',location:location.trim(),status:'Sẵn sàng',condition:condition as Asset['condition'],dueDate:'',recipientEmail:'',assignmentType:undefined}:{...asset,location:location.trim(),condition:condition as Asset['condition']};const destination=isIssue?person.trim():location.trim();const transaction:AssetTransaction={id:Date.now(),assetId:asset.id,assetCode:asset.code,assetName:asset.name,type,from:hasCustodian?`${asset.assignedTo} · ${asset.location}`:asset.location,to:destination,performedBy:'Hệ thống',date:new Date().toISOString(),note:note||(isTransfer&&hasCustodian?`Điều chuyển vị trí, giữ nguyên người sử dụng: ${asset.assignedTo}`:`${type} tài sản`),condition,dueDate:type==='Cho mượn'?dueDate:'',recipientEmail:isIssue?recipientEmail:'',recipientDepartment:isIssue?department:undefined,handoverLocation:location.trim()};try{await onSave(updated,transaction)}finally{submittingRef.current=false}}
-  const changeType = (next: TransactionType) => {setType(next);if(next==='Thu hồi')setLocation(siteOptions.find(s=>s.includes('Kho'))||siteOptions[0]||'Kho Tổng');else setLocation(asset.location);if(next!=='Cho mượn')setDueDate('')}
-  return <div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><form className="modal assignment-modal" onSubmit={submit}>
-    <div className="modal-head"><div><h2>Xử lý bàn giao tài sản</h2><p>{asset.name} · {asset.code}</p></div><button type="button" className="icon-btn" onClick={onClose}><X size={20}/></button></div>
-    <div className="assignment-steps"><span className="done"><b>1</b>Kiểm tra tài sản</span><span className="active"><b>2</b>Thông tin nghiệp vụ</span><span><b>3</b>Xác nhận</span><span><b>4</b>Biên bản</span></div>
-    <div className="assignment-current"><span className="asset-icon">{iconFor(asset.icon)}</span><div><small>Người đang sử dụng</small><b>{asset.assignedTo}</b></div><div><small>Vị trí hiện tại</small><b>{asset.location}</b></div></div>
-    <div className={`assignment-rule ${inStock?'ready':hasCustodian?'occupied':'blocked'}`}>{inStock?<><Check size={16}/><span>Tài sản đang ở trong kho và sẵn sàng cấp phát hoặc cho mượn.</span></>:hasCustodian?<><AlertTriangle size={16}/><span>Đang do <b>{asset.assignedTo}</b> sử dụng. Phải thu hồi về kho trước khi cấp phát cho người khác.</span></>:<><AlertTriangle size={16}/><span>{asset.status==='Sẵn sàng'&&!/kho/i.test(asset.location)?<>Tài sản chưa nằm trong Kho. Hãy điều chuyển về kho trước khi cấp phát.</>:<>Tài sản đang ở trạng thái <b>{asset.status}</b>, không thể cấp phát.</>}</span></>}</div>
-    <div className="transaction-tabs">{allowedTypes.map(x=><button type="button" className={type===x?'active':''} onClick={()=>changeType(x)} key={x}>{x}</button>)}</div>
-    <div className="form-grid">{isIssue&&<><label className="span-2">Người nhận / Người sử dụng<input required value={person} onChange={e=>setPerson(e.target.value)} placeholder="Nhập họ tên người nhận"/></label><label>Email người nhận<input type="email" value={recipientEmail} onChange={e=>setRecipientEmail(e.target.value)} placeholder="nguoinhan@company.vn"/></label><label>Phòng ban<select value={department} onChange={e=>setDepartment(e.target.value)}>{departmentOptions.map(d=><option key={d}>{d}</option>)}</select></label></>}{isTransfer&&hasCustodian&&<div className="span-2 transfer-owner-note"><UserRound size={17}/><span>Giữ nguyên người sử dụng: <b>{asset.assignedTo}</b>. Muốn giao cho người khác, hãy Thu hồi trước.</span></div>}<label className={isIssue?'':'span-2'}>{isReturn?'Kho / Vị trí nhận lại':isTransfer?'Site / Vị trí đích':'Site / Vị trí sử dụng'}<input list="assignment-sites" required value={location} onChange={e=>setLocation(e.target.value)}/><datalist id="assignment-sites">{siteOptions.map(s=><option key={s} value={s}/>)}</datalist></label><label>Tình trạng khi bàn giao<select value={condition} onChange={e=>setCondition(e.target.value)}>{['Tốt','Trầy xước nhẹ','Cần kiểm tra','Hỏng'].map(x=><option key={x}>{x}</option>)}</select></label>{type==='Cho mượn'&&<label>Ngày phải trả<input type="date" required value={dueDate} onChange={e=>setDueDate(e.target.value)}/></label>}<label className="span-2">Ghi chú / Biên bản<input value={note} onChange={e=>setNote(e.target.value)} placeholder="Lý do và tình trạng khi bàn giao"/></label></div>
-    <div className="modal-actions"><span className="document-code">Mã phiếu dự kiến: <b>{documentCode}</b></span><button type="button" className="btn secondary" onClick={onClose}>Hủy</button><button className="btn primary" disabled={submittingRef.current}><Check size={18}/>{isReturn?'Xác nhận thu hồi về kho':isTransfer?'Xác nhận điều chuyển':type==='Cho mượn'?'Xác nhận cho mượn':'Xác nhận cấp phát'}</button></div>
-  </form></div>
+  const isIssue = type === 'Cấp phát' || type === 'Cho mượn',
+    isReturn = type === 'Thu hồi',
+    isTransfer = type === 'Điều chuyển'
+  const [recipientDirectory, setRecipientDirectory] = useState<AssetPerson[]>(() =>
+    env.demoMode
+      ? Array.from(
+          new Map(
+            seedAssets
+              .filter(item => item.assignedTo && item.assignedTo !== 'Chưa gán')
+              .map((item, index) => [
+                item.assignedTo,
+                {
+                  id: `demo-${index}`,
+                  employeeCode: `DEMO-${index + 1}`,
+                  fullName: item.assignedTo,
+                  email: item.recipientEmail,
+                  departmentId: 'demo',
+                  department: { id: 'demo', code: 'DEMO', name: item.department },
+                  source: 'LOCAL' as const,
+                  status: 'ACTIVE' as const,
+                },
+              ]),
+          ).values(),
+        )
+      : [],
+  )
+  useEffect(() => {
+    if (env.demoMode) return
+    const controller = new AbortController()
+    api
+      .get<{ items: AssetPerson[] }>('/people?limit=200', controller.signal)
+      .then(result => setRecipientDirectory(result.items))
+      .catch(() => setRecipientDirectory([]))
+    return () => controller.abort()
+  }, [])
+  useEffect(() => {
+    if (!isIssue) return
+    const input = document.querySelector<HTMLInputElement>(
+      '.assignment-modal input[placeholder="Nhập họ tên người nhận"]',
+    )
+    if (!input) return
+    input.setAttribute('list', 'asset-person-directory')
+    let list = document.getElementById('asset-person-directory') as HTMLDataListElement | null
+    if (!list) {
+      list = document.createElement('datalist')
+      list.id = 'asset-person-directory'
+      document.body.appendChild(list)
+    }
+    list.replaceChildren(
+      ...recipientDirectory.map(item => {
+        const option = document.createElement('option')
+        option.value = item.fullName
+        option.label = `${item.employeeCode} · ${item.department.name}${item.email ? ` · ${item.email}` : ''}`
+        return option
+      }),
+    )
+    const selectPerson = () => {
+      const selected = recipientDirectory.find(
+        item => item.fullName.toLocaleLowerCase('vi') === input.value.trim().toLocaleLowerCase('vi'),
+      )
+      input.setCustomValidity(selected ? '' : 'Vui lòng chọn người nhận có trong danh bạ nhân sự.')
+      if (selected) {
+        setPerson(selected.fullName)
+        setDepartment(selected.department.name)
+        setRecipientEmail(selected.email || '')
+      }
+    }
+    input.addEventListener('input', selectPerson)
+    input.setCustomValidity(input.value ? 'Vui lòng chọn người nhận có trong danh bạ nhân sự.' : '')
+    return () => {
+      input.removeEventListener('input', selectPerson)
+      input.setCustomValidity('')
+    }
+  }, [isIssue, recipientDirectory])
+  const submittingRef = useRef(false)
+  const documentCode = `${type === 'Cấp phát' ? 'CAP' : type === 'Cho mượn' ? 'MUON' : type === 'Thu hồi' ? 'THU' : 'DC'}-${new Date().getFullYear()}-${String(asset.id).padStart(5, '0')}`
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (submittingRef.current) return
+    if (isIssue && !inStock) {
+      alert('Tài sản không ở trạng thái Sẵn sàng trong kho. Hãy thu hồi trước khi cấp phát cho người khác.')
+      return
+    }
+    if (isReturn && !hasCustodian) {
+      alert('Tài sản chưa được cấp phát nên không thể thu hồi.')
+      return
+    }
+    if (isIssue && !person.trim()) {
+      alert('Vui lòng nhập người nhận tài sản.')
+      return
+    }
+    if (type === 'Cho mượn' && dueDate < new Date().toISOString().slice(0, 10)) {
+      alert('Ngày phải trả không được nằm trong quá khứ.')
+      return
+    }
+    if (isTransfer && location.trim().toLowerCase() === asset.location.trim().toLowerCase()) {
+      alert('Vị trí đích phải khác vị trí hiện tại.')
+      return
+    }
+    submittingRef.current = true
+    const updated: Asset = isIssue
+      ? {
+          ...asset,
+          assignedTo: person.trim(),
+          department,
+          location: location.trim(),
+          status: 'Đang sử dụng',
+          condition: condition as Asset['condition'],
+          dueDate: type === 'Cho mượn' ? dueDate : '',
+          recipientEmail,
+          assignmentType: type,
+        }
+      : isReturn
+        ? {
+            ...asset,
+            assignedTo: 'Chưa gán',
+            location: location.trim(),
+            status: 'Sẵn sàng',
+            condition: condition as Asset['condition'],
+            dueDate: '',
+            recipientEmail: '',
+            assignmentType: undefined,
+          }
+        : { ...asset, location: location.trim(), condition: condition as Asset['condition'] }
+    const destination = isIssue ? person.trim() : location.trim()
+    const transaction: AssetTransaction = {
+      id: Date.now(),
+      assetId: asset.id,
+      assetCode: asset.code,
+      assetName: asset.name,
+      type,
+      from: hasCustodian ? `${asset.assignedTo} · ${asset.location}` : asset.location,
+      to: destination,
+      performedBy: 'Hệ thống',
+      date: new Date().toISOString(),
+      note:
+        note ||
+        (isTransfer && hasCustodian
+          ? `Điều chuyển vị trí, giữ nguyên người sử dụng: ${asset.assignedTo}`
+          : `${type} tài sản`),
+      condition,
+      dueDate: type === 'Cho mượn' ? dueDate : '',
+      recipientEmail: isIssue ? recipientEmail : '',
+      recipientDepartment: isIssue ? department : undefined,
+      handoverLocation: location.trim(),
+    }
+    try {
+      await onSave(updated, transaction)
+    } finally {
+      submittingRef.current = false
+    }
+  }
+  const changeType = (next: TransactionType) => {
+    setType(next)
+    if (next === 'Thu hồi') setLocation(siteOptions.find(s => s.includes('Kho')) || siteOptions[0] || 'Kho Tổng')
+    else setLocation(asset.location)
+    if (next !== 'Cho mượn') setDueDate('')
+  }
+  return (
+    <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <form className="modal assignment-modal" onSubmit={submit}>
+        <div className="modal-head">
+          <div>
+            <h2>Xử lý bàn giao tài sản</h2>
+            <p>
+              {asset.name} · {asset.code}
+            </p>
+          </div>
+          <button type="button" className="icon-btn" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="assignment-steps">
+          <span className="done">
+            <b>1</b>Kiểm tra tài sản
+          </span>
+          <span className="active">
+            <b>2</b>Thông tin nghiệp vụ
+          </span>
+          <span>
+            <b>3</b>Xác nhận
+          </span>
+          <span>
+            <b>4</b>Biên bản
+          </span>
+        </div>
+        <div className="assignment-current">
+          <span className="asset-icon">{iconFor(asset.icon)}</span>
+          <div>
+            <small>Người đang sử dụng</small>
+            <b>{asset.assignedTo}</b>
+          </div>
+          <div>
+            <small>Vị trí hiện tại</small>
+            <b>{asset.location}</b>
+          </div>
+        </div>
+        <div className={`assignment-rule ${inStock ? 'ready' : hasCustodian ? 'occupied' : 'blocked'}`}>
+          {inStock ? (
+            <>
+              <Check size={16} />
+              <span>Tài sản đang ở trong kho và sẵn sàng cấp phát hoặc cho mượn.</span>
+            </>
+          ) : hasCustodian ? (
+            <>
+              <AlertTriangle size={16} />
+              <span>
+                Đang do <b>{asset.assignedTo}</b> sử dụng. Phải thu hồi về kho trước khi cấp phát cho người khác.
+              </span>
+            </>
+          ) : (
+            <>
+              <AlertTriangle size={16} />
+              <span>
+                {asset.status === 'Sẵn sàng' && !/kho/i.test(asset.location) ? (
+                  <>Tài sản chưa nằm trong Kho. Hãy điều chuyển về kho trước khi cấp phát.</>
+                ) : (
+                  <>
+                    Tài sản đang ở trạng thái <b>{asset.status}</b>, không thể cấp phát.
+                  </>
+                )}
+              </span>
+            </>
+          )}
+        </div>
+        <div className="transaction-tabs">
+          {allowedTypes.map(x => (
+            <button type="button" className={type === x ? 'active' : ''} onClick={() => changeType(x)} key={x}>
+              {x}
+            </button>
+          ))}
+        </div>
+        <div className="form-grid">
+          {isIssue && (
+            <>
+              <label className="span-2">
+                Người nhận / Người sử dụng
+                <input
+                  required
+                  value={person}
+                  onChange={e => setPerson(e.target.value)}
+                  placeholder="Nhập họ tên người nhận"
+                />
+              </label>
+              <label>
+                Email người nhận
+                <input
+                  type="email"
+                  value={recipientEmail}
+                  onChange={e => setRecipientEmail(e.target.value)}
+                  placeholder="nguoinhan@company.vn"
+                />
+              </label>
+              <label>
+                Phòng ban
+                <select value={department} onChange={e => setDepartment(e.target.value)}>
+                  {departmentOptions.map(d => (
+                    <option key={d}>{d}</option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
+          {isTransfer && hasCustodian && (
+            <div className="span-2 transfer-owner-note">
+              <UserRound size={17} />
+              <span>
+                Giữ nguyên người sử dụng: <b>{asset.assignedTo}</b>. Muốn giao cho người khác, hãy Thu hồi trước.
+              </span>
+            </div>
+          )}
+          <label className={isIssue ? '' : 'span-2'}>
+            {isReturn ? 'Kho / Vị trí nhận lại' : isTransfer ? 'Site / Vị trí đích' : 'Site / Vị trí sử dụng'}
+            <input list="assignment-sites" required value={location} onChange={e => setLocation(e.target.value)} />
+            <datalist id="assignment-sites">
+              {siteOptions.map(s => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+          </label>
+          <label>
+            Tình trạng khi bàn giao
+            <select value={condition} onChange={e => setCondition(e.target.value)}>
+              {['Tốt', 'Trầy xước nhẹ', 'Cần kiểm tra', 'Hỏng'].map(x => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </label>
+          {type === 'Cho mượn' && (
+            <label>
+              Ngày phải trả
+              <input type="date" required value={dueDate} onChange={e => setDueDate(e.target.value)} />
+            </label>
+          )}
+          <label className="span-2">
+            Ghi chú / Biên bản
+            <input
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="Lý do và tình trạng khi bàn giao"
+            />
+          </label>
+        </div>
+        <div className="modal-actions">
+          <span className="document-code">
+            Mã phiếu dự kiến: <b>{documentCode}</b>
+          </span>
+          <button type="button" className="btn secondary" onClick={onClose}>
+            Hủy
+          </button>
+          <button className="btn primary" disabled={submittingRef.current}>
+            <Check size={18} />
+            {isReturn
+              ? 'Xác nhận thu hồi về kho'
+              : isTransfer
+                ? 'Xác nhận điều chuyển'
+                : type === 'Cho mượn'
+                  ? 'Xác nhận cho mượn'
+                  : 'Xác nhận cấp phát'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
 }
 
 function BarcodeModal({ asset, onClose }: { asset: Asset; onClose: () => void }) {
   const svgRef = useRef<SVGSVGElement>(null)
-  const qrRef=useRef<HTMLCanvasElement>(null)
-  const [format,setFormat]=useState<Exclude<AssetCodeFormat,'none'>>('barcode')
-  useEffect(()=>{if(svgRef.current)JsBarcode(svgRef.current,asset.code,{format:'CODE128',width:2.1,height:72,displayValue:true,font:'Poppins',fontSize:16,margin:12});if(qrRef.current)QRCode.toCanvas(qrRef.current,asset.code,{width:150,margin:1,errorCorrectionLevel:'M'})},[asset])
+  const qrRef = useRef<HTMLCanvasElement>(null)
+  const [format, setFormat] = useState<Exclude<AssetCodeFormat, 'none'>>('barcode')
+  useEffect(() => {
+    if (svgRef.current)
+      JsBarcode(svgRef.current, asset.code, {
+        format: 'CODE128',
+        width: 2.1,
+        height: 72,
+        displayValue: true,
+        font: 'Poppins',
+        fontSize: 16,
+        margin: 12,
+      })
+    if (qrRef.current) QRCode.toCanvas(qrRef.current, asset.code, { width: 150, margin: 1, errorCorrectionLevel: 'M' })
+  }, [asset])
   const print = () => {
-    const svg=svgRef.current?.outerHTML||'',qr=qrRef.current?.toDataURL('image/png')||''
-    const codes=format==='barcode'?svg:format==='qr'?`<img class="qr" src="${qr}">`:`<div class="codes">${svg}<img class="qr" src="${qr}"></div>`
-    const w=window.open('','_blank','width=720,height=520');if(!w)return
-    w.document.write(`<html><head><title>Nhãn ${escapeHtml(asset.code)}</title><style>@page{margin:8mm}body{font-family:Poppins,"Segoe UI",Arial,sans-serif;display:grid;place-items:center;padding:24px}.label{width:${format==='both'?'520':'360'}px;border:1px dashed #888;padding:18px;text-align:center}.name{font-size:15px;font-weight:600;margin-bottom:6px}.codes{display:flex;align-items:center;justify-content:center;gap:18px}.codes svg{max-width:330px}.qr{width:150px;height:150px}.meta{font-size:11px;color:#555;margin-top:8px}</style></head><body><div class="label"><div class="name">${escapeHtml(asset.name)}</div>${codes}<div class="meta">${escapeHtml(asset.department)} · ${escapeHtml(asset.location)}</div></div><script>window.onload=()=>{window.print();window.close()}<\/script></body></html>`);w.document.close()
+    const svg = svgRef.current?.outerHTML || '',
+      qr = qrRef.current?.toDataURL('image/png') || ''
+    const codes =
+      format === 'barcode'
+        ? svg
+        : format === 'qr'
+          ? `<img class="qr" src="${qr}">`
+          : `<div class="codes">${svg}<img class="qr" src="${qr}"></div>`
+    const w = window.open('', '_blank', 'width=720,height=520')
+    if (!w) return
+    w.document.write(
+      // eslint-disable-next-line no-useless-escape
+      `<html><head><title>Nhãn ${escapeHtml(asset.code)}</title><style>@page{margin:8mm}body{font-family:Poppins,"Segoe UI",Arial,sans-serif;display:grid;place-items:center;padding:24px}.label{width:${format === 'both' ? '520' : '360'}px;border:1px dashed #888;padding:18px;text-align:center}.name{font-size:15px;font-weight:600;margin-bottom:6px}.codes{display:flex;align-items:center;justify-content:center;gap:18px}.codes svg{max-width:330px}.qr{width:150px;height:150px}.meta{font-size:11px;color:#555;margin-top:8px}</style></head><body><div class="label"><div class="name">${escapeHtml(asset.name)}</div>${codes}<div class="meta">${escapeHtml(asset.department)} · ${escapeHtml(asset.location)}</div></div><script>window.onload=()=>{window.print();window.close()}<\/script></body></html>`,
+    )
+    w.document.close()
   }
-  const options:Array<[Exclude<AssetCodeFormat,'none'>,string,string,typeof Barcode]>=[['barcode','Barcode','Phù hợp máy quét 1D và tem dài',Barcode],['qr','QR Code','Tem vuông, quét bằng camera',QrCode],['both','Cả hai','In đồng thời Barcode và QR',ScanLine]]
-  return <div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><div className="modal barcode-modal"><div className="modal-head"><div><h2>In nhãn tài sản</h2><p>Chọn loại mã phù hợp với thiết bị quét của đơn vị.</p></div><button className="icon-btn" onClick={onClose}><X size={20}/></button></div><div className="code-format-options">{options.map(([value,label,description,Icon])=><button key={value} className={format===value?'active':''} onClick={()=>setFormat(value)}><Icon size={20}/><span><b>{label}</b><small>{description}</small></span>{format===value&&<Check size={16}/>}</button>)}</div><div className="barcode-preview"><div className={`barcode-label format-${format}`}><b>{asset.name}</b><div className="label-codes"><div className="barcode-code"><svg ref={svgRef}/></div><div className="qr-code"><canvas ref={qrRef}/><span>{asset.code}</span></div></div><small>{asset.department} · {asset.location}</small></div></div><div className="modal-actions"><button className="btn secondary" onClick={onClose}>Đóng</button><button className="btn primary" onClick={print}><Printer size={17}/>In {format==='barcode'?'Barcode':format==='qr'?'QR Code':'Barcode + QR'}</button></div></div></div>
+  const options: Array<[Exclude<AssetCodeFormat, 'none'>, string, string, typeof Barcode]> = [
+    ['barcode', 'Barcode', 'Phù hợp máy quét 1D và tem dài', Barcode],
+    ['qr', 'QR Code', 'Tem vuông, quét bằng camera', QrCode],
+    ['both', 'Cả hai', 'In đồng thời Barcode và QR', ScanLine],
+  ]
+  return (
+    <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal barcode-modal">
+        <div className="modal-head">
+          <div>
+            <h2>In nhãn tài sản</h2>
+            <p>Chọn loại mã phù hợp với thiết bị quét của đơn vị.</p>
+          </div>
+          <button className="icon-btn" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="code-format-options">
+          {options.map(([value, label, description, Icon]) => (
+            <button key={value} className={format === value ? 'active' : ''} onClick={() => setFormat(value)}>
+              <Icon size={20} />
+              <span>
+                <b>{label}</b>
+                <small>{description}</small>
+              </span>
+              {format === value && <Check size={16} />}
+            </button>
+          ))}
+        </div>
+        <div className="barcode-preview">
+          <div className={`barcode-label format-${format}`}>
+            <b>{asset.name}</b>
+            <div className="label-codes">
+              <div className="barcode-code">
+                <svg ref={svgRef} />
+              </div>
+              <div className="qr-code">
+                <canvas ref={qrRef} />
+                <span>{asset.code}</span>
+              </div>
+            </div>
+            <small>
+              {asset.department} · {asset.location}
+            </small>
+          </div>
+        </div>
+        <div className="modal-actions">
+          <button className="btn secondary" onClick={onClose}>
+            Đóng
+          </button>
+          <button className="btn primary" onClick={print}>
+            <Printer size={17} />
+            In {format === 'barcode' ? 'Barcode' : format === 'qr' ? 'QR Code' : 'Barcode + QR'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
-function ExportExcelModal({assets,onClose}:{assets:Asset[];onClose:()=>void}){
-  const [format,setFormat]=useState<AssetCodeFormat>('none')
-  const [exporting,setExporting]=useState(false)
-  const run=async()=>{if(exporting)return;setExporting(true);try{await exportAssetsExcel(assets,format);onClose()}catch(error){console.error(error);alert('Không thể xuất Excel. Vui lòng thử lại.')}finally{setExporting(false)}}
-  const options:Array<[AssetCodeFormat,string,string,typeof FileSpreadsheet]>=[['none','Không kèm mã','File nhẹ, chỉ gồm dữ liệu',FileSpreadsheet],['barcode','Kèm Barcode','Thêm ảnh Barcode cho từng tài sản',Barcode],['qr','Kèm QR Code','Thêm ảnh QR cho từng tài sản',QrCode],['both','Kèm cả hai','Thêm Barcode và QR Code',ScanLine]]
-  return <div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><div className="modal export-code-modal"><div className="modal-head"><div><h2>Xuất sổ tài sản</h2><p>{assets.length} tài sản · Chọn loại mã muốn nhúng vào file Excel.</p></div><button className="icon-btn" onClick={onClose}><X size={20}/></button></div><div className="export-format-list">{options.map(([value,label,description,Icon])=><button key={value} className={format===value?'active':''} onClick={()=>setFormat(value)}><span className="export-format-icon"><Icon size={21}/></span><span><b>{label}</b><small>{description}</small></span><span className="format-radio">{format===value&&<i/>}</span></button>)}</div><div className="export-note"><FileSpreadsheet size={18}/><span>Barcode/QR chứa mã tài sản và được nhúng dưới dạng ảnh trong từng dòng Excel. File có mã sẽ lớn hơn file dữ liệu thông thường.</span></div><div className="modal-actions"><button className="btn secondary" onClick={onClose}>Hủy</button><button className="btn primary" disabled={exporting||!assets.length} onClick={run}><Download size={17}/>{exporting?'Đang tạo file...':'Xuất Excel'}</button></div></div></div>
+function ExportExcelModal({ assets, onClose }: { assets: Asset[]; onClose: () => void }) {
+  const [format, setFormat] = useState<AssetCodeFormat>('none')
+  const [exporting, setExporting] = useState(false)
+  const run = async () => {
+    if (exporting) return
+    setExporting(true)
+    try {
+      await exportAssetsExcel(assets, format)
+      onClose()
+    } catch (error) {
+      console.error(error)
+      alert('Không thể xuất Excel. Vui lòng thử lại.')
+    } finally {
+      setExporting(false)
+    }
+  }
+  const options: Array<[AssetCodeFormat, string, string, typeof FileSpreadsheet]> = [
+    ['none', 'Không kèm mã', 'File nhẹ, chỉ gồm dữ liệu', FileSpreadsheet],
+    ['barcode', 'Kèm Barcode', 'Thêm ảnh Barcode cho từng tài sản', Barcode],
+    ['qr', 'Kèm QR Code', 'Thêm ảnh QR cho từng tài sản', QrCode],
+    ['both', 'Kèm cả hai', 'Thêm Barcode và QR Code', ScanLine],
+  ]
+  return (
+    <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal export-code-modal">
+        <div className="modal-head">
+          <div>
+            <h2>Xuất sổ tài sản</h2>
+            <p>{assets.length} tài sản · Chọn loại mã muốn nhúng vào file Excel.</p>
+          </div>
+          <button className="icon-btn" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="export-format-list">
+          {options.map(([value, label, description, Icon]) => (
+            <button key={value} className={format === value ? 'active' : ''} onClick={() => setFormat(value)}>
+              <span className="export-format-icon">
+                <Icon size={21} />
+              </span>
+              <span>
+                <b>{label}</b>
+                <small>{description}</small>
+              </span>
+              <span className="format-radio">{format === value && <i />}</span>
+            </button>
+          ))}
+        </div>
+        <div className="export-note">
+          <FileSpreadsheet size={18} />
+          <span>
+            Barcode/QR chứa mã tài sản và được nhúng dưới dạng ảnh trong từng dòng Excel. File có mã sẽ lớn hơn file dữ
+            liệu thông thường.
+          </span>
+        </div>
+        <div className="modal-actions">
+          <button className="btn secondary" onClick={onClose}>
+            Hủy
+          </button>
+          <button className="btn primary" disabled={exporting || !assets.length} onClick={run}>
+            <Download size={17} />
+            {exporting ? 'Đang tạo file...' : 'Xuất Excel'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
-function HandoverModal({ asset: rawAsset, transaction, emailSettings, branding, onClose }: { asset: Asset; transaction: AssetTransaction; emailSettings: EmailSettings; branding:BrandingSettings; onClose: () => void }) {
-  const asset={...rawAsset,department:transaction.recipientDepartment||rawAsset.department}
-  const config=[asset.cpu,asset.ram,asset.storage].filter(Boolean).join(' · ')||'Không áp dụng / Chưa cập nhật'
-  return <div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><div className="modal handover-modal"><div className="modal-head"><div><h2>Biên bản A4 đã sẵn sàng</h2><p>{transaction.type} · {asset.name} · {asset.code}</p></div><button className="icon-btn" onClick={onClose}><X size={20}/></button></div><div className="handover-success"><span><FileText size={30}/></span><h3>Đã ghi nhận {transaction.type.toLowerCase()} thành công</h3><p>Mẫu {branding.handoverFormCode} đã được điền tự động theo thông tin công ty và tài sản.</p><div className="handover-summary"><div><small>Công ty / Bộ phận giao</small><b>{branding.companyName} · {branding.handoverDepartment}</b></div><div><small>Người nhận / Bộ phận</small><b>{transaction.to} · {asset.department}</b></div><div><small>Thiết bị / Cấu hình</small><b>{asset.name} · {config}</b></div><div><small>Tình trạng / Ngày bàn giao</small><b>{transaction.condition||'Tốt'} · {new Date(transaction.date).toLocaleString('vi-VN')}</b></div></div></div><div className="handover-actions"><button className="action-tile print" onClick={()=>printHandover(asset,transaction,emailSettings,branding)}><Printer size={22}/><span><b>Xem mẫu A4 / In PDF</b><small>Mở bản hoàn chỉnh trước khi in</small></span></button><button className="action-tile file" onClick={()=>downloadHandover(asset,transaction,emailSettings,branding)}><Download size={22}/><span><b>Tải file A4</b><small>Lưu bản HTML có thể in lại</small></span></button><button className="action-tile mail" disabled={!transaction.recipientEmail} onClick={()=>emailHandover(asset,transaction,emailSettings)}><Send size={22}/><span><b>Gửi email</b><small>{transaction.recipientEmail||'Chưa có email người nhận'}</small></span></button></div><div className="modal-actions"><button className="btn secondary" onClick={onClose}>Hoàn tất</button></div></div></div>
+function HandoverModal({
+  asset: rawAsset,
+  transaction,
+  emailSettings,
+  branding,
+  onClose,
+}: {
+  asset: Asset
+  transaction: AssetTransaction
+  emailSettings: EmailSettings
+  branding: BrandingSettings
+  onClose: () => void
+}) {
+  const asset = { ...rawAsset, department: transaction.recipientDepartment || rawAsset.department }
+  const config = [asset.cpu, asset.ram, asset.storage].filter(Boolean).join(' · ') || 'Không áp dụng / Chưa cập nhật'
+  return (
+    <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal handover-modal">
+        <div className="modal-head">
+          <div>
+            <h2>Biên bản A4 đã sẵn sàng</h2>
+            <p>
+              {transaction.type} · {asset.name} · {asset.code}
+            </p>
+          </div>
+          <button className="icon-btn" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="handover-success">
+          <span>
+            <FileText size={30} />
+          </span>
+          <h3>Đã ghi nhận {transaction.type.toLowerCase()} thành công</h3>
+          <p>Mẫu {branding.handoverFormCode} đã được điền tự động theo thông tin công ty và tài sản.</p>
+          <div className="handover-summary">
+            <div>
+              <small>Công ty / Bộ phận giao</small>
+              <b>
+                {branding.companyName} · {branding.handoverDepartment}
+              </b>
+            </div>
+            <div>
+              <small>Người nhận / Bộ phận</small>
+              <b>
+                {transaction.to} · {asset.department}
+              </b>
+            </div>
+            <div>
+              <small>Thiết bị / Cấu hình</small>
+              <b>
+                {asset.name} · {config}
+              </b>
+            </div>
+            <div>
+              <small>Tình trạng / Ngày bàn giao</small>
+              <b>
+                {transaction.condition || 'Tốt'} · {new Date(transaction.date).toLocaleString('vi-VN')}
+              </b>
+            </div>
+          </div>
+        </div>
+        <div className="handover-actions">
+          <button
+            className="action-tile print"
+            onClick={() => printHandover(asset, transaction, emailSettings, branding)}
+          >
+            <Printer size={22} />
+            <span>
+              <b>Xem mẫu A4 / In PDF</b>
+              <small>Mở bản hoàn chỉnh trước khi in</small>
+            </span>
+          </button>
+          <button
+            className="action-tile file"
+            onClick={() => downloadHandover(asset, transaction, emailSettings, branding)}
+          >
+            <Download size={22} />
+            <span>
+              <b>Tải file A4</b>
+              <small>Lưu bản HTML có thể in lại</small>
+            </span>
+          </button>
+          <button
+            className="action-tile mail"
+            disabled={!transaction.recipientEmail}
+            onClick={() => emailHandover(asset, transaction, emailSettings)}
+          >
+            <Send size={22} />
+            <span>
+              <b>Gửi email</b>
+              <small>{transaction.recipientEmail || 'Chưa có email người nhận'}</small>
+            </span>
+          </button>
+        </div>
+        <div className="modal-actions">
+          <button className="btn secondary" onClick={onClose}>
+            Hoàn tất
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function App() {
-  const {page,setPage}=useAppRoute()
-  const [currentUser,setCurrentUser]=useState<AppUser|undefined>(()=>{if(!env.demoMode)return undefined;const username=localStorage.getItem('assetflow-session');const user=seedUsers.find(u=>u.username===username);if(!user)return undefined;try{const credential=JSON.parse(localStorage.getItem('assetflow-local-admin-credential-v3')||'null');return {...user,mustChangePassword:credential?.mustChangePassword!==false}}catch{return {...user,mustChangePassword:true}}})
-  const [authReady,setAuthReady]=useState(env.demoMode)
-  const [identityReady,setIdentityReady]=useState(env.demoMode)
+  const { page, setPage } = useAppRoute()
+  const [currentUser, setCurrentUser] = useState<AppUser | undefined>(() => {
+    if (!env.demoMode) return undefined
+    const username = localStorage.getItem('assetflow-session')
+    const user = seedUsers.find(u => u.username === username)
+    if (!user) return undefined
+    try {
+      const credential = JSON.parse(localStorage.getItem('assetflow-local-admin-credential-v3') || 'null')
+      return { ...user, mustChangePassword: credential?.mustChangePassword !== false }
+    } catch {
+      return { ...user, mustChangePassword: true }
+    }
+  })
+  const [authReady, setAuthReady] = useState(env.demoMode)
+  const [identityReady, setIdentityReady] = useState(env.demoMode)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [intakeMode,setIntakeMode]=useState<'manual'|'import'>('manual')
+  const [intakeMode, setIntakeMode] = useState<'manual' | 'import'>('manual')
   const [modal, setModal] = useState<Asset | null | undefined>(undefined)
   const [assignmentAsset, setAssignmentAsset] = useState<Asset | undefined>()
   const [barcodeAsset, setBarcodeAsset] = useState<Asset | undefined>()
-  const [passwordModalOpen,setPasswordModalOpen]=useState(false)
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false)
   const [detailAssetId, setDetailAssetId] = useState<number | undefined>()
-  const [handover, setHandover] = useState<{asset: Asset; transaction: AssetTransaction} | undefined>()
+  const [handover, setHandover] = useState<{ asset: Asset; transaction: AssetTransaction } | undefined>()
   const [assets, setAssets] = useState<Asset[]>(() => {
-    if(!env.demoMode)return []
+    if (!env.demoMode) return []
     try {
       const stored = JSON.parse(localStorage.getItem('assetflow-assets') || '') as Asset[]
       if (!Array.isArray(stored)) return seedAssets
       const existingIds = new Set(stored.map(a => a.id))
-      const migrated = stored.map(a => normalizeLegacyAsset({ ...(seedAssets.find(seed => seed.id === a.id) || {}), ...a }))
+      const migrated = stored.map(a =>
+        normalizeLegacyAsset({ ...(seedAssets.find(seed => seed.id === a.id) || {}), ...a }),
+      )
       return [...migrated, ...seedAssets.filter(a => !existingIds.has(a.id))]
-    } catch { return seedAssets }
+    } catch {
+      return seedAssets
+    }
   })
-  const [referenceData,setReferenceData]=useState<ReferenceData>(emptyReferenceData)
-  useEffect(()=>{if(env.demoMode)return;const controller=new AbortController();api.get<{user:Omit<AppUser,'password'>}>('/auth/me',controller.signal).then(response=>setCurrentUser({...response.user,password:''})).catch(()=>setCurrentUser(undefined)).finally(()=>setAuthReady(true));return()=>controller.abort()},[])
-  useEffect(()=>{if(env.demoMode)return;const expire=()=>{setCurrentUser(undefined);setPage('Tổng quan')};window.addEventListener('assetflow:session-expired',expire);return()=>window.removeEventListener('assetflow:session-expired',expire)},[setPage])
-  const refreshServerData=async(signal?:AbortSignal)=>{
-    const settingsResult=await api.get<{branding?:Partial<BrandingSettings>;email?:Partial<EmailSettings>;regional?:Partial<RegionalSettings>}>('/settings',signal)
-    setBranding({...seedBrandingSettings,...settingsResult.branding})
-    setEmailSettings({...seedEmailSettings,...settingsResult.email})
-    setRegional({...seedRegionalSettings,...settingsResult.regional})
-    const [assetResult,historyResult,categoriesResult,departmentsResult,locationsResult,warehousesResult,peopleResult]=await Promise.all([
-      api.get<{data:any[];meta:{page:number;limit:number;total:number;totalPages:number}}>('/assets?page=1&limit=100',signal),api.get<{data:any[]}>('/asset-history',signal),api.get<ApiLookup[]>('/categories',signal),api.get<ApiLookup[]>('/departments',signal),api.get<ApiLookup[]>('/locations',signal),api.get<ApiLookup[]>('/warehouses',signal),api.get<{items:ApiPerson[]}>('/people?limit=200',signal),
+  const [referenceData, setReferenceData] = useState<ReferenceData>(emptyReferenceData)
+  useEffect(() => {
+    if (env.demoMode) return
+    const controller = new AbortController()
+    api
+      .get<{ user: Omit<AppUser, 'password'> }>('/auth/me', controller.signal)
+      .then(response => setCurrentUser({ ...response.user, password: '' }))
+      .catch(() => setCurrentUser(undefined))
+      .finally(() => setAuthReady(true))
+    return () => controller.abort()
+  }, [])
+  useEffect(() => {
+    if (env.demoMode) return
+    const expire = () => {
+      setCurrentUser(undefined)
+      setPage('Tổng quan')
+    }
+    window.addEventListener('assetflow:session-expired', expire)
+    return () => window.removeEventListener('assetflow:session-expired', expire)
+  }, [setPage])
+  const refreshServerData = async (signal?: AbortSignal) => {
+    const settingsResult = await api.get<{
+      branding?: Partial<BrandingSettings>
+      email?: Partial<EmailSettings>
+      regional?: Partial<RegionalSettings>
+    }>('/settings', signal)
+    setBranding({ ...seedBrandingSettings, ...settingsResult.branding })
+    setEmailSettings({ ...seedEmailSettings, ...settingsResult.email })
+    setRegional({ ...seedRegionalSettings, ...settingsResult.regional })
+    const [
+      assetResult,
+      historyResult,
+      categoriesResult,
+      departmentsResult,
+      locationsResult,
+      warehousesResult,
+      peopleResult,
+    ] = await Promise.all([
+      api.get<{ data: any[]; meta: { page: number; limit: number; total: number; totalPages: number } }>(
+        '/assets?page=1&limit=100',
+        signal,
+      ),
+      api.get<{ data: any[] }>('/asset-history', signal),
+      api.get<ApiLookup[]>('/categories', signal),
+      api.get<ApiLookup[]>('/departments', signal),
+      api.get<ApiLookup[]>('/locations', signal),
+      api.get<ApiLookup[]>('/warehouses', signal),
+      api.get<{ items: ApiPerson[] }>('/people?limit=200', signal),
     ])
-    const remainingPages=assetResult.meta.totalPages>1?await Promise.all(Array.from({length:assetResult.meta.totalPages-1},(_,index)=>api.get<{data:any[]}>(`/assets?page=${index+2}&limit=100`,signal))):[]
-    setAssets([assetResult,...remainingPages].flatMap(result=>result.data).map(fromApiAsset))
-    setReferenceData({categories:categoriesResult,departments:departmentsResult,locations:locationsResult,warehouses:warehousesResult,people:peopleResult.items})
-    setDepartmentList(departmentsResult.map(item=>({id:numericId(item.id),name:item.name,code:item.code,manager:item.manager?.fullName||'',managerId:item.manager?.id||undefined,isIncidentResponseTeam:item.isIncidentResponseTeam})))
-    setSiteList(locationsResult.map(item=>({id:numericId(item.id),name:item.name,code:item.code,address:''})))
-    setTransactions(historyResult.data.map(item=>historyToTransaction(item,numericId)).filter((item):item is AssetTransaction=>Boolean(item)))
+    const remainingPages =
+      assetResult.meta.totalPages > 1
+        ? await Promise.all(
+            Array.from({ length: assetResult.meta.totalPages - 1 }, (_, index) =>
+              api.get<{ data: any[] }>(`/assets?page=${index + 2}&limit=100`, signal),
+            ),
+          )
+        : []
+    setAssets([assetResult, ...remainingPages].flatMap(result => result.data).map(fromApiAsset))
+    setReferenceData({
+      categories: categoriesResult,
+      departments: departmentsResult,
+      locations: locationsResult,
+      warehouses: warehousesResult,
+      people: peopleResult.items,
+    })
+    setDepartmentList(
+      departmentsResult.map(item => ({
+        id: numericId(item.id),
+        name: item.name,
+        code: item.code,
+        manager: item.manager?.fullName || '',
+        managerId: item.manager?.id || undefined,
+        isIncidentResponseTeam: item.isIncidentResponseTeam,
+      })),
+    )
+    setSiteList(
+      locationsResult.map(item => ({ id: numericId(item.id), name: item.name, code: item.code, address: '' })),
+    )
+    setTransactions(
+      historyResult.data
+        .map(item => historyToTransaction(item, numericId))
+        .filter((item): item is AssetTransaction => Boolean(item)),
+    )
   }
-  useEffect(()=>{if(env.demoMode||!currentUser||currentUser.mustChangePassword)return;const controller=new AbortController();refreshServerData(controller.signal).catch(error=>{if((error as any)?.name!=='AbortError')console.error('Không thể tải dữ liệu từ API',error)});return()=>controller.abort()},[currentUser?.username,currentUser?.mustChangePassword])
+  useEffect(() => {
+    if (env.demoMode || !currentUser || currentUser.mustChangePassword) return
+    const controller = new AbortController()
+    refreshServerData(controller.signal).catch(error => {
+      if ((error as any)?.name !== 'AbortError') console.error('Không thể tải dữ liệu từ API', error)
+    })
+    return () => controller.abort()
+  }, [currentUser?.username, currentUser?.mustChangePassword])
   const [transactions, setTransactions] = useState<AssetTransaction[]>(() => {
-    if(!env.demoMode)return []
-    try { const stored = JSON.parse(localStorage.getItem('assetflow-transactions') || ''); return Array.isArray(stored) && stored.length ? stored : seedTransactions } catch { return seedTransactions }
+    if (!env.demoMode) return []
+    try {
+      const stored = JSON.parse(localStorage.getItem('assetflow-transactions') || '')
+      return Array.isArray(stored) && stored.length ? stored : seedTransactions
+    } catch {
+      return seedTransactions
+    }
   })
-  const [departmentList, setDepartmentList] = useState<Department[]>(() => {if(!env.demoMode)return [];try { const stored=JSON.parse(localStorage.getItem('assetflow-departments')||''); return Array.isArray(stored)&&stored.length?stored:seedDepartments } catch { return seedDepartments } })
-  const [siteList, setSiteList] = useState<Site[]>(() => {if(!env.demoMode)return [];try { const stored=JSON.parse(localStorage.getItem('assetflow-sites')||''); return Array.isArray(stored)&&stored.length?stored:seedSites } catch { return seedSites } })
-  const [emailSettings,setEmailSettings]=useState<EmailSettings>(()=>{if(!env.demoMode)return seedEmailSettings;try{return {...seedEmailSettings,...JSON.parse(localStorage.getItem('assetflow-email-settings')||'{}')}}catch{return seedEmailSettings}})
-  const [branding,setBranding]=useState<BrandingSettings>(()=>{if(!env.demoMode)return seedBrandingSettings;try{return {...seedBrandingSettings,...JSON.parse(localStorage.getItem('assetflow-branding')||'{}')}}catch{return seedBrandingSettings}})
-  const [regional,setRegional]=useState<RegionalSettings>(()=>{if(!env.demoMode)return seedRegionalSettings;try{return {...seedRegionalSettings,...JSON.parse(localStorage.getItem('assetflow-regional-settings')||'{}')}}catch{return seedRegionalSettings}})
-  useEffect(()=>{if(env.demoMode)return;const controller=new AbortController();api.get<{branding?:Partial<BrandingSettings>;regional?:Partial<RegionalSettings>}>('/settings/public',controller.signal).then(settings=>{setBranding({...seedBrandingSettings,...settings.branding});setRegional({...seedRegionalSettings,...settings.regional})}).catch(error=>{if((error as any)?.name!=='AbortError')console.error('Không thể tải nhận diện hệ thống',error)}).finally(()=>setIdentityReady(true));return()=>controller.abort()},[])
+  const [departmentList, setDepartmentList] = useState<Department[]>(() => {
+    if (!env.demoMode) return []
+    try {
+      const stored = JSON.parse(localStorage.getItem('assetflow-departments') || '')
+      return Array.isArray(stored) && stored.length ? stored : seedDepartments
+    } catch {
+      return seedDepartments
+    }
+  })
+  const [siteList, setSiteList] = useState<Site[]>(() => {
+    if (!env.demoMode) return []
+    try {
+      const stored = JSON.parse(localStorage.getItem('assetflow-sites') || '')
+      return Array.isArray(stored) && stored.length ? stored : seedSites
+    } catch {
+      return seedSites
+    }
+  })
+  const [emailSettings, setEmailSettings] = useState<EmailSettings>(() => {
+    if (!env.demoMode) return seedEmailSettings
+    try {
+      return { ...seedEmailSettings, ...JSON.parse(localStorage.getItem('assetflow-email-settings') || '{}') }
+    } catch {
+      return seedEmailSettings
+    }
+  })
+  const [branding, setBranding] = useState<BrandingSettings>(() => {
+    if (!env.demoMode) return seedBrandingSettings
+    try {
+      return { ...seedBrandingSettings, ...JSON.parse(localStorage.getItem('assetflow-branding') || '{}') }
+    } catch {
+      return seedBrandingSettings
+    }
+  })
+  const [regional, setRegional] = useState<RegionalSettings>(() => {
+    if (!env.demoMode) return seedRegionalSettings
+    try {
+      return { ...seedRegionalSettings, ...JSON.parse(localStorage.getItem('assetflow-regional-settings') || '{}') }
+    } catch {
+      return seedRegionalSettings
+    }
+  })
+  useEffect(() => {
+    if (env.demoMode) return
+    const controller = new AbortController()
+    api
+      .get<{ branding?: Partial<BrandingSettings>; regional?: Partial<RegionalSettings> }>(
+        '/settings/public',
+        controller.signal,
+      )
+      .then(settings => {
+        setBranding({ ...seedBrandingSettings, ...settings.branding })
+        setRegional({ ...seedRegionalSettings, ...settings.regional })
+      })
+      .catch(error => {
+        if ((error as any)?.name !== 'AbortError') console.error('Không thể tải nhận diện hệ thống', error)
+      })
+      .finally(() => setIdentityReady(true))
+    return () => controller.abort()
+  }, [])
   useRuntimeI18n(regional.language)
-  useEffect(() => {if(env.demoMode)localStorage.setItem('assetflow-assets', JSON.stringify(assets))}, [assets])
-  useEffect(() => {if(env.demoMode)localStorage.setItem('assetflow-transactions', JSON.stringify(transactions))}, [transactions])
-  useEffect(() => {if(env.demoMode)localStorage.setItem('assetflow-departments', JSON.stringify(departmentList))}, [departmentList])
-  useEffect(() => {if(env.demoMode)localStorage.setItem('assetflow-sites', JSON.stringify(siteList))}, [siteList])
-  useEffect(() => {if(env.demoMode)localStorage.setItem('assetflow-email-settings', JSON.stringify(emailSettings))}, [emailSettings])
-  useEffect(() => {if(env.demoMode)localStorage.setItem('assetflow-branding',JSON.stringify(branding));document.documentElement.style.setProperty('--purple',branding.primaryColor);document.title=`${branding.appName} — ${branding.companyName}` }, [branding])
-  useEffect(() => {if(env.demoMode)localStorage.setItem('assetflow-regional-settings',JSON.stringify(regional));document.documentElement.lang=regional.language;document.documentElement.dataset.timezone=regional.timezone}, [regional])
-  useEffect(()=>{const brandingHandler=(event:Event)=>setBranding((event as CustomEvent<BrandingSettings>).detail);const emailHandler=(event:Event)=>setEmailSettings((event as CustomEvent<EmailSettings>).detail);window.addEventListener('assetflow-branding-update',brandingHandler);window.addEventListener('assetflow-email-update',emailHandler);return()=>{window.removeEventListener('assetflow-branding-update',brandingHandler);window.removeEventListener('assetflow-email-update',emailHandler)}},[])
-  const saveBrandingSetting=(value:BrandingSettings)=>{setBranding(value);if(!env.demoMode)void api.put('/settings',{key:'branding',value}).catch(error=>alert(apiErrorMessage(error)))}
-  const saveEmailSetting=(value:EmailSettings)=>{setEmailSettings(value);if(!env.demoMode)void api.put('/settings',{key:'email',value}).catch(error=>alert(apiErrorMessage(error)))}
-  const saveRegionalSetting=(value:RegionalSettings)=>{setRegional(value);if(!env.demoMode)void api.put('/settings',{key:'regional',value}).catch(error=>alert(apiErrorMessage(error)))}
-  const save = async(asset: Asset) => {
-    const secured=currentUser?.role==='HCNS'?{...asset,department:'Hành chính'}:asset
-    if(env.demoMode){if(assets.some(a=>a.id!==secured.id&&a.code.toLowerCase()===secured.code.trim().toLowerCase())){alert('Mã tài sản đã tồn tại. Vui lòng kiểm tra lại barcode.');return}const isNew=!assets.some(a=>a.id===secured.id);setAssets(list => list.some(a => a.id === secured.id) ? list.map(a => a.id === secured.id ? secured : a) : [secured, ...list]);if(isNew)setTransactions(list=>[{id:Date.now(),assetId:secured.id,assetCode:secured.code,assetName:secured.name,type:'Nhập kho',from:'Nhà cung cấp / Nguồn nhập',to:secured.location||'Kho',performedBy:currentUser?.name||'Hệ thống',date:new Date().toISOString(),note:`Nhập kho ${secured.category}`,condition:secured.condition||'Tốt'},...list]);setModal(undefined);return}
-    try{
-      const category=referenceData.categories.find(item=>item.name===secured.category)
-      if(!category)throw new Error('Loại tài sản chưa tồn tại trong danh mục hệ thống. Admin cần tạo danh mục trước khi nhập kho.')
-      const common={assetTag:secured.code,barcode:secured.barcode||secured.code,name:secured.name,serialNumber:secured.serial||undefined,categoryId:category.id,purchaseDate:secured.purchaseDate||undefined,purchaseCost:secured.purchaseCost,cpu:secured.cpu||undefined,ram:secured.ram||undefined,storage:secured.storage||undefined,operatingSystem:secured.operatingSystem||undefined,ipAddress:secured.ipAddress||undefined,macAddress:secured.macAddress||undefined}
-      if(secured.apiId)await api.patch(`/assets/${secured.apiId}`,common)
-      else{const warehouse=referenceData.warehouses.find(item=>item.name===secured.location||item.location?.name===secured.location);if(!warehouse)throw new Error('Hãy chọn một kho đã cấu hình. Tài sản nhập mới bắt buộc phải được ghi nhận vào kho.');await api.post('/assets',{...common,warehouseId:warehouse.id})}
-      await refreshServerData();setModal(undefined)
-    }catch(error){alert(apiErrorMessage(error))}
+  useEffect(() => {
+    if (env.demoMode) localStorage.setItem('assetflow-assets', JSON.stringify(assets))
+  }, [assets])
+  useEffect(() => {
+    if (env.demoMode) localStorage.setItem('assetflow-transactions', JSON.stringify(transactions))
+  }, [transactions])
+  useEffect(() => {
+    if (env.demoMode) localStorage.setItem('assetflow-departments', JSON.stringify(departmentList))
+  }, [departmentList])
+  useEffect(() => {
+    if (env.demoMode) localStorage.setItem('assetflow-sites', JSON.stringify(siteList))
+  }, [siteList])
+  useEffect(() => {
+    if (env.demoMode) localStorage.setItem('assetflow-email-settings', JSON.stringify(emailSettings))
+  }, [emailSettings])
+  useEffect(() => {
+    if (env.demoMode) localStorage.setItem('assetflow-branding', JSON.stringify(branding))
+    document.documentElement.style.setProperty('--purple', branding.primaryColor)
+    document.title = `${branding.appName} — ${branding.companyName}`
+  }, [branding])
+  useEffect(() => {
+    if (env.demoMode) localStorage.setItem('assetflow-regional-settings', JSON.stringify(regional))
+    document.documentElement.lang = regional.language
+    document.documentElement.dataset.timezone = regional.timezone
+  }, [regional])
+  useEffect(() => {
+    const brandingHandler = (event: Event) => setBranding((event as CustomEvent<BrandingSettings>).detail)
+    const emailHandler = (event: Event) => setEmailSettings((event as CustomEvent<EmailSettings>).detail)
+    window.addEventListener('assetflow-branding-update', brandingHandler)
+    window.addEventListener('assetflow-email-update', emailHandler)
+    return () => {
+      window.removeEventListener('assetflow-branding-update', brandingHandler)
+      window.removeEventListener('assetflow-email-update', emailHandler)
+    }
+  }, [])
+  const saveBrandingSetting = (value: BrandingSettings) => {
+    setBranding(value)
+    if (!env.demoMode)
+      void api.put('/settings', { key: 'branding', value }).catch(error => alert(apiErrorMessage(error)))
   }
-  useEffect(()=>{const handle=(event:Event)=>save((event as CustomEvent<Asset>).detail);window.addEventListener('assetflow-save-intake',handle);return()=>window.removeEventListener('assetflow-save-intake',handle)},[assets,currentUser])
-  const saveAssignment = async(asset: Asset, transaction: AssetTransaction) => {
-    const current=assets.find(a=>a.id===asset.id);if(!current)return
-    const isIssue=transaction.type==='Cấp phát'||transaction.type==='Cho mượn';if(isIssue&&!(current.status==='Sẵn sàng'&&current.assignedTo==='Chưa gán')){alert('Không thể cấp phát: tài sản phải Sẵn sàng và Chưa gán.');return}if(transaction.type==='Thu hồi'&&current.assignedTo==='Chưa gán'){alert('Không thể thu hồi: tài sản hiện không có người sử dụng.');return}
-    const securedTransaction={...transaction,performedBy:currentUser?.name||transaction.performedBy}
-    if(env.demoMode){setAssets(list => list.map(a => a.id === asset.id ? asset : a));setTransactions(list => [securedTransaction, ...list]);setAssignmentAsset(undefined);setHandover({asset,transaction:securedTransaction});return}
-    if(!current.apiId){alert('Tài sản chưa được đồng bộ với máy chủ.');return}
-    try{
-      const warehouse=referenceData.warehouses.find(item=>item.name===asset.location||item.location?.name===asset.location)
-      const location=referenceData.locations.find(item=>item.name===asset.location)||warehouse?.location
-      if(isIssue){const person=referenceData.people.find(item=>item.fullName.toLocaleLowerCase('vi')===asset.assignedTo.toLocaleLowerCase('vi'));if(!person)throw new Error('Người nhận không tồn tại trong danh bạ người nhận tài sản.');if(!location?.id)throw new Error('Vị trí bàn giao chưa được cấu hình.');await api.post(`/assets/${current.apiId}/assignments`,{type:transaction.type==='Cho mượn'?'LOAN':'ASSIGNMENT',assignedToId:person.id,locationId:location.id,expectedReturnDate:transaction.dueDate||undefined,conditionOut:transaction.condition||'Tốt',note:transaction.note})}
-      else if(transaction.type==='Thu hồi'){const outcome=transaction.condition==='Hỏng'?'BROKEN':transaction.condition==='Cần kiểm tra'?'MAINTENANCE':'READY';await api.post(`/assets/${current.apiId}/returns`,{warehouseId:warehouse?.id,locationId:location?.id,conditionIn:transaction.condition||'Tốt',outcome,note:transaction.note})}
-      else{if(!warehouse&&!location)throw new Error('Vị trí điều chuyển chưa được cấu hình.');await api.post(`/assets/${current.apiId}/transfers`,{toWarehouseId:warehouse?.id,toLocationId:warehouse?undefined:location?.id,condition:transaction.condition,reason:transaction.note||'Điều chuyển tài sản'})}
-      const serverAsset=fromApiAsset(await api.get<any>(`/assets/${current.apiId}`));await refreshServerData();setAssignmentAsset(undefined);setHandover({asset:serverAsset,transaction:securedTransaction})
-    }catch(error){alert(apiErrorMessage(error));throw error}
+  const saveEmailSetting = (value: EmailSettings) => {
+    setEmailSettings(value)
+    if (!env.demoMode) void api.put('/settings', { key: 'email', value }).catch(error => alert(apiErrorMessage(error)))
   }
-  const importAssets = async(items: Asset[]) => {
-    if(env.demoMode){
-      const codes=new Set(assets.map(asset=>normalizeSearchText(asset.code)))
-      const unique=items.filter(asset=>{const code=normalizeSearchText(asset.code);if(!code||codes.has(code))return false;codes.add(code);return true})
-      if(!unique.length)return
-      setAssets(list=>[...unique,...list])
-      const importedAt=Date.now()
-      setTransactions(list=>[...unique.map((asset,index):AssetTransaction=>({id:importedAt+index,assetId:asset.id,assetCode:asset.code,assetName:asset.name,type:'Nhập kho',from:'Import Excel',to:asset.location||'Kho',performedBy:currentUser?.name||'Hệ thống',date:new Date(importedAt+index).toISOString(),note:`Import tài sản nhóm ${asset.category}`,condition:asset.condition||'Tốt'})),...list])
+  const saveRegionalSetting = (value: RegionalSettings) => {
+    setRegional(value)
+    if (!env.demoMode)
+      void api.put('/settings', { key: 'regional', value }).catch(error => alert(apiErrorMessage(error)))
+  }
+  const save = async (asset: Asset) => {
+    const secured = currentUser?.role === 'HCNS' ? { ...asset, department: 'Hành chính' } : asset
+    if (env.demoMode) {
+      if (assets.some(a => a.id !== secured.id && a.code.toLowerCase() === secured.code.trim().toLowerCase())) {
+        alert('Mã tài sản đã tồn tại. Vui lòng kiểm tra lại barcode.')
+        return
+      }
+      const isNew = !assets.some(a => a.id === secured.id)
+      setAssets(list =>
+        list.some(a => a.id === secured.id) ? list.map(a => (a.id === secured.id ? secured : a)) : [secured, ...list],
+      )
+      if (isNew)
+        setTransactions(list => [
+          {
+            id: Date.now(),
+            assetId: secured.id,
+            assetCode: secured.code,
+            assetName: secured.name,
+            type: 'Nhập kho',
+            from: 'Nhà cung cấp / Nguồn nhập',
+            to: secured.location || 'Kho',
+            performedBy: currentUser?.name || 'Hệ thống',
+            date: new Date().toISOString(),
+            note: `Nhập kho ${secured.category}`,
+            condition: secured.condition || 'Tốt',
+          },
+          ...list,
+        ])
+      setModal(undefined)
       return
     }
-    const mappingErrors:string[]=[]
-    const rows=items.map((item,index)=>{const rowNumber=index+2,category=resolveIntakeLookup(item.category,referenceData.categories),warehouse=resolveIntakeLookup(item.location,referenceData.warehouses);if(!category)mappingErrors.push(`Dòng ${rowNumber}: Nhóm tài sản “${item.category}” không tồn tại hoặc đã ngừng hoạt động.`);if(!warehouse)mappingErrors.push(`Dòng ${rowNumber}: Kho nhập “${item.location}” không tồn tại hoặc đã ngừng hoạt động.`);return {rowNumber,payload:{assetTag:item.code,barcode:item.barcode||item.code,name:item.name,serialNumber:item.serial||undefined,categoryId:category?.id||'',warehouseId:warehouse?.id||'',purchaseDate:item.purchaseDate||undefined,purchaseCost:item.purchaseCost,manufacturer:item.manufacturer||undefined,model:item.model||undefined,cpu:item.cpu||undefined,ram:item.ram||undefined,storage:item.storage||undefined,operatingSystem:item.operatingSystem||undefined,ipAddress:item.ipAddress||undefined,macAddress:item.macAddress||undefined}}})
-    if(mappingErrors.length)throw new IntakeExcelValidationError(mappingErrors)
-    const staged=await api.post<{id:string;validRows:number;invalidRows:number}>('/asset-imports/stage',{sourceFileName:`excel-import-${new Date().toISOString()}.xlsx`,rows})
-    if(staged.invalidRows){const detail=await api.get<{rows:Array<{rowNumber:number;errors:unknown}>}>(`/asset-imports/${staged.id}`);const issues=detail.rows.flatMap(row=>Array.isArray(row.errors)?row.errors.map(error=>`Dòng ${row.rowNumber}: ${String(error)}`):[]);throw new IntakeExcelValidationError(issues.length?issues:[`Lô import có ${staged.invalidRows} dòng lỗi; chưa có tài sản nào được ghi.`])}
+    try {
+      const category = referenceData.categories.find(item => item.name === secured.category)
+      if (!category)
+        throw new Error('Loại tài sản chưa tồn tại trong danh mục hệ thống. Admin cần tạo danh mục trước khi nhập kho.')
+      const common = {
+        assetTag: secured.code,
+        barcode: secured.barcode || secured.code,
+        name: secured.name,
+        serialNumber: secured.serial || undefined,
+        categoryId: category.id,
+        purchaseDate: secured.purchaseDate || undefined,
+        purchaseCost: secured.purchaseCost,
+        cpu: secured.cpu || undefined,
+        ram: secured.ram || undefined,
+        storage: secured.storage || undefined,
+        operatingSystem: secured.operatingSystem || undefined,
+        ipAddress: secured.ipAddress || undefined,
+        macAddress: secured.macAddress || undefined,
+      }
+      if (secured.apiId) await api.patch(`/assets/${secured.apiId}`, common)
+      else {
+        const warehouse = referenceData.warehouses.find(
+          item => item.name === secured.location || item.location?.name === secured.location,
+        )
+        if (!warehouse)
+          throw new Error('Hãy chọn một kho đã cấu hình. Tài sản nhập mới bắt buộc phải được ghi nhận vào kho.')
+        await api.post('/assets', { ...common, warehouseId: warehouse.id })
+      }
+      await refreshServerData()
+      setModal(undefined)
+    } catch (error) {
+      alert(apiErrorMessage(error))
+    }
+  }
+  useEffect(() => {
+    const handle = (event: Event) => save((event as CustomEvent<Asset>).detail)
+    window.addEventListener('assetflow-save-intake', handle)
+    return () => window.removeEventListener('assetflow-save-intake', handle)
+  }, [assets, currentUser])
+  const saveAssignment = async (asset: Asset, transaction: AssetTransaction) => {
+    const current = assets.find(a => a.id === asset.id)
+    if (!current) return
+    const isIssue = transaction.type === 'Cấp phát' || transaction.type === 'Cho mượn'
+    if (isIssue && !(current.status === 'Sẵn sàng' && current.assignedTo === 'Chưa gán')) {
+      alert('Không thể cấp phát: tài sản phải Sẵn sàng và Chưa gán.')
+      return
+    }
+    if (transaction.type === 'Thu hồi' && current.assignedTo === 'Chưa gán') {
+      alert('Không thể thu hồi: tài sản hiện không có người sử dụng.')
+      return
+    }
+    const securedTransaction = { ...transaction, performedBy: currentUser?.name || transaction.performedBy }
+    if (env.demoMode) {
+      setAssets(list => list.map(a => (a.id === asset.id ? asset : a)))
+      setTransactions(list => [securedTransaction, ...list])
+      setAssignmentAsset(undefined)
+      setHandover({ asset, transaction: securedTransaction })
+      return
+    }
+    if (!current.apiId) {
+      alert('Tài sản chưa được đồng bộ với máy chủ.')
+      return
+    }
+    try {
+      const warehouse = referenceData.warehouses.find(
+        item => item.name === asset.location || item.location?.name === asset.location,
+      )
+      const location = referenceData.locations.find(item => item.name === asset.location) || warehouse?.location
+      if (isIssue) {
+        const person = referenceData.people.find(
+          item => item.fullName.toLocaleLowerCase('vi') === asset.assignedTo.toLocaleLowerCase('vi'),
+        )
+        if (!person) throw new Error('Người nhận không tồn tại trong danh bạ người nhận tài sản.')
+        if (!location?.id) throw new Error('Vị trí bàn giao chưa được cấu hình.')
+        await api.post(`/assets/${current.apiId}/assignments`, {
+          type: transaction.type === 'Cho mượn' ? 'LOAN' : 'ASSIGNMENT',
+          assignedToId: person.id,
+          locationId: location.id,
+          expectedReturnDate: transaction.dueDate || undefined,
+          conditionOut: transaction.condition || 'Tốt',
+          note: transaction.note,
+        })
+      } else if (transaction.type === 'Thu hồi') {
+        const outcome =
+          transaction.condition === 'Hỏng'
+            ? 'BROKEN'
+            : transaction.condition === 'Cần kiểm tra'
+              ? 'MAINTENANCE'
+              : 'READY'
+        await api.post(`/assets/${current.apiId}/returns`, {
+          warehouseId: warehouse?.id,
+          locationId: location?.id,
+          conditionIn: transaction.condition || 'Tốt',
+          outcome,
+          note: transaction.note,
+        })
+      } else {
+        if (!warehouse && !location) throw new Error('Vị trí điều chuyển chưa được cấu hình.')
+        await api.post(`/assets/${current.apiId}/transfers`, {
+          toWarehouseId: warehouse?.id,
+          toLocationId: warehouse ? undefined : location?.id,
+          condition: transaction.condition,
+          reason: transaction.note || 'Điều chuyển tài sản',
+        })
+      }
+      const serverAsset = fromApiAsset(await api.get<any>(`/assets/${current.apiId}`))
+      await refreshServerData()
+      setAssignmentAsset(undefined)
+      setHandover({ asset: serverAsset, transaction: securedTransaction })
+    } catch (error) {
+      alert(apiErrorMessage(error))
+      throw error
+    }
+  }
+  const importAssets = async (items: Asset[]) => {
+    if (env.demoMode) {
+      const codes = new Set(assets.map(asset => normalizeSearchText(asset.code)))
+      const unique = items.filter(asset => {
+        const code = normalizeSearchText(asset.code)
+        if (!code || codes.has(code)) return false
+        codes.add(code)
+        return true
+      })
+      if (!unique.length) return
+      setAssets(list => [...unique, ...list])
+      const importedAt = Date.now()
+      setTransactions(list => [
+        ...unique.map((asset, index): AssetTransaction => ({
+          id: importedAt + index,
+          assetId: asset.id,
+          assetCode: asset.code,
+          assetName: asset.name,
+          type: 'Nhập kho',
+          from: 'Import Excel',
+          to: asset.location || 'Kho',
+          performedBy: currentUser?.name || 'Hệ thống',
+          date: new Date(importedAt + index).toISOString(),
+          note: `Import tài sản nhóm ${asset.category}`,
+          condition: asset.condition || 'Tốt',
+        })),
+        ...list,
+      ])
+      return
+    }
+    const mappingErrors: string[] = []
+    const rows = items.map((item, index) => {
+      const rowNumber = index + 2,
+        category = resolveIntakeLookup(item.category, referenceData.categories),
+        warehouse = resolveIntakeLookup(item.location, referenceData.warehouses)
+      if (!category)
+        mappingErrors.push(`Dòng ${rowNumber}: Nhóm tài sản “${item.category}” không tồn tại hoặc đã ngừng hoạt động.`)
+      if (!warehouse)
+        mappingErrors.push(`Dòng ${rowNumber}: Kho nhập “${item.location}” không tồn tại hoặc đã ngừng hoạt động.`)
+      return {
+        rowNumber,
+        payload: {
+          assetTag: item.code,
+          barcode: item.barcode || item.code,
+          name: item.name,
+          serialNumber: item.serial || undefined,
+          categoryId: category?.id || '',
+          warehouseId: warehouse?.id || '',
+          purchaseDate: item.purchaseDate || undefined,
+          purchaseCost: item.purchaseCost,
+          manufacturer: item.manufacturer || undefined,
+          model: item.model || undefined,
+          cpu: item.cpu || undefined,
+          ram: item.ram || undefined,
+          storage: item.storage || undefined,
+          operatingSystem: item.operatingSystem || undefined,
+          ipAddress: item.ipAddress || undefined,
+          macAddress: item.macAddress || undefined,
+        },
+      }
+    })
+    if (mappingErrors.length) throw new IntakeExcelValidationError(mappingErrors)
+    const staged = await api.post<{ id: string; validRows: number; invalidRows: number }>('/asset-imports/stage', {
+      sourceFileName: `excel-import-${new Date().toISOString()}.xlsx`,
+      rows,
+    })
+    if (staged.invalidRows) {
+      const detail = await api.get<{ rows: Array<{ rowNumber: number; errors: unknown }> }>(
+        `/asset-imports/${staged.id}`,
+      )
+      const issues = detail.rows.flatMap(row =>
+        Array.isArray(row.errors) ? row.errors.map(error => `Dòng ${row.rowNumber}: ${String(error)}`) : [],
+      )
+      throw new IntakeExcelValidationError(
+        issues.length ? issues : [`Lô import có ${staged.invalidRows} dòng lỗi; chưa có tài sản nào được ghi.`],
+      )
+    }
     await api.post(`/asset-imports/${staged.id}/commit`)
     await refreshServerData()
   }
-  const remove = async(id: number) => {const target=assets.find(a=>a.id===id);if(!target)return;if(!window.confirm('Ngừng theo dõi tài sản chưa phát sinh nghiệp vụ này?'))return;if(env.demoMode){setAssets(list => list.filter(a => a.id !== id));return}if(!target.apiId)return;try{await api.delete(`/assets/${target.apiId}`);await refreshServerData()}catch(error){alert(apiErrorMessage(error))} }
-  const saveDepartment = async(item: Department) => {if(env.demoMode){setDepartmentList(list=>list.some(x=>x.id===item.id)?list.map(x=>x.id===item.id?item:x):[...list,item]);return}try{const existing=referenceData.departments.find(value=>numericId(value.id)===item.id);const payload={code:item.code,name:item.name,managerPersonId:item.managerId||null,isIncidentResponseTeam:Boolean(item.isIncidentResponseTeam)};if(existing)await api.patch(`/admin/departments/${existing.id}`,payload);else await api.post('/admin/departments',{...payload,managerPersonId:undefined});await refreshServerData()}catch(error){alert(apiErrorMessage(error))}}
-  const saveSite = async(item: Site) => {if(env.demoMode){setSiteList(list=>list.some(x=>x.id===item.id)?list.map(x=>x.id===item.id?item:x):[...list,item]);return}try{const existing=referenceData.locations.find(value=>numericId(value.id)===item.id);if(existing)await api.patch(`/admin/locations/${existing.id}`,{code:item.code,name:item.name,address:item.address});else await api.post('/admin/locations',{code:item.code,name:item.name,address:item.address});await refreshServerData()}catch(error){alert(apiErrorMessage(error))}}
-  const removeDepartment = async(id: number) => {if(!window.confirm('Ngừng sử dụng phòng ban này?'))return;if(env.demoMode){setDepartmentList(list=>list.filter(x=>x.id!==id));return}const existing=referenceData.departments.find(value=>numericId(value.id)===id);if(!existing)return;try{await api.delete(`/admin/departments/${existing.id}`);await refreshServerData()}catch(error){alert(apiErrorMessage(error))}}
-  const removeSite = async(id: number) => {if(!window.confirm('Ngừng sử dụng site này?'))return;if(env.demoMode){setSiteList(list=>list.filter(x=>x.id!==id));return}const existing=referenceData.locations.find(value=>numericId(value.id)===id);if(!existing)return;try{await api.delete(`/admin/locations/${existing.id}`);await refreshServerData()}catch(error){alert(apiErrorMessage(error))}}
-  const login=async(username:string,password:string)=>{if(env.demoMode){const user=seedUsers.find(u=>u.username.toLowerCase()===username.toLowerCase());if(!user||!env.demoAdminPassword)return false;let credential:{passwordHash?:string;mustChangePassword?:boolean}|undefined;try{credential=JSON.parse(localStorage.getItem('assetflow-local-admin-credential-v3')||'null')||undefined}catch{credential=undefined}const valid=credential?.passwordHash?await passwordDigest(password)===credential.passwordHash:env.demoAdminPassword===password;if(!valid)return false;const signedIn={...user,mustChangePassword:credential?.mustChangePassword!==false};localStorage.setItem('assetflow-session',user.username);setCurrentUser(signedIn);setPage('Tổng quan');return true}try{const response=await api.post<{user:Omit<AppUser,'password'>}>('/auth/login',{username,password});const user={...response.user,password:''};setCurrentUser(user);setPage('Tổng quan');return true}catch{return false}}
-  const changeInitialPassword=async(password:string)=>{if(!currentUser)return false;if(env.demoMode){localStorage.setItem('assetflow-local-admin-credential-v3',JSON.stringify({passwordHash:await passwordDigest(password),mustChangePassword:false}));setCurrentUser(user=>user?{...user,password:'',mustChangePassword:false}:user);return true}const username=currentUser.username;try{await api.post('/auth/change-password',{newPassword:password});const response=await api.post<{user:Omit<AppUser,'password'>}>('/auth/login',{username,password});setCurrentUser({...response.user,password:''});setPage('Tổng quan');return true}catch{return false}}
-  const changeProfilePassword=async(currentPassword:string,newPassword:string)=>{if(env.demoMode){let credential:{passwordHash?:string}|undefined;try{credential=JSON.parse(localStorage.getItem('assetflow-local-admin-credential-v3')||'null')||undefined}catch{credential=undefined}const valid=credential?.passwordHash?await passwordDigest(currentPassword)===credential.passwordHash:currentPassword===env.demoAdminPassword;if(!valid)throw new Error('Mật khẩu hiện tại không đúng.');localStorage.setItem('assetflow-local-admin-credential-v3',JSON.stringify({passwordHash:await passwordDigest(newPassword),mustChangePassword:false}))}else await api.post('/auth/change-password',{currentPassword,newPassword});localStorage.removeItem('assetflow-session');setCurrentUser(undefined);setPage('Tổng quan')}
-  const logout=()=>{if(!env.demoMode)void api.post('/auth/logout').catch(()=>undefined);localStorage.removeItem('assetflow-session');setCurrentUser(undefined);setPage('Tổng quan')}
-  const canSeeAll=!env.demoMode||currentUser?.departmentScope.includes('*')
-  const scopedAssets=canSeeAll?assets:assets.filter(a=>currentUser?.departmentScope.includes(a.department))
-  const scopedAssetIds=new Set(scopedAssets.map(a=>a.id))
-  const scopedTransactions=canSeeAll?transactions:transactions.filter(t=>scopedAssetIds.has(t.assetId))
-  const departmentOptions=env.demoMode?(currentUser?.role==='HCNS'?['Hành chính']:departmentList.map(x=>x.name)):referenceData.departments.map(x=>x.name)
-  const siteOptions=env.demoMode?siteList.map(x=>x.name):Array.from(new Set([...referenceData.warehouses.map(x=>x.name),...referenceData.locations.map(x=>x.name)]))
-  const detailAsset = scopedAssets.find(a=>a.id===detailAssetId)
-  if(!authReady||!identityReady)return <div className="auth-loading" aria-live="polite">Đang tải nhận diện và kiểm tra phiên đăng nhập…</div>
-  if(!currentUser)return <LoginScreen onLogin={login} branding={branding}/>
-  if(currentUser.mustChangePassword)return <ChangePasswordScreen user={currentUser} branding={branding} onChange={changeInitialPassword}/>
-  const isAdmin=currentUser.role==='Admin'
-  const openScanner=(mode:'lookup'|'intake'='lookup')=>{if(mode==='intake')setIntakeMode('manual');setPage(mode==='intake'?'Nhập kho':'Barcode / QR')}
-  const operations=<OperationsDashboard assets={scopedAssets} transactions={scopedTransactions} onAssign={setAssignmentAsset} onBarcode={setBarcodeAsset} onView={a=>setDetailAssetId(a.id)} openHistory={()=>setPage('Lịch sử / Audit')} openScanner={openScanner}/>
-  let content:React.ReactNode
-  if(detailAsset) content=<AssetDetail asset={detailAsset} transactions={scopedTransactions} emailSettings={emailSettings} branding={branding} onClose={()=>setDetailAssetId(undefined)} onAssign={()=>{setDetailAssetId(undefined);setAssignmentAsset(detailAsset)}} onBarcode={()=>{setDetailAssetId(undefined);setBarcodeAsset(detailAsset)}} onEdit={()=>{setDetailAssetId(undefined);setModal(detailAsset)}}/>
-  else if(page==='Tổng quan') content=<Dashboard assets={scopedAssets} transactions={scopedTransactions} goAssets={()=>setPage('Sổ tài sản')} addAsset={()=>openScanner('intake')} goPage={setPage} onView={asset=>setDetailAssetId(asset.id)} language={regional.language} userName={currentUser.name}/>
-  else if(page==='Sổ tài sản') content=<AssetBook assets={scopedAssets} departmentOptions={departmentOptions} canManageCategories={isAdmin} onOpenImport={()=>{setIntakeMode('import');setPage('Nhập kho')}} onCategoriesChanged={async(previousName,nextName)=>{if(env.demoMode){if(previousName&&nextName&&previousName!==nextName)setAssets(current=>current.map(asset=>asset.category===previousName?{...asset,category:nextName}:asset));return}await refreshServerData()}} onAdd={()=>setModal(null)} onEdit={setModal} onDelete={remove} onAssign={setAssignmentAsset} onBarcode={setBarcodeAsset} onView={a=>setDetailAssetId(a.id)}/>
-  else if(page==='Cấp phát & Thu hồi') content=operations
-  else if(page==='Kiểm kê') content=<InventoryManagement assets={scopedAssets}/>
-  else if(page==='Lịch sử / Audit') content=<TransactionHistory transactions={scopedTransactions}/>
-  else if(page==='Barcode / QR'||page==='Nhập kho') content=<BarcodeCenter key={`${page}-${intakeMode}`} assets={scopedAssets} initialMode={page==='Nhập kho'?intakeMode:'lookup'} departmentOptions={departmentOptions} warehouseOptions={env.demoMode?siteOptions:referenceData.warehouses.map(item=>item.name)} categoryOptions={env.demoMode?categories.map((name,index)=>({id:`demo-category-${index}`,code:normalizeIntakeLookup(name).replace(/\s+/g,'-').toUpperCase(),name})):referenceData.categories} warehouseCatalog={env.demoMode?siteOptions.map((name,index)=>({id:`demo-warehouse-${index}`,code:`KHO-${index+1}`,name})):referenceData.warehouses} onImport={importAssets} onBarcode={setBarcodeAsset} onAssign={setAssignmentAsset}/>
-  else if(page==='Khám phá & Agent'&&['Admin','IT'].includes(currentUser.role)) content=<DiscoveryCenter role={currentUser.role} categories={referenceData.categories} warehouses={referenceData.warehouses} demoMode={env.demoMode} onAssetCreated={refreshServerData}/>
-  else if(page==='License & Gia hạn'&&['Admin','IT'].includes(currentUser.role)) content=<RenewalManagement demoMode={env.demoMode} role={currentUser.role}/>
-  else if(page==='Bảo trì & Sự cố'&&['Admin','IT'].includes(currentUser.role)) content=<IncidentManagement assets={scopedAssets} demoMode={env.demoMode} currentUserName={currentUser.name}/>
-  else if(page==='Thanh lý & Hủy bỏ'&&['Admin','IT'].includes(currentUser.role)) content=<DisposalManagement demoMode={env.demoMode} role={currentUser.role}/>
-  else if(page==='Đánh giá rủi ro CNTT'&&['Admin','IT'].includes(currentUser.role)) content=<RiskManagement assets={scopedAssets} demoMode={env.demoMode} currentUserName={currentUser.name}/>
-  else if(page==='Cấu hình hệ thống'&&isAdmin) content=<AdminSettings departments={departmentList} sites={siteList} people={referenceData.people} assets={assets} regional={regional} branding={branding} email={emailSettings} onSaveRegional={saveRegionalSetting} onSaveBranding={saveBrandingSetting} onSaveEmail={saveEmailSetting} saveDepartment={saveDepartment} removeDepartment={removeDepartment} saveSite={saveSite} removeSite={removeSite}/>
-  else if(page==='Tùy chỉnh thương hiệu'&&isAdmin) content=<BrandingConfiguration settings={branding} onSave={saveBrandingSetting}/>
-  else if(page==='Cấu hình email'&&isAdmin) content=<EmailConfiguration settings={emailSettings} onSave={saveEmailSetting}/>
-  else content=<Placeholder title={page} language={regional.language}/>
-  return <div className="app">
-    <Sidebar page={page} setPage={next=>{setDetailAssetId(undefined);setPage(next)}} open={menuOpen} close={()=>setMenuOpen(false)} user={currentUser} logout={logout} openChangePassword={()=>setPasswordModalOpen(true)} branding={branding} language={regional.language}/>
-    <div className="shell"><Topbar title={detailAsset?'Chi tiết tài sản':page} openMenu={()=>setMenuOpen(true)} user={currentUser} branding={branding} language={regional.language} onQuickLanguage={language=>saveRegionalSetting({...regional,language})} onHome={()=>{setDetailAssetId(undefined);setPage('Tổng quan')}}/>{content}</div>
-    {modal!==undefined&&<AssetModal asset={modal} departmentOptions={departmentOptions} siteOptions={siteOptions} onClose={()=>setModal(undefined)} onSave={save}/>} 
-    {assignmentAsset&&scopedAssetIds.has(assignmentAsset.id)&&<AssignmentModal asset={assignmentAsset} departmentOptions={departmentOptions} siteOptions={siteOptions} onClose={()=>setAssignmentAsset(undefined)} onSave={saveAssignment}/>} 
-    {barcodeAsset&&scopedAssetIds.has(barcodeAsset.id)&&<BarcodeModal asset={barcodeAsset} onClose={()=>setBarcodeAsset(undefined)}/>} 
-    {handover&&scopedAssetIds.has(handover.asset.id)&&<HandoverModal asset={handover.asset} transaction={handover.transaction} emailSettings={emailSettings} branding={branding} onClose={()=>setHandover(undefined)}/>} 
-    {passwordModalOpen&&<ChangePasswordModal onClose={()=>setPasswordModalOpen(false)} onChange={changeProfilePassword}/>} 
-  </div>
+  const remove = async (id: number) => {
+    const target = assets.find(a => a.id === id)
+    if (!target) return
+    if (!window.confirm('Ngừng theo dõi tài sản chưa phát sinh nghiệp vụ này?')) return
+    if (env.demoMode) {
+      setAssets(list => list.filter(a => a.id !== id))
+      return
+    }
+    if (!target.apiId) return
+    try {
+      await api.delete(`/assets/${target.apiId}`)
+      await refreshServerData()
+    } catch (error) {
+      alert(apiErrorMessage(error))
+    }
+  }
+  const saveDepartment = async (item: Department) => {
+    if (env.demoMode) {
+      setDepartmentList(list =>
+        list.some(x => x.id === item.id) ? list.map(x => (x.id === item.id ? item : x)) : [...list, item],
+      )
+      return
+    }
+    try {
+      const existing = referenceData.departments.find(value => numericId(value.id) === item.id)
+      const payload = {
+        code: item.code,
+        name: item.name,
+        managerPersonId: item.managerId || null,
+        isIncidentResponseTeam: Boolean(item.isIncidentResponseTeam),
+      }
+      if (existing) await api.patch(`/admin/departments/${existing.id}`, payload)
+      else await api.post('/admin/departments', { ...payload, managerPersonId: undefined })
+      await refreshServerData()
+    } catch (error) {
+      alert(apiErrorMessage(error))
+    }
+  }
+  const saveSite = async (item: Site) => {
+    if (env.demoMode) {
+      setSiteList(list =>
+        list.some(x => x.id === item.id) ? list.map(x => (x.id === item.id ? item : x)) : [...list, item],
+      )
+      return
+    }
+    try {
+      const existing = referenceData.locations.find(value => numericId(value.id) === item.id)
+      if (existing)
+        await api.patch(`/admin/locations/${existing.id}`, { code: item.code, name: item.name, address: item.address })
+      else await api.post('/admin/locations', { code: item.code, name: item.name, address: item.address })
+      await refreshServerData()
+    } catch (error) {
+      alert(apiErrorMessage(error))
+    }
+  }
+  const removeDepartment = async (id: number) => {
+    if (!window.confirm('Ngừng sử dụng phòng ban này?')) return
+    if (env.demoMode) {
+      setDepartmentList(list => list.filter(x => x.id !== id))
+      return
+    }
+    const existing = referenceData.departments.find(value => numericId(value.id) === id)
+    if (!existing) return
+    try {
+      await api.delete(`/admin/departments/${existing.id}`)
+      await refreshServerData()
+    } catch (error) {
+      alert(apiErrorMessage(error))
+    }
+  }
+  const removeSite = async (id: number) => {
+    if (!window.confirm('Ngừng sử dụng site này?')) return
+    if (env.demoMode) {
+      setSiteList(list => list.filter(x => x.id !== id))
+      return
+    }
+    const existing = referenceData.locations.find(value => numericId(value.id) === id)
+    if (!existing) return
+    try {
+      await api.delete(`/admin/locations/${existing.id}`)
+      await refreshServerData()
+    } catch (error) {
+      alert(apiErrorMessage(error))
+    }
+  }
+  const login = async (username: string, password: string) => {
+    if (env.demoMode) {
+      const user = seedUsers.find(u => u.username.toLowerCase() === username.toLowerCase())
+      if (!user || !env.demoAdminPassword) return false
+      let credential: { passwordHash?: string; mustChangePassword?: boolean } | undefined
+      try {
+        credential = JSON.parse(localStorage.getItem('assetflow-local-admin-credential-v3') || 'null') || undefined
+      } catch {
+        credential = undefined
+      }
+      const valid = credential?.passwordHash
+        ? (await passwordDigest(password)) === credential.passwordHash
+        : env.demoAdminPassword === password
+      if (!valid) return false
+      const signedIn = { ...user, mustChangePassword: credential?.mustChangePassword !== false }
+      localStorage.setItem('assetflow-session', user.username)
+      setCurrentUser(signedIn)
+      setPage('Tổng quan')
+      return true
+    }
+    try {
+      const response = await api.post<{ user: Omit<AppUser, 'password'> }>('/auth/login', { username, password })
+      const user = { ...response.user, password: '' }
+      setCurrentUser(user)
+      setPage('Tổng quan')
+      return true
+    } catch {
+      return false
+    }
+  }
+  const changeInitialPassword = async (password: string) => {
+    if (!currentUser) return false
+    if (env.demoMode) {
+      localStorage.setItem(
+        'assetflow-local-admin-credential-v3',
+        JSON.stringify({ passwordHash: await passwordDigest(password), mustChangePassword: false }),
+      )
+      setCurrentUser(user => (user ? { ...user, password: '', mustChangePassword: false } : user))
+      return true
+    }
+    const username = currentUser.username
+    try {
+      await api.post('/auth/change-password', { newPassword: password })
+      const response = await api.post<{ user: Omit<AppUser, 'password'> }>('/auth/login', { username, password })
+      setCurrentUser({ ...response.user, password: '' })
+      setPage('Tổng quan')
+      return true
+    } catch {
+      return false
+    }
+  }
+  const changeProfilePassword = async (currentPassword: string, newPassword: string) => {
+    if (env.demoMode) {
+      let credential: { passwordHash?: string } | undefined
+      try {
+        credential = JSON.parse(localStorage.getItem('assetflow-local-admin-credential-v3') || 'null') || undefined
+      } catch {
+        credential = undefined
+      }
+      const valid = credential?.passwordHash
+        ? (await passwordDigest(currentPassword)) === credential.passwordHash
+        : currentPassword === env.demoAdminPassword
+      if (!valid) throw new Error('Mật khẩu hiện tại không đúng.')
+      localStorage.setItem(
+        'assetflow-local-admin-credential-v3',
+        JSON.stringify({ passwordHash: await passwordDigest(newPassword), mustChangePassword: false }),
+      )
+    } else await api.post('/auth/change-password', { currentPassword, newPassword })
+    localStorage.removeItem('assetflow-session')
+    setCurrentUser(undefined)
+    setPage('Tổng quan')
+  }
+  const logout = () => {
+    if (!env.demoMode) void api.post('/auth/logout').catch(() => undefined)
+    localStorage.removeItem('assetflow-session')
+    setCurrentUser(undefined)
+    setPage('Tổng quan')
+  }
+  const canSeeAll = !env.demoMode || currentUser?.departmentScope.includes('*')
+  const scopedAssets = canSeeAll ? assets : assets.filter(a => currentUser?.departmentScope.includes(a.department))
+  const scopedAssetIds = new Set(scopedAssets.map(a => a.id))
+  const scopedTransactions = canSeeAll ? transactions : transactions.filter(t => scopedAssetIds.has(t.assetId))
+  const departmentOptions = env.demoMode
+    ? currentUser?.role === 'HCNS'
+      ? ['Hành chính']
+      : departmentList.map(x => x.name)
+    : referenceData.departments.map(x => x.name)
+  const siteOptions = env.demoMode
+    ? siteList.map(x => x.name)
+    : Array.from(new Set([...referenceData.warehouses.map(x => x.name), ...referenceData.locations.map(x => x.name)]))
+  const detailAsset = scopedAssets.find(a => a.id === detailAssetId)
+  if (!authReady || !identityReady)
+    return (
+      <div className="auth-loading" aria-live="polite">
+        Đang tải nhận diện và kiểm tra phiên đăng nhập…
+      </div>
+    )
+  if (!currentUser) return <LoginScreen onLogin={login} branding={branding} />
+  if (currentUser.mustChangePassword)
+    return <ChangePasswordScreen user={currentUser} branding={branding} onChange={changeInitialPassword} />
+  const isAdmin = currentUser.role === 'Admin'
+  const openScanner = (mode: 'lookup' | 'intake' = 'lookup') => {
+    if (mode === 'intake') setIntakeMode('manual')
+    setPage(mode === 'intake' ? 'Nhập kho' : 'Barcode / QR')
+  }
+  const operations = (
+    <OperationsDashboard
+      assets={scopedAssets}
+      transactions={scopedTransactions}
+      onAssign={setAssignmentAsset}
+      onBarcode={setBarcodeAsset}
+      onView={a => setDetailAssetId(a.id)}
+      openHistory={() => setPage('Lịch sử / Audit')}
+      openScanner={openScanner}
+    />
+  )
+  let content: React.ReactNode
+  if (detailAsset)
+    content = (
+      <AssetDetail
+        asset={detailAsset}
+        transactions={scopedTransactions}
+        emailSettings={emailSettings}
+        branding={branding}
+        onClose={() => setDetailAssetId(undefined)}
+        onAssign={() => {
+          setDetailAssetId(undefined)
+          setAssignmentAsset(detailAsset)
+        }}
+        onBarcode={() => {
+          setDetailAssetId(undefined)
+          setBarcodeAsset(detailAsset)
+        }}
+        onEdit={() => {
+          setDetailAssetId(undefined)
+          setModal(detailAsset)
+        }}
+      />
+    )
+  else if (page === 'Tổng quan')
+    content = (
+      <Dashboard
+        assets={scopedAssets}
+        transactions={scopedTransactions}
+        goAssets={() => setPage('Sổ tài sản')}
+        goPage={setPage}
+        onView={asset => setDetailAssetId(asset.id)}
+        language={regional.language}
+        userName={currentUser.name}
+      />
+    )
+  else if (page === 'Sổ tài sản')
+    content = (
+      <AssetBook
+        assets={scopedAssets}
+        departmentOptions={departmentOptions}
+        canManageCategories={isAdmin}
+        onOpenImport={() => {
+          setIntakeMode('import')
+          setPage('Nhập kho')
+        }}
+        onCategoriesChanged={async (previousName, nextName) => {
+          if (env.demoMode) {
+            if (previousName && nextName && previousName !== nextName)
+              setAssets(current =>
+                current.map(asset => (asset.category === previousName ? { ...asset, category: nextName } : asset)),
+              )
+            return
+          }
+          await refreshServerData()
+        }}
+        onAdd={() => setModal(null)}
+        onEdit={setModal}
+        onDelete={remove}
+        onAssign={setAssignmentAsset}
+        onBarcode={setBarcodeAsset}
+        onView={a => setDetailAssetId(a.id)}
+      />
+    )
+  else if (page === 'Cấp phát & Thu hồi') content = operations
+  else if (page === 'Kiểm kê') content = <InventoryManagement assets={scopedAssets} />
+  else if (page === 'Lịch sử / Audit') content = <TransactionHistory transactions={scopedTransactions} />
+  else if (page === 'Barcode / QR' || page === 'Nhập kho')
+    content = (
+      <BarcodeCenter
+        key={`${page}-${intakeMode}`}
+        assets={scopedAssets}
+        initialMode={page === 'Nhập kho' ? intakeMode : 'lookup'}
+        departmentOptions={departmentOptions}
+        warehouseOptions={env.demoMode ? siteOptions : referenceData.warehouses.map(item => item.name)}
+        categoryOptions={
+          env.demoMode
+            ? categories.map((name, index) => ({
+                id: `demo-category-${index}`,
+                code: normalizeIntakeLookup(name).replace(/\s+/g, '-').toUpperCase(),
+                name,
+              }))
+            : referenceData.categories
+        }
+        warehouseCatalog={
+          env.demoMode
+            ? siteOptions.map((name, index) => ({ id: `demo-warehouse-${index}`, code: `KHO-${index + 1}`, name }))
+            : referenceData.warehouses
+        }
+        onImport={importAssets}
+        onBarcode={setBarcodeAsset}
+        onAssign={setAssignmentAsset}
+      />
+    )
+  else if (page === 'Khám phá & Agent' && ['Admin', 'IT'].includes(currentUser.role))
+    content = (
+      <DiscoveryCenter
+        role={currentUser.role}
+        categories={referenceData.categories}
+        warehouses={referenceData.warehouses}
+        demoMode={env.demoMode}
+        onAssetCreated={refreshServerData}
+      />
+    )
+  else if (page === 'License & Gia hạn' && ['Admin', 'IT'].includes(currentUser.role))
+    content = <RenewalManagement demoMode={env.demoMode} role={currentUser.role} />
+  else if (page === 'Bảo trì & Sự cố' && ['Admin', 'IT'].includes(currentUser.role))
+    content = <IncidentManagement assets={scopedAssets} demoMode={env.demoMode} currentUserName={currentUser.name} />
+  else if (page === 'Thanh lý & Hủy bỏ' && ['Admin', 'IT'].includes(currentUser.role))
+    content = <DisposalManagement demoMode={env.demoMode} role={currentUser.role} />
+  else if (page === 'Đánh giá rủi ro CNTT' && ['Admin', 'IT'].includes(currentUser.role))
+    content = <RiskManagement assets={scopedAssets} demoMode={env.demoMode} currentUserName={currentUser.name} />
+  else if (page === 'Cấu hình hệ thống' && isAdmin)
+    content = (
+      <AdminSettings
+        departments={departmentList}
+        sites={siteList}
+        people={referenceData.people}
+        assets={assets}
+        regional={regional}
+        branding={branding}
+        email={emailSettings}
+        onSaveRegional={saveRegionalSetting}
+        onSaveBranding={saveBrandingSetting}
+        onSaveEmail={saveEmailSetting}
+        saveDepartment={saveDepartment}
+        removeDepartment={removeDepartment}
+        saveSite={saveSite}
+        removeSite={removeSite}
+      />
+    )
+  else if (page === 'Tùy chỉnh thương hiệu' && isAdmin)
+    content = <BrandingConfiguration settings={branding} onSave={saveBrandingSetting} />
+  else if (page === 'Cấu hình email' && isAdmin)
+    content = <EmailConfiguration settings={emailSettings} onSave={saveEmailSetting} />
+  else content = <Placeholder title={page} language={regional.language} />
+  return (
+    <div className="app">
+      <Sidebar
+        page={page}
+        setPage={next => {
+          setDetailAssetId(undefined)
+          setPage(next)
+        }}
+        open={menuOpen}
+        close={() => setMenuOpen(false)}
+        user={currentUser}
+        logout={logout}
+        openChangePassword={() => setPasswordModalOpen(true)}
+        branding={branding}
+        language={regional.language}
+      />
+      <div className="shell">
+        <Topbar
+          title={detailAsset ? 'Chi tiết tài sản' : page}
+          openMenu={() => setMenuOpen(true)}
+          user={currentUser}
+          branding={branding}
+          language={regional.language}
+          onQuickLanguage={language => saveRegionalSetting({ ...regional, language })}
+          onHome={() => {
+            setDetailAssetId(undefined)
+            setPage('Tổng quan')
+          }}
+        />
+        {content}
+      </div>
+      {modal !== undefined && (
+        <AssetModal
+          asset={modal}
+          departmentOptions={departmentOptions}
+          siteOptions={siteOptions}
+          onClose={() => setModal(undefined)}
+          onSave={save}
+        />
+      )}
+      {assignmentAsset && scopedAssetIds.has(assignmentAsset.id) && (
+        <AssignmentModal
+          asset={assignmentAsset}
+          departmentOptions={departmentOptions}
+          siteOptions={siteOptions}
+          onClose={() => setAssignmentAsset(undefined)}
+          onSave={saveAssignment}
+        />
+      )}
+      {barcodeAsset && scopedAssetIds.has(barcodeAsset.id) && (
+        <BarcodeModal asset={barcodeAsset} onClose={() => setBarcodeAsset(undefined)} />
+      )}
+      {handover && scopedAssetIds.has(handover.asset.id) && (
+        <HandoverModal
+          asset={handover.asset}
+          transaction={handover.transaction}
+          emailSettings={emailSettings}
+          branding={branding}
+          onClose={() => setHandover(undefined)}
+        />
+      )}
+      {passwordModalOpen && (
+        <ChangePasswordModal onClose={() => setPasswordModalOpen(false)} onChange={changeProfilePassword} />
+      )}
+    </div>
+  )
 }

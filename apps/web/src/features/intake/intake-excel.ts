@@ -33,18 +33,22 @@ export class IntakeExcelValidationError extends Error {
   }
 }
 
-export const normalizeIntakeLookup = (value: unknown) => String(value ?? '')
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .trim()
-  .replace(/\s+/g, ' ')
-  .toLocaleLowerCase('vi')
+export const normalizeIntakeLookup = (value: unknown) =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleLowerCase('vi')
 
 export function resolveIntakeLookup(value: unknown, options: IntakeLookup[]) {
   const needle = normalizeIntakeLookup(value)
   if (!needle) return options[0]
-  return options.find(option => [option.name, option.code, option.location?.name, option.location?.code]
-    .some(candidate => normalizeIntakeLookup(candidate) === needle))
+  return options.find(option =>
+    [option.name, option.code, option.location?.name, option.location?.code].some(
+      candidate => normalizeIntakeLookup(candidate) === needle,
+    ),
+  )
 }
 
 export function inferIntakeCategory(assetName: unknown, options: IntakeLookup[]) {
@@ -52,14 +56,19 @@ export function inferIntakeCategory(assetName: unknown, options: IntakeLookup[])
   if (!needle) return options[0]
   const exact = resolveIntakeLookup(assetName, options)
   if (exact) return exact
-  return options.find(option => [option.name, option.code].some(candidate => normalizeIntakeLookup(candidate)
-    .split(/\s*[\/_-]\s*/)
-    .includes(needle))) || options[0]
+  return (
+    options.find(option =>
+      [option.name, option.code].some(candidate =>
+        normalizeIntakeLookup(candidate)
+          .split(/\s*[/_-]\s*/)
+          .includes(needle),
+      ),
+    ) || options[0]
+  )
 }
 
-const cellText = (value: unknown) => value instanceof Date
-  ? value.toISOString().slice(0, 10)
-  : String(value ?? '').trim()
+const cellText = (value: unknown) =>
+  value instanceof Date ? value.toISOString().slice(0, 10) : String(value ?? '').trim()
 
 const excelDate = (value: unknown) => {
   if (!value) return new Date().toISOString().slice(0, 10)
@@ -69,7 +78,7 @@ const excelDate = (value: unknown) => {
     if (!Number.isNaN(date.getTime())) return date.toISOString().slice(0, 10)
   }
   const raw = cellText(value)
-  const vietnamese = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/)
+  const vietnamese = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
   const normalized = vietnamese
     ? `${vietnamese[3]}-${vietnamese[2].padStart(2, '0')}-${vietnamese[1].padStart(2, '0')}`
     : raw
@@ -80,10 +89,12 @@ const excelDate = (value: unknown) => {
 const purchaseCost = (value: unknown) => {
   if (value === undefined || value === null || value === '') return 0
   if (typeof value === 'number') return value
-  const normalized = String(value).trim().replace(/\s/g, '').replace(/[^0-9,.-]/g, '')
-  const decimal = normalized.includes(',') && !normalized.includes('.')
-    ? normalized.replace(',', '.')
-    : normalized.replace(/,/g, '')
+  const normalized = String(value)
+    .trim()
+    .replace(/\s/g, '')
+    .replace(/[^0-9,.-]/g, '')
+  const decimal =
+    normalized.includes(',') && !normalized.includes('.') ? normalized.replace(',', '.') : normalized.replace(/,/g, '')
   return Number(decimal)
 }
 
@@ -115,9 +126,7 @@ export function parseIntakeExcelRows(
     if (priorRow) issues.push(`Dòng ${rowNumber}: Mã tài sản trùng với dòng ${priorRow}.`)
     else if (identity) seenTags.set(identity, rowNumber)
 
-    const category = cellText(row[2])
-      ? resolveIntakeLookup(row[2], categories)
-      : inferIntakeCategory(name, categories)
+    const category = cellText(row[2]) ? resolveIntakeLookup(row[2], categories) : inferIntakeCategory(name, categories)
     const warehouse = resolveIntakeLookup(row[5], warehouses)
     if (!category) issues.push(`Dòng ${rowNumber}: Nhóm tài sản “${text(3)}” không tồn tại hoặc đã ngừng hoạt động.`)
     if (!warehouse) issues.push(`Dòng ${rowNumber}: Kho nhập “${text(6)}” không tồn tại hoặc đã ngừng hoạt động.`)

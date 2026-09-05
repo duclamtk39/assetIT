@@ -1,47 +1,530 @@
-import { BadRequestException,ForbiddenException,Injectable,NotFoundException } from '@nestjs/common'
-import { IncidentPriority,IncidentStatus,Prisma } from '@prisma/client'
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
+import { IncidentStatus, Prisma } from '@prisma/client'
 import { randomUUID } from 'node:crypto'
 import { PrismaService } from '../../database/prisma.service'
-import { AddIncidentActivityDto,ChangeIncidentStatusDto,CreateIncidentDto,IncidentSummaryQuery,ListIncidentsQuery,UpdateIncidentDto } from './incidents.dto'
-import { assertIncidentTransition,incidentMissingFields,incidentPriority,incidentSla } from './incidents.rules'
+import {
+  AddIncidentActivityDto,
+  ChangeIncidentStatusDto,
+  CreateIncidentDto,
+  IncidentSummaryQuery,
+  ListIncidentsQuery,
+  UpdateIncidentDto,
+} from './incidents.dto'
+import { assertIncidentTransition, incidentMissingFields, incidentPriority, incidentSla } from './incidents.rules'
 
-type Actor={id:string;role:string;departmentId:string|null}
-const include={department:true,assignedDepartment:{select:{id:true,code:true,name:true}},location:true,asset:{select:{id:true,assetTag:true,name:true,serialNumber:true}},reporter:{select:{id:true,fullName:true,email:true}},assignee:{select:{id:true,fullName:true,email:true,employeeCode:true,department:{select:{id:true,code:true,name:true}}}},creator:{select:{id:true,fullName:true}}} as const
+type Actor = { id: string; role: string; departmentId: string | null }
+const include = {
+  department: true,
+  assignedDepartment: { select: { id: true, code: true, name: true } },
+  location: true,
+  asset: { select: { id: true, assetTag: true, name: true, serialNumber: true } },
+  reporter: { select: { id: true, fullName: true, email: true } },
+  assignee: {
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      employeeCode: true,
+      department: { select: { id: true, code: true, name: true } },
+    },
+  },
+  creator: { select: { id: true, fullName: true } },
+} as const
 
 @Injectable()
-export class IncidentsService{
-  constructor(private readonly db:PrismaService){}
-  private assertOperator(actor:Actor){if(!['ADMIN','IT'].includes(actor.role))throw new ForbiddenException('Chỉ Admin hoặc IT được quản lý hồ sơ sự cố')}
-  private reference(){return `SC-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${randomUUID().slice(0,8).toUpperCase()}`}
-  private clean(value?:string){const text=value?.trim();return text||null}
-  private async validateReferences(body:{departmentId?:string;locationId?:string;assetId?:string;assignedToId?:string}){
-    const [department,location,asset,assignee]=await Promise.all([
-      body.departmentId?this.db.department.findFirst({where:{id:body.departmentId,status:'ACTIVE'}}):true,
-      body.locationId?this.db.location.findFirst({where:{id:body.locationId,status:'ACTIVE'}}):true,
-      body.assetId?this.db.asset.findFirst({where:{id:body.assetId,deletedAt:null}}):true,
-      body.assignedToId?this.db.user.findFirst({where:{id:body.assignedToId,status:'ACTIVE',role:{in:['ADMIN','IT']},department:{status:'ACTIVE',isIncidentResponseTeam:true}},select:{id:true,departmentId:true}}):null,
+export class IncidentsService {
+  constructor(private readonly db: PrismaService) {}
+  private assertOperator(actor: Actor) {
+    if (!['ADMIN', 'IT'].includes(actor.role))
+      throw new ForbiddenException('Chỉ Admin hoặc IT được quản lý hồ sơ sự cố')
+  }
+  private reference() {
+    return `SC-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${randomUUID().slice(0, 8).toUpperCase()}`
+  }
+  private clean(value?: string) {
+    const text = value?.trim()
+    return text || null
+  }
+  private async validateReferences(body: {
+    departmentId?: string
+    locationId?: string
+    assetId?: string
+    assignedToId?: string
+  }) {
+    const [department, location, asset, assignee] = await Promise.all([
+      body.departmentId ? this.db.department.findFirst({ where: { id: body.departmentId, status: 'ACTIVE' } }) : true,
+      body.locationId ? this.db.location.findFirst({ where: { id: body.locationId, status: 'ACTIVE' } }) : true,
+      body.assetId ? this.db.asset.findFirst({ where: { id: body.assetId, deletedAt: null } }) : true,
+      body.assignedToId
+        ? this.db.user.findFirst({
+            where: {
+              id: body.assignedToId,
+              status: 'ACTIVE',
+              role: { in: ['ADMIN', 'IT'] },
+              department: { status: 'ACTIVE', isIncidentResponseTeam: true },
+            },
+            select: { id: true, departmentId: true },
+          })
+        : null,
     ])
-    if(!department)throw new BadRequestException('Phòng ban ảnh hưởng không hợp lệ')
-    if(!location)throw new BadRequestException('Vị trí xảy ra sự cố không hợp lệ')
-    if(!asset)throw new BadRequestException('Tài sản liên quan không hợp lệ')
-    if(body.assignedToId&&!assignee)throw new BadRequestException('Người xử lý phải là tài khoản Admin/IT đang hoạt động và thuộc bộ phận IT xử lý sự cố')
-    return {assignee}
+    if (!department) throw new BadRequestException('Phòng ban ảnh hưởng không hợp lệ')
+    if (!location) throw new BadRequestException('Vị trí xảy ra sự cố không hợp lệ')
+    if (!asset) throw new BadRequestException('Tài sản liên quan không hợp lệ')
+    if (body.assignedToId && !assignee)
+      throw new BadRequestException(
+        'Người xử lý phải là tài khoản Admin/IT đang hoạt động và thuộc bộ phận IT xử lý sự cố',
+      )
+    return { assignee }
   }
-  private range(period:'week'|'month'|'year',reference?:string){
-    const value=reference?new Date(reference):new Date();if(Number.isNaN(value.getTime()))throw new BadRequestException('Mốc thời gian thống kê không hợp lệ')
-    let start:Date,end:Date
-    if(period==='week'){start=new Date(value);const day=(start.getDay()+6)%7;start.setDate(start.getDate()-day);start.setHours(0,0,0,0);end=new Date(start);end.setDate(end.getDate()+7)}
-    else if(period==='year'){start=new Date(value.getFullYear(),0,1);end=new Date(value.getFullYear()+1,0,1)}
-    else{start=new Date(value.getFullYear(),value.getMonth(),1);end=new Date(value.getFullYear(),value.getMonth()+1,1)}
-    const duration=end.getTime()-start.getTime(),previousStart=new Date(start.getTime()-duration)
-    return {start,end,previousStart}
+  private range(period: 'week' | 'month' | 'year', reference?: string) {
+    const value = reference ? new Date(reference) : new Date()
+    if (Number.isNaN(value.getTime())) throw new BadRequestException('Mốc thời gian thống kê không hợp lệ')
+    let start: Date, end: Date
+    if (period === 'week') {
+      start = new Date(value)
+      const day = (start.getDay() + 6) % 7
+      start.setDate(start.getDate() - day)
+      start.setHours(0, 0, 0, 0)
+      end = new Date(start)
+      end.setDate(end.getDate() + 7)
+    } else if (period === 'year') {
+      start = new Date(value.getFullYear(), 0, 1)
+      end = new Date(value.getFullYear() + 1, 0, 1)
+    } else {
+      start = new Date(value.getFullYear(), value.getMonth(), 1)
+      end = new Date(value.getFullYear(), value.getMonth() + 1, 1)
+    }
+    const duration = end.getTime() - start.getTime(),
+      previousStart = new Date(start.getTime() - duration)
+    return { start, end, previousStart }
   }
-  async operators(actor:Actor){this.assertOperator(actor);return this.db.user.findMany({where:{status:'ACTIVE',role:{in:['ADMIN','IT']},department:{status:'ACTIVE',isIncidentResponseTeam:true}},select:{id:true,employeeCode:true,fullName:true,email:true,department:{select:{id:true,code:true,name:true}}},orderBy:{fullName:'asc'}})}
-  async list(query:ListIncidentsQuery,actor:Actor){this.assertOperator(actor);const term=query.search?.trim(),text=term?{contains:term,mode:'insensitive' as const}:undefined,openStatuses:IncidentStatus[]=['NEW','ACKNOWLEDGED','IN_PROGRESS','MONITORING'];const viewWhere:Prisma.IncidentWhereInput=query.view==='open'?{status:{in:openStatuses}}:query.view==='critical'?{priority:{in:['P1','P2']}}:query.view==='resolved'?{status:{in:['RESOLVED','CLOSED']}}:query.view==='overdue'?{status:{in:openStatuses},slaResolutionDueAt:{lt:new Date()}}:query.view==='downtime'?{downtimeMinutes:{gt:0}}:{};const where:Prisma.IncidentWhereInput={AND:[viewWhere,{status:query.status,category:query.category,priority:query.priority,departmentId:query.departmentId,reportedAt:query.from||query.to?{gte:query.from?new Date(query.from):undefined,lte:query.to?new Date(query.to):undefined}:undefined,OR:text?[{incidentNo:text},{title:text},{description:text},{reporterName:text},{serviceName:text},{rootCause:text},{asset:{is:{OR:[{assetTag:text},{name:text},{serialNumber:text}]}}}]:undefined}]};const [data,total]=await this.db.$transaction([this.db.incident.findMany({where,include,orderBy:[{reportedAt:'desc'},{incidentNo:'desc'}],skip:(query.page-1)*query.limit,take:query.limit}),this.db.incident.count({where})]);return {data,meta:{page:query.page,limit:query.limit,total,totalPages:Math.ceil(total/query.limit)}}}
-  async get(id:string,actor:Actor){this.assertOperator(actor);const incident=await this.db.incident.findUnique({where:{id},include:{...include,activities:{include:{actor:{select:{id:true,fullName:true}}},orderBy:{createdAt:'asc'}},assignments:{include:{assignee:{select:{id:true,employeeCode:true,fullName:true,email:true}},department:{select:{id:true,code:true,name:true}},actor:{select:{id:true,fullName:true}},acceptor:{select:{id:true,fullName:true}},releaser:{select:{id:true,fullName:true}}},orderBy:{assignedAt:'asc'}}}});if(!incident)throw new NotFoundException('Không tìm thấy hồ sơ sự cố');return incident}
-  async summary(query:IncidentSummaryQuery,actor:Actor){this.assertOperator(actor);const {start,end,previousStart}=this.range(query.period,query.reference);const [rows,previousTotal]=await Promise.all([this.db.incident.findMany({where:{reportedAt:{gte:start,lt:end}},select:{category:true,status:true,priority:true,reportedAt:true,acknowledgedAt:true,resolvedAt:true,slaResponseDueAt:true,slaResolutionDueAt:true,downtimeMinutes:true}},),this.db.incident.count({where:{reportedAt:{gte:previousStart,lt:start}}})]);const now=new Date(),openStatuses:IncidentStatus[]=['NEW','ACKNOWLEDGED','IN_PROGRESS','MONITORING'];const average=(values:number[])=>values.length?Math.round(values.reduce((a,b)=>a+b,0)/values.length):0;const responseTimes=rows.filter(x=>x.acknowledgedAt).map(x=>(x.acknowledgedAt!.getTime()-x.reportedAt.getTime())/60000),resolutionTimes=rows.filter(x=>x.resolvedAt).map(x=>(x.resolvedAt!.getTime()-x.reportedAt.getTime())/60000);const by=(key:'category'|'status'|'priority')=>Object.entries(rows.reduce((acc,row)=>{const value=String(row[key]);acc[value]=(acc[value]||0)+1;return acc},{} as Record<string,number>)).map(([label,count])=>({label,count})).sort((a,b)=>b.count-a.count);const bucketCount=query.period==='week'?7:query.period==='month'?Math.ceil((end.getTime()-start.getTime())/86400000):12;const trend=Array.from({length:bucketCount},(_,index)=>{const bucketStart=query.period==='year'?new Date(start.getFullYear(),index,1):new Date(start.getTime()+index*86400000),bucketEnd=query.period==='year'?new Date(start.getFullYear(),index+1,1):new Date(bucketStart.getTime()+86400000);return {label:query.period==='year'?String(index+1).padStart(2,'0'):bucketStart.toISOString().slice(5,10),count:rows.filter(row=>row.reportedAt>=bucketStart&&row.reportedAt<bucketEnd).length}});return {period:query.period,from:start,to:end,total:rows.length,previousTotal,open:rows.filter(x=>openStatuses.includes(x.status)).length,critical:rows.filter(x=>x.priority==='P1'||x.priority==='P2').length,resolved:rows.filter(x=>x.status==='RESOLVED'||x.status==='CLOSED').length,overdue:rows.filter(x=>openStatuses.includes(x.status)&&x.slaResolutionDueAt<now).length,downtimeMinutes:rows.reduce((sum,x)=>sum+x.downtimeMinutes,0),averageResponseMinutes:average(responseTimes),averageResolutionMinutes:average(resolutionTimes),responseSlaMet:rows.filter(x=>x.acknowledgedAt&&x.acknowledgedAt<=x.slaResponseDueAt).length,resolutionSlaMet:rows.filter(x=>x.resolvedAt&&x.resolvedAt<=x.slaResolutionDueAt).length,byCategory:by('category'),byStatus:by('status'),byPriority:by('priority'),trend}}
-  async create(body:CreateIncidentDto,actor:Actor){this.assertOperator(actor);const {assignee}=await this.validateReferences(body);const detectedAt=new Date(body.detectedAt),reportedAt=new Date();if(detectedAt.getTime()>reportedAt.getTime()+5*60*1000)throw new BadRequestException('Thời điểm phát hiện không được nằm trong tương lai');const priority=incidentPriority(body.impact,body.urgency),sla=incidentSla(priority);return this.db.$transaction(async tx=>{const incident=await tx.incident.create({data:{incidentNo:this.reference(),title:body.title.trim(),category:body.category,priority,impact:body.impact,urgency:body.urgency,description:body.description.trim(),businessImpact:this.clean(body.businessImpact),initialAssessment:this.clean(body.initialAssessment),serviceName:this.clean(body.serviceName),reporterName:body.reporterName.trim(),reporterContact:this.clean(body.reporterContact),reportedById:actor.id,assignedToId:body.assignedToId,assignedDepartmentId:assignee?.departmentId,createdBy:actor.id,departmentId:body.departmentId,locationId:body.locationId,assetId:body.assetId,affectedUsers:body.affectedUsers,downtimeMinutes:body.downtimeMinutes,isSecurityIncident:body.isSecurityIncident,isBusinessContinuityEvent:body.isBusinessContinuityEvent,detectedAt,reportedAt,slaResponseDueAt:new Date(reportedAt.getTime()+sla.responseMinutes*60000),slaResolutionDueAt:new Date(reportedAt.getTime()+sla.resolutionMinutes*60000)},include});if(body.assignedToId&&assignee?.departmentId)await tx.incidentAssignment.create({data:{incidentId:incident.id,assignedToId:body.assignedToId,departmentId:assignee.departmentId,assignedBy:actor.id,note:'Phân công người chịu trách nhiệm khi tiếp nhận sự cố'}});await tx.incidentActivity.create({data:{incidentId:incident.id,type:'CREATED',note:`Tiếp nhận sự cố mức ${priority}`,toStatus:'NEW',performedBy:actor.id}});await tx.auditLog.create({data:{userId:actor.id,action:'INCIDENT_CREATED',entityType:'Incident',entityId:incident.id,newValues:{incidentNo:incident.incidentNo,priority,category:incident.category,assignedToId:body.assignedToId,assignedDepartmentId:assignee?.departmentId} as Prisma.InputJsonValue}});return incident},{isolationLevel:Prisma.TransactionIsolationLevel.Serializable})}
-  async update(id:string,body:UpdateIncidentDto,actor:Actor){this.assertOperator(actor);const {assignee}=await this.validateReferences(body);const current=await this.db.incident.findUnique({where:{id}});if(!current)throw new NotFoundException('Không tìm thấy hồ sơ sự cố');if(['CLOSED','CANCELLED'].includes(current.status))throw new BadRequestException('Hồ sơ đã đóng hoặc hủy chỉ được phép đọc');const impact=body.impact||current.impact,urgency=body.urgency||current.urgency,priority=incidentPriority(impact,urgency),sla=incidentSla(priority),assignmentChanged=body.assignedToId!==undefined&&body.assignedToId!==current.assignedToId,data:any={...body,assignedDepartmentId:body.assignedToId===undefined?undefined:assignee?.departmentId,title:body.title?.trim(),description:body.description?.trim(),reporterName:body.reporterName?.trim(),reporterContact:body.reporterContact===undefined?undefined:this.clean(body.reporterContact),serviceName:body.serviceName===undefined?undefined:this.clean(body.serviceName),businessImpact:body.businessImpact===undefined?undefined:this.clean(body.businessImpact),initialAssessment:body.initialAssessment===undefined?undefined:this.clean(body.initialAssessment),containmentAction:body.containmentAction===undefined?undefined:this.clean(body.containmentAction),resolution:body.resolution===undefined?undefined:this.clean(body.resolution),rootCause:body.rootCause===undefined?undefined:this.clean(body.rootCause),correctiveAction:body.correctiveAction===undefined?undefined:this.clean(body.correctiveAction),preventiveAction:body.preventiveAction===undefined?undefined:this.clean(body.preventiveAction),lessonsLearned:body.lessonsLearned===undefined?undefined:this.clean(body.lessonsLearned),priority,slaResponseDueAt:new Date(current.reportedAt.getTime()+sla.responseMinutes*60000),slaResolutionDueAt:new Date(current.reportedAt.getTime()+sla.resolutionMinutes*60000)};return this.db.$transaction(async tx=>{if(assignmentChanged)await tx.incidentAssignment.updateMany({where:{incidentId:id,role:'PRIMARY',releasedAt:null},data:{releasedAt:new Date(),releasedById:actor.id,releaseReason:'Điều phối lại người chịu trách nhiệm'}});const updated=await tx.incident.update({where:{id},data,include});if(assignmentChanged&&body.assignedToId&&assignee?.departmentId)await tx.incidentAssignment.create({data:{incidentId:id,assignedToId:body.assignedToId,departmentId:assignee.departmentId,assignedBy:actor.id,note:'Điều phối lại người chịu trách nhiệm xử lý'}});await tx.incidentActivity.create({data:{incidentId:id,type:assignmentChanged?'ASSIGNED':'UPDATED',note:assignmentChanged?'Cập nhật người chịu trách nhiệm xử lý':'Cập nhật hồ sơ, đánh giá hoặc CAPA',performedBy:actor.id}});await tx.auditLog.create({data:{userId:actor.id,action:'INCIDENT_UPDATED',entityType:'Incident',entityId:id,oldValues:{status:current.status,priority:current.priority,assignedToId:current.assignedToId,assignedDepartmentId:current.assignedDepartmentId} as Prisma.InputJsonValue,newValues:{priority,assignedToId:updated.assignedToId,assignedDepartmentId:updated.assignedDepartmentId} as Prisma.InputJsonValue}});return updated})}
-  async changeStatus(id:string,body:ChangeIncidentStatusDto,actor:Actor){this.assertOperator(actor);const current=await this.db.incident.findUnique({where:{id}});if(!current)throw new NotFoundException('Không tìm thấy hồ sơ sự cố');try{assertIncidentTransition(current.status,body.status)}catch{throw new BadRequestException('Chuyển trạng thái sự cố không đúng quy trình')};const missing=incidentMissingFields(body.status,current);if(missing.length)throw new BadRequestException(`Chưa đủ điều kiện chuyển trạng thái: ${missing.map(field=>({assignedToId:'người xử lý IT',initialAssessment:'đánh giá ban đầu',containmentAction:'khoanh vùng/ứng phó tức thời',resolution:'xử lý và khôi phục dịch vụ',rootCause:'nguyên nhân gốc (RCA)',correctiveAction:'hành động khắc phục',preventiveAction:'hành động phòng ngừa',lessonsLearned:'bài học kinh nghiệm'}[field]||field)).join(', ')}`);if(current.assignedToId&&actor.role!=='ADMIN'&&current.assignedToId!==actor.id)throw new ForbiddenException('Chỉ người được phân công hoặc Admin được chuyển trạng thái sự cố');const now=new Date(),timestamps:any=body.status==='ACKNOWLEDGED'?{acknowledgedAt:now}:body.status==='IN_PROGRESS'?{responseStartedAt:current.responseStartedAt||now}:body.status==='RESOLVED'?{resolvedAt:now}:body.status==='CLOSED'?{closedAt:now}:body.status==='CANCELLED'?{closedAt:now}:{};return this.db.$transaction(async tx=>{const updated=await tx.incident.update({where:{id},data:{status:body.status,...timestamps},include});if(body.status==='ACKNOWLEDGED')await tx.incidentAssignment.updateMany({where:{incidentId:id,role:'PRIMARY',releasedAt:null,acceptedAt:null},data:{acceptedAt:now,acceptedById:actor.id}});if(['CLOSED','CANCELLED'].includes(body.status))await tx.incidentAssignment.updateMany({where:{incidentId:id,releasedAt:null},data:{releasedAt:now,releasedById:actor.id,releaseReason:body.note.trim()}});await tx.incidentActivity.create({data:{incidentId:id,type:'STATUS_CHANGED',note:body.note.trim(),fromStatus:current.status,toStatus:body.status,performedBy:actor.id}});await tx.auditLog.create({data:{userId:actor.id,action:'INCIDENT_STATUS_CHANGED',entityType:'Incident',entityId:id,oldValues:{status:current.status} as Prisma.InputJsonValue,newValues:{status:body.status,note:body.note} as Prisma.InputJsonValue}});return updated})}
-  async addActivity(id:string,body:AddIncidentActivityDto,actor:Actor){this.assertOperator(actor);if(!await this.db.incident.findUnique({where:{id},select:{id:true}}))throw new NotFoundException('Không tìm thấy hồ sơ sự cố');return this.db.$transaction(async tx=>{const activity=await tx.incidentActivity.create({data:{incidentId:id,type:body.type.trim().toUpperCase(),note:body.note.trim(),performedBy:actor.id},include:{actor:{select:{id:true,fullName:true}}}});await tx.auditLog.create({data:{userId:actor.id,action:'INCIDENT_ACTIVITY_ADDED',entityType:'Incident',entityId:id,newValues:{type:activity.type} as Prisma.InputJsonValue}});return activity})}
+  async operators(actor: Actor) {
+    this.assertOperator(actor)
+    return this.db.user.findMany({
+      where: {
+        status: 'ACTIVE',
+        role: { in: ['ADMIN', 'IT'] },
+        department: { status: 'ACTIVE', isIncidentResponseTeam: true },
+      },
+      select: {
+        id: true,
+        employeeCode: true,
+        fullName: true,
+        email: true,
+        department: { select: { id: true, code: true, name: true } },
+      },
+      orderBy: { fullName: 'asc' },
+    })
+  }
+  async list(query: ListIncidentsQuery, actor: Actor) {
+    this.assertOperator(actor)
+    const term = query.search?.trim(),
+      text = term ? { contains: term, mode: 'insensitive' as const } : undefined,
+      openStatuses: IncidentStatus[] = ['NEW', 'ACKNOWLEDGED', 'IN_PROGRESS', 'MONITORING']
+    const viewWhere: Prisma.IncidentWhereInput =
+      query.view === 'open'
+        ? { status: { in: openStatuses } }
+        : query.view === 'critical'
+          ? { priority: { in: ['P1', 'P2'] } }
+          : query.view === 'resolved'
+            ? { status: { in: ['RESOLVED', 'CLOSED'] } }
+            : query.view === 'overdue'
+              ? { status: { in: openStatuses }, slaResolutionDueAt: { lt: new Date() } }
+              : query.view === 'downtime'
+                ? { downtimeMinutes: { gt: 0 } }
+                : {}
+    const where: Prisma.IncidentWhereInput = {
+      AND: [
+        viewWhere,
+        {
+          status: query.status,
+          category: query.category,
+          priority: query.priority,
+          departmentId: query.departmentId,
+          reportedAt:
+            query.from || query.to
+              ? { gte: query.from ? new Date(query.from) : undefined, lte: query.to ? new Date(query.to) : undefined }
+              : undefined,
+          OR: text
+            ? [
+                { incidentNo: text },
+                { title: text },
+                { description: text },
+                { reporterName: text },
+                { serviceName: text },
+                { rootCause: text },
+                { asset: { is: { OR: [{ assetTag: text }, { name: text }, { serialNumber: text }] } } },
+              ]
+            : undefined,
+        },
+      ],
+    }
+    const [data, total] = await this.db.$transaction([
+      this.db.incident.findMany({
+        where,
+        include,
+        orderBy: [{ reportedAt: 'desc' }, { incidentNo: 'desc' }],
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
+      }),
+      this.db.incident.count({ where }),
+    ])
+    return { data, meta: { page: query.page, limit: query.limit, total, totalPages: Math.ceil(total / query.limit) } }
+  }
+  async get(id: string, actor: Actor) {
+    this.assertOperator(actor)
+    const incident = await this.db.incident.findUnique({
+      where: { id },
+      include: {
+        ...include,
+        activities: { include: { actor: { select: { id: true, fullName: true } } }, orderBy: { createdAt: 'asc' } },
+        assignments: {
+          include: {
+            assignee: { select: { id: true, employeeCode: true, fullName: true, email: true } },
+            department: { select: { id: true, code: true, name: true } },
+            actor: { select: { id: true, fullName: true } },
+            acceptor: { select: { id: true, fullName: true } },
+            releaser: { select: { id: true, fullName: true } },
+          },
+          orderBy: { assignedAt: 'asc' },
+        },
+      },
+    })
+    if (!incident) throw new NotFoundException('Không tìm thấy hồ sơ sự cố')
+    return incident
+  }
+  async summary(query: IncidentSummaryQuery, actor: Actor) {
+    this.assertOperator(actor)
+    const { start, end, previousStart } = this.range(query.period, query.reference)
+    const [rows, previousTotal] = await Promise.all([
+      this.db.incident.findMany({
+        where: { reportedAt: { gte: start, lt: end } },
+        select: {
+          category: true,
+          status: true,
+          priority: true,
+          reportedAt: true,
+          acknowledgedAt: true,
+          resolvedAt: true,
+          slaResponseDueAt: true,
+          slaResolutionDueAt: true,
+          downtimeMinutes: true,
+        },
+      }),
+      this.db.incident.count({ where: { reportedAt: { gte: previousStart, lt: start } } }),
+    ])
+    const now = new Date(),
+      openStatuses: IncidentStatus[] = ['NEW', 'ACKNOWLEDGED', 'IN_PROGRESS', 'MONITORING']
+    const average = (values: number[]) =>
+      values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0
+    const responseTimes = rows
+        .filter(x => x.acknowledgedAt)
+        .map(x => (x.acknowledgedAt!.getTime() - x.reportedAt.getTime()) / 60000),
+      resolutionTimes = rows
+        .filter(x => x.resolvedAt)
+        .map(x => (x.resolvedAt!.getTime() - x.reportedAt.getTime()) / 60000)
+    const by = (key: 'category' | 'status' | 'priority') =>
+      Object.entries(
+        rows.reduce(
+          (acc, row) => {
+            const value = String(row[key])
+            acc[value] = (acc[value] || 0) + 1
+            return acc
+          },
+          {} as Record<string, number>,
+        ),
+      )
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count)
+    const bucketCount =
+      query.period === 'week'
+        ? 7
+        : query.period === 'month'
+          ? Math.ceil((end.getTime() - start.getTime()) / 86400000)
+          : 12
+    const trend = Array.from({ length: bucketCount }, (_, index) => {
+      const bucketStart =
+          query.period === 'year'
+            ? new Date(start.getFullYear(), index, 1)
+            : new Date(start.getTime() + index * 86400000),
+        bucketEnd =
+          query.period === 'year'
+            ? new Date(start.getFullYear(), index + 1, 1)
+            : new Date(bucketStart.getTime() + 86400000)
+      return {
+        label: query.period === 'year' ? String(index + 1).padStart(2, '0') : bucketStart.toISOString().slice(5, 10),
+        count: rows.filter(row => row.reportedAt >= bucketStart && row.reportedAt < bucketEnd).length,
+      }
+    })
+    return {
+      period: query.period,
+      from: start,
+      to: end,
+      total: rows.length,
+      previousTotal,
+      open: rows.filter(x => openStatuses.includes(x.status)).length,
+      critical: rows.filter(x => x.priority === 'P1' || x.priority === 'P2').length,
+      resolved: rows.filter(x => x.status === 'RESOLVED' || x.status === 'CLOSED').length,
+      overdue: rows.filter(x => openStatuses.includes(x.status) && x.slaResolutionDueAt < now).length,
+      downtimeMinutes: rows.reduce((sum, x) => sum + x.downtimeMinutes, 0),
+      averageResponseMinutes: average(responseTimes),
+      averageResolutionMinutes: average(resolutionTimes),
+      responseSlaMet: rows.filter(x => x.acknowledgedAt && x.acknowledgedAt <= x.slaResponseDueAt).length,
+      resolutionSlaMet: rows.filter(x => x.resolvedAt && x.resolvedAt <= x.slaResolutionDueAt).length,
+      byCategory: by('category'),
+      byStatus: by('status'),
+      byPriority: by('priority'),
+      trend,
+    }
+  }
+  async create(body: CreateIncidentDto, actor: Actor) {
+    this.assertOperator(actor)
+    const { assignee } = await this.validateReferences(body)
+    const detectedAt = new Date(body.detectedAt),
+      reportedAt = new Date()
+    if (detectedAt.getTime() > reportedAt.getTime() + 5 * 60 * 1000)
+      throw new BadRequestException('Thời điểm phát hiện không được nằm trong tương lai')
+    const priority = incidentPriority(body.impact, body.urgency),
+      sla = incidentSla(priority)
+    return this.db.$transaction(
+      async tx => {
+        const incident = await tx.incident.create({
+          data: {
+            incidentNo: this.reference(),
+            title: body.title.trim(),
+            category: body.category,
+            priority,
+            impact: body.impact,
+            urgency: body.urgency,
+            description: body.description.trim(),
+            businessImpact: this.clean(body.businessImpact),
+            initialAssessment: this.clean(body.initialAssessment),
+            serviceName: this.clean(body.serviceName),
+            reporterName: body.reporterName.trim(),
+            reporterContact: this.clean(body.reporterContact),
+            reportedById: actor.id,
+            assignedToId: body.assignedToId,
+            assignedDepartmentId: assignee?.departmentId,
+            createdBy: actor.id,
+            departmentId: body.departmentId,
+            locationId: body.locationId,
+            assetId: body.assetId,
+            affectedUsers: body.affectedUsers,
+            downtimeMinutes: body.downtimeMinutes,
+            isSecurityIncident: body.isSecurityIncident,
+            isBusinessContinuityEvent: body.isBusinessContinuityEvent,
+            detectedAt,
+            reportedAt,
+            slaResponseDueAt: new Date(reportedAt.getTime() + sla.responseMinutes * 60000),
+            slaResolutionDueAt: new Date(reportedAt.getTime() + sla.resolutionMinutes * 60000),
+          },
+          include,
+        })
+        if (body.assignedToId && assignee?.departmentId)
+          await tx.incidentAssignment.create({
+            data: {
+              incidentId: incident.id,
+              assignedToId: body.assignedToId,
+              departmentId: assignee.departmentId,
+              assignedBy: actor.id,
+              note: 'Phân công người chịu trách nhiệm khi tiếp nhận sự cố',
+            },
+          })
+        await tx.incidentActivity.create({
+          data: {
+            incidentId: incident.id,
+            type: 'CREATED',
+            note: `Tiếp nhận sự cố mức ${priority}`,
+            toStatus: 'NEW',
+            performedBy: actor.id,
+          },
+        })
+        await tx.auditLog.create({
+          data: {
+            userId: actor.id,
+            action: 'INCIDENT_CREATED',
+            entityType: 'Incident',
+            entityId: incident.id,
+            newValues: {
+              incidentNo: incident.incidentNo,
+              priority,
+              category: incident.category,
+              assignedToId: body.assignedToId,
+              assignedDepartmentId: assignee?.departmentId,
+            } as Prisma.InputJsonValue,
+          },
+        })
+        return incident
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
+  }
+  async update(id: string, body: UpdateIncidentDto, actor: Actor) {
+    this.assertOperator(actor)
+    const { assignee } = await this.validateReferences(body)
+    const current = await this.db.incident.findUnique({ where: { id } })
+    if (!current) throw new NotFoundException('Không tìm thấy hồ sơ sự cố')
+    if (['CLOSED', 'CANCELLED'].includes(current.status))
+      throw new BadRequestException('Hồ sơ đã đóng hoặc hủy chỉ được phép đọc')
+    const impact = body.impact || current.impact,
+      urgency = body.urgency || current.urgency,
+      priority = incidentPriority(impact, urgency),
+      sla = incidentSla(priority),
+      assignmentChanged = body.assignedToId !== undefined && body.assignedToId !== current.assignedToId,
+      data: any = {
+        ...body,
+        assignedDepartmentId: body.assignedToId === undefined ? undefined : assignee?.departmentId,
+        title: body.title?.trim(),
+        description: body.description?.trim(),
+        reporterName: body.reporterName?.trim(),
+        reporterContact: body.reporterContact === undefined ? undefined : this.clean(body.reporterContact),
+        serviceName: body.serviceName === undefined ? undefined : this.clean(body.serviceName),
+        businessImpact: body.businessImpact === undefined ? undefined : this.clean(body.businessImpact),
+        initialAssessment: body.initialAssessment === undefined ? undefined : this.clean(body.initialAssessment),
+        containmentAction: body.containmentAction === undefined ? undefined : this.clean(body.containmentAction),
+        resolution: body.resolution === undefined ? undefined : this.clean(body.resolution),
+        rootCause: body.rootCause === undefined ? undefined : this.clean(body.rootCause),
+        correctiveAction: body.correctiveAction === undefined ? undefined : this.clean(body.correctiveAction),
+        preventiveAction: body.preventiveAction === undefined ? undefined : this.clean(body.preventiveAction),
+        lessonsLearned: body.lessonsLearned === undefined ? undefined : this.clean(body.lessonsLearned),
+        priority,
+        slaResponseDueAt: new Date(current.reportedAt.getTime() + sla.responseMinutes * 60000),
+        slaResolutionDueAt: new Date(current.reportedAt.getTime() + sla.resolutionMinutes * 60000),
+      }
+    return this.db.$transaction(async tx => {
+      if (assignmentChanged)
+        await tx.incidentAssignment.updateMany({
+          where: { incidentId: id, role: 'PRIMARY', releasedAt: null },
+          data: {
+            releasedAt: new Date(),
+            releasedById: actor.id,
+            releaseReason: 'Điều phối lại người chịu trách nhiệm',
+          },
+        })
+      const updated = await tx.incident.update({ where: { id }, data, include })
+      if (assignmentChanged && body.assignedToId && assignee?.departmentId)
+        await tx.incidentAssignment.create({
+          data: {
+            incidentId: id,
+            assignedToId: body.assignedToId,
+            departmentId: assignee.departmentId,
+            assignedBy: actor.id,
+            note: 'Điều phối lại người chịu trách nhiệm xử lý',
+          },
+        })
+      await tx.incidentActivity.create({
+        data: {
+          incidentId: id,
+          type: assignmentChanged ? 'ASSIGNED' : 'UPDATED',
+          note: assignmentChanged ? 'Cập nhật người chịu trách nhiệm xử lý' : 'Cập nhật hồ sơ, đánh giá hoặc CAPA',
+          performedBy: actor.id,
+        },
+      })
+      await tx.auditLog.create({
+        data: {
+          userId: actor.id,
+          action: 'INCIDENT_UPDATED',
+          entityType: 'Incident',
+          entityId: id,
+          oldValues: {
+            status: current.status,
+            priority: current.priority,
+            assignedToId: current.assignedToId,
+            assignedDepartmentId: current.assignedDepartmentId,
+          } as Prisma.InputJsonValue,
+          newValues: {
+            priority,
+            assignedToId: updated.assignedToId,
+            assignedDepartmentId: updated.assignedDepartmentId,
+          } as Prisma.InputJsonValue,
+        },
+      })
+      return updated
+    })
+  }
+  async changeStatus(id: string, body: ChangeIncidentStatusDto, actor: Actor) {
+    this.assertOperator(actor)
+    const current = await this.db.incident.findUnique({ where: { id } })
+    if (!current) throw new NotFoundException('Không tìm thấy hồ sơ sự cố')
+    try {
+      assertIncidentTransition(current.status, body.status)
+    } catch {
+      throw new BadRequestException('Chuyển trạng thái sự cố không đúng quy trình')
+    }
+    const missing = incidentMissingFields(body.status, current)
+    if (missing.length)
+      throw new BadRequestException(
+        `Chưa đủ điều kiện chuyển trạng thái: ${missing.map(field => ({ assignedToId: 'người xử lý IT', initialAssessment: 'đánh giá ban đầu', containmentAction: 'khoanh vùng/ứng phó tức thời', resolution: 'xử lý và khôi phục dịch vụ', rootCause: 'nguyên nhân gốc (RCA)', correctiveAction: 'hành động khắc phục', preventiveAction: 'hành động phòng ngừa', lessonsLearned: 'bài học kinh nghiệm' })[field] || field).join(', ')}`,
+      )
+    if (current.assignedToId && actor.role !== 'ADMIN' && current.assignedToId !== actor.id)
+      throw new ForbiddenException('Chỉ người được phân công hoặc Admin được chuyển trạng thái sự cố')
+    const now = new Date(),
+      timestamps: any =
+        body.status === 'ACKNOWLEDGED'
+          ? { acknowledgedAt: now }
+          : body.status === 'IN_PROGRESS'
+            ? { responseStartedAt: current.responseStartedAt || now }
+            : body.status === 'RESOLVED'
+              ? { resolvedAt: now }
+              : body.status === 'CLOSED'
+                ? { closedAt: now }
+                : body.status === 'CANCELLED'
+                  ? { closedAt: now }
+                  : {}
+    return this.db.$transaction(async tx => {
+      const updated = await tx.incident.update({ where: { id }, data: { status: body.status, ...timestamps }, include })
+      if (body.status === 'ACKNOWLEDGED')
+        await tx.incidentAssignment.updateMany({
+          where: { incidentId: id, role: 'PRIMARY', releasedAt: null, acceptedAt: null },
+          data: { acceptedAt: now, acceptedById: actor.id },
+        })
+      if (['CLOSED', 'CANCELLED'].includes(body.status))
+        await tx.incidentAssignment.updateMany({
+          where: { incidentId: id, releasedAt: null },
+          data: { releasedAt: now, releasedById: actor.id, releaseReason: body.note.trim() },
+        })
+      await tx.incidentActivity.create({
+        data: {
+          incidentId: id,
+          type: 'STATUS_CHANGED',
+          note: body.note.trim(),
+          fromStatus: current.status,
+          toStatus: body.status,
+          performedBy: actor.id,
+        },
+      })
+      await tx.auditLog.create({
+        data: {
+          userId: actor.id,
+          action: 'INCIDENT_STATUS_CHANGED',
+          entityType: 'Incident',
+          entityId: id,
+          oldValues: { status: current.status } as Prisma.InputJsonValue,
+          newValues: { status: body.status, note: body.note } as Prisma.InputJsonValue,
+        },
+      })
+      return updated
+    })
+  }
+  async addActivity(id: string, body: AddIncidentActivityDto, actor: Actor) {
+    this.assertOperator(actor)
+    if (!(await this.db.incident.findUnique({ where: { id }, select: { id: true } })))
+      throw new NotFoundException('Không tìm thấy hồ sơ sự cố')
+    return this.db.$transaction(async tx => {
+      const activity = await tx.incidentActivity.create({
+        data: { incidentId: id, type: body.type.trim().toUpperCase(), note: body.note.trim(), performedBy: actor.id },
+        include: { actor: { select: { id: true, fullName: true } } },
+      })
+      await tx.auditLog.create({
+        data: {
+          userId: actor.id,
+          action: 'INCIDENT_ACTIVITY_ADDED',
+          entityType: 'Incident',
+          entityId: id,
+          newValues: { type: activity.type } as Prisma.InputJsonValue,
+        },
+      })
+      return activity
+    })
+  }
 }

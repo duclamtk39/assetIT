@@ -1,114 +1,1653 @@
-import { useEffect,useMemo,useState } from 'react'
-import { Activity,AlertTriangle,Bolt,CalendarDays,CheckCircle2,ChevronRight,Clock3,FileText,HardDrive,Network,Plus,Printer,Search,ShieldAlert,UserRound,Wrench,X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Activity,
+  AlertTriangle,
+  Bolt,
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  FileText,
+  HardDrive,
+  Network,
+  Plus,
+  Printer,
+  Search,
+  ShieldAlert,
+  UserRound,
+  Wrench,
+  X,
+} from 'lucide-react'
 import type { Asset } from '../../types'
-import { api,ApiError } from '../../services/api-client'
-import { missingIncidentWorkflowFields,workflowFieldLabels } from './incident-workflow'
+import { api, ApiError } from '../../services/api-client'
+import { missingIncidentWorkflowFields, workflowFieldLabels } from './incident-workflow'
 
-type Category='POWER'|'NETWORK'|'MALWARE'|'HARDWARE'|'SOFTWARE'|'SECURITY'|'ACCESS'|'CLOUD'|'TELEPHONY'|'OTHER'
-type Status='NEW'|'ACKNOWLEDGED'|'IN_PROGRESS'|'MONITORING'|'RESOLVED'|'CLOSED'|'CANCELLED'
-type Priority='P1'|'P2'|'P3'|'P4'
-type Impact='CRITICAL'|'HIGH'|'MEDIUM'|'LOW'
-type Urgency='HIGH'|'MEDIUM'|'LOW'
-type IncidentView='all'|'open'|'critical'|'resolved'|'overdue'|'downtime'
-interface Lookup{id:string;name?:string;fullName?:string;email?:string;department?:{id?:string;name?:string}}
-interface IncidentActivity{id:string;type:string;note:string;fromStatus?:Status;toStatus?:Status;createdAt:string;actor:{id:string;fullName:string}}
-interface Incident{
-  id:string;incidentNo:string;title:string;category:Category;status:Status;priority:Priority;impact:Impact;urgency:Urgency;description:string
-  businessImpact?:string;initialAssessment?:string;containmentAction?:string;resolution?:string;rootCause?:string;correctiveAction?:string;preventiveAction?:string;lessonsLearned?:string
-  serviceName?:string;reporterName:string;reporterContact?:string;affectedUsers:number;downtimeMinutes:number;isSecurityIncident:boolean;isBusinessContinuityEvent:boolean
-  detectedAt:string;reportedAt:string;acknowledgedAt?:string;responseStartedAt?:string;resolvedAt?:string;closedAt?:string;slaResponseDueAt:string;slaResolutionDueAt:string
-  departmentId?:string;locationId?:string;assetId?:string;assignedToId?:string;department?:Lookup;location?:Lookup;asset?:{id:string;assetTag:string;name:string;serialNumber?:string};assignee?:Lookup;creator?:Lookup;activities?:IncidentActivity[]
+type Category =
+  'POWER' | 'NETWORK' | 'MALWARE' | 'HARDWARE' | 'SOFTWARE' | 'SECURITY' | 'ACCESS' | 'CLOUD' | 'TELEPHONY' | 'OTHER'
+type Status = 'NEW' | 'ACKNOWLEDGED' | 'IN_PROGRESS' | 'MONITORING' | 'RESOLVED' | 'CLOSED' | 'CANCELLED'
+type Priority = 'P1' | 'P2' | 'P3' | 'P4'
+type Impact = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
+type Urgency = 'HIGH' | 'MEDIUM' | 'LOW'
+type IncidentView = 'all' | 'open' | 'critical' | 'resolved' | 'overdue' | 'downtime'
+interface Lookup {
+  id: string
+  name?: string
+  fullName?: string
+  email?: string
+  department?: { id?: string; name?: string }
 }
-interface Summary{from?:string;to?:string;total:number;previousTotal:number;open:number;critical:number;resolved:number;overdue:number;downtimeMinutes:number;averageResponseMinutes:number;averageResolutionMinutes:number;responseSlaMet:number;resolutionSlaMet:number;byCategory:{label:string;count:number}[];byStatus:{label:string;count:number}[];byPriority:{label:string;count:number}[];trend:{label:string;count:number}[]}
+interface IncidentActivity {
+  id: string
+  type: string
+  note: string
+  fromStatus?: Status
+  toStatus?: Status
+  createdAt: string
+  actor: { id: string; fullName: string }
+}
+interface Incident {
+  id: string
+  incidentNo: string
+  title: string
+  category: Category
+  status: Status
+  priority: Priority
+  impact: Impact
+  urgency: Urgency
+  description: string
+  businessImpact?: string
+  initialAssessment?: string
+  containmentAction?: string
+  resolution?: string
+  rootCause?: string
+  correctiveAction?: string
+  preventiveAction?: string
+  lessonsLearned?: string
+  serviceName?: string
+  reporterName: string
+  reporterContact?: string
+  affectedUsers: number
+  downtimeMinutes: number
+  isSecurityIncident: boolean
+  isBusinessContinuityEvent: boolean
+  detectedAt: string
+  reportedAt: string
+  acknowledgedAt?: string
+  responseStartedAt?: string
+  resolvedAt?: string
+  closedAt?: string
+  slaResponseDueAt: string
+  slaResolutionDueAt: string
+  departmentId?: string
+  locationId?: string
+  assetId?: string
+  assignedToId?: string
+  department?: Lookup
+  location?: Lookup
+  asset?: { id: string; assetTag: string; name: string; serialNumber?: string }
+  assignee?: Lookup
+  creator?: Lookup
+  activities?: IncidentActivity[]
+}
+interface Summary {
+  from?: string
+  to?: string
+  total: number
+  previousTotal: number
+  open: number
+  critical: number
+  resolved: number
+  overdue: number
+  downtimeMinutes: number
+  averageResponseMinutes: number
+  averageResolutionMinutes: number
+  responseSlaMet: number
+  resolutionSlaMet: number
+  byCategory: { label: string; count: number }[]
+  byStatus: { label: string; count: number }[]
+  byPriority: { label: string; count: number }[]
+  trend: { label: string; count: number }[]
+}
 
-const categoryLabels:Record<Category,string>={POWER:'Mất điện / Nguồn',NETWORK:'Mất mạng',MALWARE:'Virus / Mã độc',HARDWARE:'Phần cứng',SOFTWARE:'Phần mềm',SECURITY:'An toàn thông tin',ACCESS:'Tài khoản / Truy cập',CLOUD:'Cloud / Dịch vụ',TELEPHONY:'Điện thoại',OTHER:'Khác'}
-const statusLabels:Record<Status,string>={NEW:'Mới',ACKNOWLEDGED:'Đã tiếp nhận',IN_PROGRESS:'Đang xử lý',MONITORING:'Theo dõi',RESOLVED:'Đã khắc phục',CLOSED:'Đã đóng',CANCELLED:'Đã hủy'}
-const impactLabels:Record<Impact,string>={CRITICAL:'Toàn công ty / Nghiêm trọng',HIGH:'Nhiều đơn vị',MEDIUM:'Một đơn vị',LOW:'Một người / Ít ảnh hưởng'}
-const urgencyLabels:Record<Urgency,string>={HIGH:'Khẩn cấp',MEDIUM:'Bình thường',LOW:'Có thể lên lịch'}
-const categoryIcons:Record<Category,typeof Bolt>={POWER:Bolt,NETWORK:Network,MALWARE:ShieldAlert,HARDWARE:HardDrive,SOFTWARE:Wrench,SECURITY:ShieldAlert,ACCESS:UserRound,CLOUD:Activity,TELEPHONY:Activity,OTHER:AlertTriangle}
-const nextStatuses:Record<Status,Status[]>={NEW:['ACKNOWLEDGED','CANCELLED'],ACKNOWLEDGED:['IN_PROGRESS','CANCELLED'],IN_PROGRESS:['MONITORING','RESOLVED'],MONITORING:['IN_PROGRESS','RESOLVED'],RESOLVED:['IN_PROGRESS','CLOSED'],CLOSED:[],CANCELLED:[]}
-const emptySummary:Summary={total:0,previousTotal:0,open:0,critical:0,resolved:0,overdue:0,downtimeMinutes:0,averageResponseMinutes:0,averageResolutionMinutes:0,responseSlaMet:0,resolutionSlaMet:0,byCategory:[],byStatus:[],byPriority:[],trend:[]}
-const apiMessage=(error:unknown)=>error instanceof ApiError?error.message:'Không thể kết nối máy chủ sự cố.'
-const dateTime=(value?:string)=>value?new Date(value).toLocaleString('vi-VN',{hour12:false}):'—'
-const duration=(minutes:number)=>minutes>=1440?`${Math.round(minutes/144)/10} ngày`:minutes>=60?`${Math.floor(minutes/60)} giờ ${minutes%60} phút`:`${minutes} phút`
-const isOpen=(status:Status)=>['NEW','ACKNOWLEDGED','IN_PROGRESS','MONITORING'].includes(status)
-const escapeHtml=(value:unknown)=>String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]!))
-const viewLabels:Record<IncidentView,string>={all:'Tất cả sự cố',open:'Đang xử lý',critical:'Mức P1 / P2',resolved:'Đã khắc phục',overdue:'Quá SLA',downtime:'Có thời gian gián đoạn'}
-const periodRange=(period:'week'|'month'|'year',reference=new Date())=>{const start=new Date(reference),end=new Date(reference);if(period==='week'){const day=(start.getDay()+6)%7;start.setDate(start.getDate()-day);start.setHours(0,0,0,0);end.setTime(start.getTime());end.setDate(end.getDate()+7)}else if(period==='year'){start.setMonth(0,1);start.setHours(0,0,0,0);end.setFullYear(start.getFullYear()+1,0,1);end.setHours(0,0,0,0)}else{start.setDate(1);start.setHours(0,0,0,0);end.setTime(start.getTime());end.setMonth(end.getMonth()+1)}return {from:start.toISOString(),to:end.toISOString()}}
-const bucketRange=(period:'week'|'month'|'year',periodFrom:string,index:number)=>{const start=new Date(periodFrom),from=period==='year'?new Date(start.getFullYear(),index,1):new Date(start.getTime()+index*86400000),to=period==='year'?new Date(start.getFullYear(),index+1,1):new Date(from.getTime()+86400000);return {from:from.toISOString(),to:to.toISOString()}}
-const scrollToRegister=()=>requestAnimationFrame(()=>document.querySelector('.incident-register')?.scrollIntoView({behavior:'smooth',block:'start'}))
+const categoryLabels: Record<Category, string> = {
+  POWER: 'Mất điện / Nguồn',
+  NETWORK: 'Mất mạng',
+  MALWARE: 'Virus / Mã độc',
+  HARDWARE: 'Phần cứng',
+  SOFTWARE: 'Phần mềm',
+  SECURITY: 'An toàn thông tin',
+  ACCESS: 'Tài khoản / Truy cập',
+  CLOUD: 'Cloud / Dịch vụ',
+  TELEPHONY: 'Điện thoại',
+  OTHER: 'Khác',
+}
+const statusLabels: Record<Status, string> = {
+  NEW: 'Mới',
+  ACKNOWLEDGED: 'Đã tiếp nhận',
+  IN_PROGRESS: 'Đang xử lý',
+  MONITORING: 'Theo dõi',
+  RESOLVED: 'Đã khắc phục',
+  CLOSED: 'Đã đóng',
+  CANCELLED: 'Đã hủy',
+}
+const impactLabels: Record<Impact, string> = {
+  CRITICAL: 'Toàn công ty / Nghiêm trọng',
+  HIGH: 'Nhiều đơn vị',
+  MEDIUM: 'Một đơn vị',
+  LOW: 'Một người / Ít ảnh hưởng',
+}
+const urgencyLabels: Record<Urgency, string> = { HIGH: 'Khẩn cấp', MEDIUM: 'Bình thường', LOW: 'Có thể lên lịch' }
+const categoryIcons: Record<Category, typeof Bolt> = {
+  POWER: Bolt,
+  NETWORK: Network,
+  MALWARE: ShieldAlert,
+  HARDWARE: HardDrive,
+  SOFTWARE: Wrench,
+  SECURITY: ShieldAlert,
+  ACCESS: UserRound,
+  CLOUD: Activity,
+  TELEPHONY: Activity,
+  OTHER: AlertTriangle,
+}
+const nextStatuses: Record<Status, Status[]> = {
+  NEW: ['ACKNOWLEDGED', 'CANCELLED'],
+  ACKNOWLEDGED: ['IN_PROGRESS', 'CANCELLED'],
+  IN_PROGRESS: ['MONITORING', 'RESOLVED'],
+  MONITORING: ['IN_PROGRESS', 'RESOLVED'],
+  RESOLVED: ['IN_PROGRESS', 'CLOSED'],
+  CLOSED: [],
+  CANCELLED: [],
+}
+const emptySummary: Summary = {
+  total: 0,
+  previousTotal: 0,
+  open: 0,
+  critical: 0,
+  resolved: 0,
+  overdue: 0,
+  downtimeMinutes: 0,
+  averageResponseMinutes: 0,
+  averageResolutionMinutes: 0,
+  responseSlaMet: 0,
+  resolutionSlaMet: 0,
+  byCategory: [],
+  byStatus: [],
+  byPriority: [],
+  trend: [],
+}
+const apiMessage = (error: unknown) => (error instanceof ApiError ? error.message : 'Không thể kết nối máy chủ sự cố.')
+const dateTime = (value?: string) => (value ? new Date(value).toLocaleString('vi-VN', { hour12: false }) : '—')
+const duration = (minutes: number) =>
+  minutes >= 1440
+    ? `${Math.round(minutes / 144) / 10} ngày`
+    : minutes >= 60
+      ? `${Math.floor(minutes / 60)} giờ ${minutes % 60} phút`
+      : `${minutes} phút`
+const isOpen = (status: Status) => ['NEW', 'ACKNOWLEDGED', 'IN_PROGRESS', 'MONITORING'].includes(status)
+const escapeHtml = (value: unknown) =>
+  String(value ?? '').replace(
+    /[&<>'"]/g,
+    char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]!,
+  )
+const viewLabels: Record<IncidentView, string> = {
+  all: 'Tất cả sự cố',
+  open: 'Đang xử lý',
+  critical: 'Mức P1 / P2',
+  resolved: 'Đã khắc phục',
+  overdue: 'Quá SLA',
+  downtime: 'Có thời gian gián đoạn',
+}
+const periodRange = (period: 'week' | 'month' | 'year', reference = new Date()) => {
+  const start = new Date(reference),
+    end = new Date(reference)
+  if (period === 'week') {
+    const day = (start.getDay() + 6) % 7
+    start.setDate(start.getDate() - day)
+    start.setHours(0, 0, 0, 0)
+    end.setTime(start.getTime())
+    end.setDate(end.getDate() + 7)
+  } else if (period === 'year') {
+    start.setMonth(0, 1)
+    start.setHours(0, 0, 0, 0)
+    end.setFullYear(start.getFullYear() + 1, 0, 1)
+    end.setHours(0, 0, 0, 0)
+  } else {
+    start.setDate(1)
+    start.setHours(0, 0, 0, 0)
+    end.setTime(start.getTime())
+    end.setMonth(end.getMonth() + 1)
+  }
+  return { from: start.toISOString(), to: end.toISOString() }
+}
+const bucketRange = (period: 'week' | 'month' | 'year', periodFrom: string, index: number) => {
+  const start = new Date(periodFrom),
+    from = period === 'year' ? new Date(start.getFullYear(), index, 1) : new Date(start.getTime() + index * 86400000),
+    to = period === 'year' ? new Date(start.getFullYear(), index + 1, 1) : new Date(from.getTime() + 86400000)
+  return { from: from.toISOString(), to: to.toISOString() }
+}
+const scrollToRegister = () =>
+  requestAnimationFrame(() =>
+    document.querySelector('.incident-register')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+  )
 
-const demoIncidents:Incident[]=[
-  {id:'demo-1',incidentNo:'SC-20260825-001',title:'Mất kết nối Internet văn phòng Hà Nội',category:'NETWORK',status:'IN_PROGRESS',priority:'P1',impact:'CRITICAL',urgency:'HIGH',description:'Toàn bộ người dùng không truy cập được Internet và VPN.',businessImpact:'Gián đoạn giao dịch và làm việc từ xa.',initialAssessment:'Đường truyền chính mất tín hiệu quang.',containmentAction:'Chuyển lưu lượng sang đường truyền dự phòng.',serviceName:'Internet / VPN',reporterName:'Nguyễn Minh Anh',affectedUsers:120,downtimeMinutes:36,isSecurityIncident:false,isBusinessContinuityEvent:true,detectedAt:'2026-08-25T08:12:00+07:00',reportedAt:'2026-08-25T08:15:00+07:00',acknowledgedAt:'2026-08-25T08:20:00+07:00',responseStartedAt:'2026-08-25T08:22:00+07:00',slaResponseDueAt:'2026-08-25T08:30:00+07:00',slaResolutionDueAt:'2026-08-25T12:15:00+07:00',assignee:{id:'it-1',fullName:'Trần Đức Long'},activities:[{id:'a1',type:'CREATED',note:'Tiếp nhận sự cố mức P1',toStatus:'NEW',createdAt:'2026-08-25T08:15:00+07:00',actor:{id:'u1',fullName:'Quản trị viên'}},{id:'a2',type:'STATUS_CHANGED',note:'IT xác nhận mất kết nối toàn site',fromStatus:'NEW',toStatus:'ACKNOWLEDGED',createdAt:'2026-08-25T08:20:00+07:00',actor:{id:'u2',fullName:'Trần Đức Long'}},{id:'a3',type:'STATUS_CHANGED',note:'Chuyển sang đường truyền dự phòng và làm việc với ISP',fromStatus:'ACKNOWLEDGED',toStatus:'IN_PROGRESS',createdAt:'2026-08-25T08:22:00+07:00',actor:{id:'u2',fullName:'Trần Đức Long'}}]},
-  {id:'demo-2',incidentNo:'SC-20260824-004',title:'Phát hiện mã độc trên máy kế toán',category:'MALWARE',status:'MONITORING',priority:'P1',impact:'HIGH',urgency:'HIGH',description:'EDR cảnh báo hành vi mã hóa file bất thường.',businessImpact:'Nguy cơ ảnh hưởng dữ liệu tài chính.',containmentAction:'Cô lập endpoint khỏi mạng, khóa tài khoản và thu thập log.',rootCause:'Tệp đính kèm giả mạo được mở từ email phishing.',correctiveAction:'Làm sạch máy, reset credential và rà soát IOC.',serviceName:'Endpoint Security',reporterName:'Hệ thống EDR',affectedUsers:1,downtimeMinutes:95,isSecurityIncident:true,isBusinessContinuityEvent:false,detectedAt:'2026-08-24T14:02:00+07:00',reportedAt:'2026-08-24T14:03:00+07:00',acknowledgedAt:'2026-08-24T14:08:00+07:00',responseStartedAt:'2026-08-24T14:09:00+07:00',slaResponseDueAt:'2026-08-24T14:18:00+07:00',slaResolutionDueAt:'2026-08-24T18:03:00+07:00',assignee:{id:'it-1',fullName:'Trần Đức Long'},activities:[]},
-  {id:'demo-3',incidentNo:'SC-20260823-002',title:'UPS phòng server cảnh báo lỗi ắc quy',category:'POWER',status:'RESOLVED',priority:'P2',impact:'HIGH',urgency:'MEDIUM',description:'UPS chuyển bypass và cảnh báo battery replacement.',businessImpact:'Giảm khả năng duy trì hệ thống khi mất điện.',resolution:'Thay bộ ắc quy, chạy self-test và xác nhận tải.',rootCause:'Ắc quy hết vòng đời sử dụng.',correctiveAction:'Thay thế bộ ắc quy theo đúng thông số.',preventiveAction:'Đưa kiểm tra dung lượng ắc quy vào lịch bảo trì quý.',serviceName:'Nguồn phòng server',reporterName:'Phòng IT',affectedUsers:0,downtimeMinutes:0,isSecurityIncident:false,isBusinessContinuityEvent:true,detectedAt:'2026-08-23T09:00:00+07:00',reportedAt:'2026-08-23T09:05:00+07:00',acknowledgedAt:'2026-08-23T09:18:00+07:00',responseStartedAt:'2026-08-23T09:20:00+07:00',resolvedAt:'2026-08-23T15:30:00+07:00',slaResponseDueAt:'2026-08-23T09:35:00+07:00',slaResolutionDueAt:'2026-08-23T17:05:00+07:00',assignee:{id:'it-1',fullName:'Trần Đức Long'},activities:[]},
-  {id:'demo-4',incidentNo:'SC-20260821-006',title:'Laptop không khởi động',category:'HARDWARE',status:'CLOSED',priority:'P4',impact:'LOW',urgency:'LOW',description:'Thiết bị không nhận nguồn sau khi cập nhật BIOS.',businessImpact:'Một nhân viên tạm thời dùng máy dự phòng.',resolution:'Nạp lại BIOS và kiểm tra phần cứng.',rootCause:'Firmware BIOS lỗi trong quá trình cập nhật.',correctiveAction:'Khôi phục firmware phiên bản ổn định.',preventiveAction:'Chỉ triển khai firmware sau UAT theo nhóm pilot.',lessonsLearned:'Bắt buộc sao lưu cấu hình và kiểm tra nguồn trước cập nhật.',serviceName:'Thiết bị đầu cuối',reporterName:'Lê Hoàng Nam',affectedUsers:1,downtimeMinutes:180,isSecurityIncident:false,isBusinessContinuityEvent:false,detectedAt:'2026-08-21T10:10:00+07:00',reportedAt:'2026-08-21T10:20:00+07:00',acknowledgedAt:'2026-08-21T11:00:00+07:00',responseStartedAt:'2026-08-21T13:00:00+07:00',resolvedAt:'2026-08-22T10:00:00+07:00',closedAt:'2026-08-22T16:00:00+07:00',slaResponseDueAt:'2026-08-21T18:20:00+07:00',slaResolutionDueAt:'2026-08-26T10:20:00+07:00',assignee:{id:'it-1',fullName:'Trần Đức Long'},activities:[]},
+const demoIncidents: Incident[] = [
+  {
+    id: 'demo-1',
+    incidentNo: 'SC-20260825-001',
+    title: 'Mất kết nối Internet văn phòng Hà Nội',
+    category: 'NETWORK',
+    status: 'IN_PROGRESS',
+    priority: 'P1',
+    impact: 'CRITICAL',
+    urgency: 'HIGH',
+    description: 'Toàn bộ người dùng không truy cập được Internet và VPN.',
+    businessImpact: 'Gián đoạn giao dịch và làm việc từ xa.',
+    initialAssessment: 'Đường truyền chính mất tín hiệu quang.',
+    containmentAction: 'Chuyển lưu lượng sang đường truyền dự phòng.',
+    serviceName: 'Internet / VPN',
+    reporterName: 'Nguyễn Minh Anh',
+    affectedUsers: 120,
+    downtimeMinutes: 36,
+    isSecurityIncident: false,
+    isBusinessContinuityEvent: true,
+    detectedAt: '2026-08-25T08:12:00+07:00',
+    reportedAt: '2026-08-25T08:15:00+07:00',
+    acknowledgedAt: '2026-08-25T08:20:00+07:00',
+    responseStartedAt: '2026-08-25T08:22:00+07:00',
+    slaResponseDueAt: '2026-08-25T08:30:00+07:00',
+    slaResolutionDueAt: '2026-08-25T12:15:00+07:00',
+    assignee: { id: 'it-1', fullName: 'Trần Đức Long' },
+    activities: [
+      {
+        id: 'a1',
+        type: 'CREATED',
+        note: 'Tiếp nhận sự cố mức P1',
+        toStatus: 'NEW',
+        createdAt: '2026-08-25T08:15:00+07:00',
+        actor: { id: 'u1', fullName: 'Quản trị viên' },
+      },
+      {
+        id: 'a2',
+        type: 'STATUS_CHANGED',
+        note: 'IT xác nhận mất kết nối toàn site',
+        fromStatus: 'NEW',
+        toStatus: 'ACKNOWLEDGED',
+        createdAt: '2026-08-25T08:20:00+07:00',
+        actor: { id: 'u2', fullName: 'Trần Đức Long' },
+      },
+      {
+        id: 'a3',
+        type: 'STATUS_CHANGED',
+        note: 'Chuyển sang đường truyền dự phòng và làm việc với ISP',
+        fromStatus: 'ACKNOWLEDGED',
+        toStatus: 'IN_PROGRESS',
+        createdAt: '2026-08-25T08:22:00+07:00',
+        actor: { id: 'u2', fullName: 'Trần Đức Long' },
+      },
+    ],
+  },
+  {
+    id: 'demo-2',
+    incidentNo: 'SC-20260824-004',
+    title: 'Phát hiện mã độc trên máy kế toán',
+    category: 'MALWARE',
+    status: 'MONITORING',
+    priority: 'P1',
+    impact: 'HIGH',
+    urgency: 'HIGH',
+    description: 'EDR cảnh báo hành vi mã hóa file bất thường.',
+    businessImpact: 'Nguy cơ ảnh hưởng dữ liệu tài chính.',
+    containmentAction: 'Cô lập endpoint khỏi mạng, khóa tài khoản và thu thập log.',
+    rootCause: 'Tệp đính kèm giả mạo được mở từ email phishing.',
+    correctiveAction: 'Làm sạch máy, reset credential và rà soát IOC.',
+    serviceName: 'Endpoint Security',
+    reporterName: 'Hệ thống EDR',
+    affectedUsers: 1,
+    downtimeMinutes: 95,
+    isSecurityIncident: true,
+    isBusinessContinuityEvent: false,
+    detectedAt: '2026-08-24T14:02:00+07:00',
+    reportedAt: '2026-08-24T14:03:00+07:00',
+    acknowledgedAt: '2026-08-24T14:08:00+07:00',
+    responseStartedAt: '2026-08-24T14:09:00+07:00',
+    slaResponseDueAt: '2026-08-24T14:18:00+07:00',
+    slaResolutionDueAt: '2026-08-24T18:03:00+07:00',
+    assignee: { id: 'it-1', fullName: 'Trần Đức Long' },
+    activities: [],
+  },
+  {
+    id: 'demo-3',
+    incidentNo: 'SC-20260823-002',
+    title: 'UPS phòng server cảnh báo lỗi ắc quy',
+    category: 'POWER',
+    status: 'RESOLVED',
+    priority: 'P2',
+    impact: 'HIGH',
+    urgency: 'MEDIUM',
+    description: 'UPS chuyển bypass và cảnh báo battery replacement.',
+    businessImpact: 'Giảm khả năng duy trì hệ thống khi mất điện.',
+    resolution: 'Thay bộ ắc quy, chạy self-test và xác nhận tải.',
+    rootCause: 'Ắc quy hết vòng đời sử dụng.',
+    correctiveAction: 'Thay thế bộ ắc quy theo đúng thông số.',
+    preventiveAction: 'Đưa kiểm tra dung lượng ắc quy vào lịch bảo trì quý.',
+    serviceName: 'Nguồn phòng server',
+    reporterName: 'Phòng IT',
+    affectedUsers: 0,
+    downtimeMinutes: 0,
+    isSecurityIncident: false,
+    isBusinessContinuityEvent: true,
+    detectedAt: '2026-08-23T09:00:00+07:00',
+    reportedAt: '2026-08-23T09:05:00+07:00',
+    acknowledgedAt: '2026-08-23T09:18:00+07:00',
+    responseStartedAt: '2026-08-23T09:20:00+07:00',
+    resolvedAt: '2026-08-23T15:30:00+07:00',
+    slaResponseDueAt: '2026-08-23T09:35:00+07:00',
+    slaResolutionDueAt: '2026-08-23T17:05:00+07:00',
+    assignee: { id: 'it-1', fullName: 'Trần Đức Long' },
+    activities: [],
+  },
+  {
+    id: 'demo-4',
+    incidentNo: 'SC-20260821-006',
+    title: 'Laptop không khởi động',
+    category: 'HARDWARE',
+    status: 'CLOSED',
+    priority: 'P4',
+    impact: 'LOW',
+    urgency: 'LOW',
+    description: 'Thiết bị không nhận nguồn sau khi cập nhật BIOS.',
+    businessImpact: 'Một nhân viên tạm thời dùng máy dự phòng.',
+    resolution: 'Nạp lại BIOS và kiểm tra phần cứng.',
+    rootCause: 'Firmware BIOS lỗi trong quá trình cập nhật.',
+    correctiveAction: 'Khôi phục firmware phiên bản ổn định.',
+    preventiveAction: 'Chỉ triển khai firmware sau UAT theo nhóm pilot.',
+    lessonsLearned: 'Bắt buộc sao lưu cấu hình và kiểm tra nguồn trước cập nhật.',
+    serviceName: 'Thiết bị đầu cuối',
+    reporterName: 'Lê Hoàng Nam',
+    affectedUsers: 1,
+    downtimeMinutes: 180,
+    isSecurityIncident: false,
+    isBusinessContinuityEvent: false,
+    detectedAt: '2026-08-21T10:10:00+07:00',
+    reportedAt: '2026-08-21T10:20:00+07:00',
+    acknowledgedAt: '2026-08-21T11:00:00+07:00',
+    responseStartedAt: '2026-08-21T13:00:00+07:00',
+    resolvedAt: '2026-08-22T10:00:00+07:00',
+    closedAt: '2026-08-22T16:00:00+07:00',
+    slaResponseDueAt: '2026-08-21T18:20:00+07:00',
+    slaResolutionDueAt: '2026-08-26T10:20:00+07:00',
+    assignee: { id: 'it-1', fullName: 'Trần Đức Long' },
+    activities: [],
+  },
 ]
 
-function buildDemoSummary(items:Incident[]):Summary{
-  const now=Date.now(),response=items.filter(x=>x.acknowledgedAt).map(x=>(new Date(x.acknowledgedAt!).getTime()-new Date(x.reportedAt).getTime())/60000),resolution=items.filter(x=>x.resolvedAt).map(x=>(new Date(x.resolvedAt!).getTime()-new Date(x.reportedAt).getTime())/60000);const by=(key:'category'|'status'|'priority')=>Object.entries(items.reduce((acc,item)=>{acc[item[key]]=(acc[item[key]]||0)+1;return acc},{} as Record<string,number>)).map(([label,count])=>({label,count}));return {total:items.length,previousTotal:3,open:items.filter(x=>isOpen(x.status)).length,critical:items.filter(x=>x.priority==='P1'||x.priority==='P2').length,resolved:items.filter(x=>x.status==='RESOLVED'||x.status==='CLOSED').length,overdue:items.filter(x=>isOpen(x.status)&&new Date(x.slaResolutionDueAt).getTime()<now).length,downtimeMinutes:items.reduce((sum,x)=>sum+x.downtimeMinutes,0),averageResponseMinutes:response.length?Math.round(response.reduce((a,b)=>a+b,0)/response.length):0,averageResolutionMinutes:resolution.length?Math.round(resolution.reduce((a,b)=>a+b,0)/resolution.length):0,responseSlaMet:items.filter(x=>x.acknowledgedAt&&x.acknowledgedAt<=x.slaResponseDueAt).length,resolutionSlaMet:items.filter(x=>x.resolvedAt&&x.resolvedAt<=x.slaResolutionDueAt).length,byCategory:by('category'),byStatus:by('status'),byPriority:by('priority'),trend:[{label:'19/08',count:0},{label:'20/08',count:1},{label:'21/08',count:1},{label:'22/08',count:0},{label:'23/08',count:1},{label:'24/08',count:1},{label:'25/08',count:1}]}
+function buildDemoSummary(items: Incident[]): Summary {
+  const now = Date.now(),
+    response = items
+      .filter(x => x.acknowledgedAt)
+      .map(x => (new Date(x.acknowledgedAt!).getTime() - new Date(x.reportedAt).getTime()) / 60000),
+    resolution = items
+      .filter(x => x.resolvedAt)
+      .map(x => (new Date(x.resolvedAt!).getTime() - new Date(x.reportedAt).getTime()) / 60000)
+  const by = (key: 'category' | 'status' | 'priority') =>
+    Object.entries(
+      items.reduce(
+        (acc, item) => {
+          acc[item[key]] = (acc[item[key]] || 0) + 1
+          return acc
+        },
+        {} as Record<string, number>,
+      ),
+    ).map(([label, count]) => ({ label, count }))
+  return {
+    total: items.length,
+    previousTotal: 3,
+    open: items.filter(x => isOpen(x.status)).length,
+    critical: items.filter(x => x.priority === 'P1' || x.priority === 'P2').length,
+    resolved: items.filter(x => x.status === 'RESOLVED' || x.status === 'CLOSED').length,
+    overdue: items.filter(x => isOpen(x.status) && new Date(x.slaResolutionDueAt).getTime() < now).length,
+    downtimeMinutes: items.reduce((sum, x) => sum + x.downtimeMinutes, 0),
+    averageResponseMinutes: response.length ? Math.round(response.reduce((a, b) => a + b, 0) / response.length) : 0,
+    averageResolutionMinutes: resolution.length
+      ? Math.round(resolution.reduce((a, b) => a + b, 0) / resolution.length)
+      : 0,
+    responseSlaMet: items.filter(x => x.acknowledgedAt && x.acknowledgedAt <= x.slaResponseDueAt).length,
+    resolutionSlaMet: items.filter(x => x.resolvedAt && x.resolvedAt <= x.slaResolutionDueAt).length,
+    byCategory: by('category'),
+    byStatus: by('status'),
+    byPriority: by('priority'),
+    trend: [
+      { label: '19/08', count: 0 },
+      { label: '20/08', count: 1 },
+      { label: '21/08', count: 1 },
+      { label: '22/08', count: 0 },
+      { label: '23/08', count: 1 },
+      { label: '24/08', count: 1 },
+      { label: '25/08', count: 1 },
+    ],
+  }
 }
 
-function buildDemoPeriodSummary(items:Incident[],period:'week'|'month'|'year'):Summary{
-  const reference=items.length?new Date(Math.max(...items.map(item=>new Date(item.reportedAt).getTime()))):new Date()
-  const range=periodRange(period,reference),from=new Date(range.from),to=new Date(range.to),span=to.getTime()-from.getTime(),previousFrom=new Date(from.getTime()-span)
-  const current=items.filter(item=>{const time=new Date(item.reportedAt).getTime();return time>=from.getTime()&&time<to.getTime()})
-  const result=buildDemoSummary(current),previousTotal=items.filter(item=>{const time=new Date(item.reportedAt).getTime();return time>=previousFrom.getTime()&&time<from.getTime()}).length
-  const count=period==='week'?7:period==='month'?Math.round(span/86400000):12
-  const trend=Array.from({length:count},(_,index)=>{const bucket=bucketRange(period,range.from,index),bucketFrom=new Date(bucket.from).getTime(),bucketTo=new Date(bucket.to).getTime();return {label:period==='year'?String(index+1).padStart(2,'0'):new Date(bucket.from).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'}),count:current.filter(item=>{const time=new Date(item.reportedAt).getTime();return time>=bucketFrom&&time<bucketTo}).length}})
-  return {...result,...range,previousTotal,trend}
+function buildDemoPeriodSummary(items: Incident[], period: 'week' | 'month' | 'year'): Summary {
+  const reference = items.length
+    ? new Date(Math.max(...items.map(item => new Date(item.reportedAt).getTime())))
+    : new Date()
+  const range = periodRange(period, reference),
+    from = new Date(range.from),
+    to = new Date(range.to),
+    span = to.getTime() - from.getTime(),
+    previousFrom = new Date(from.getTime() - span)
+  const current = items.filter(item => {
+    const time = new Date(item.reportedAt).getTime()
+    return time >= from.getTime() && time < to.getTime()
+  })
+  const result = buildDemoSummary(current),
+    previousTotal = items.filter(item => {
+      const time = new Date(item.reportedAt).getTime()
+      return time >= previousFrom.getTime() && time < from.getTime()
+    }).length
+  const count = period === 'week' ? 7 : period === 'month' ? Math.round(span / 86400000) : 12
+  const trend = Array.from({ length: count }, (_, index) => {
+    const bucket = bucketRange(period, range.from, index),
+      bucketFrom = new Date(bucket.from).getTime(),
+      bucketTo = new Date(bucket.to).getTime()
+    return {
+      label:
+        period === 'year'
+          ? String(index + 1).padStart(2, '0')
+          : new Date(bucket.from).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+      count: current.filter(item => {
+        const time = new Date(item.reportedAt).getTime()
+        return time >= bucketFrom && time < bucketTo
+      }).length,
+    }
+  })
+  return { ...result, ...range, previousTotal, trend }
 }
 
-export function IncidentManagement({assets,demoMode,currentUserName}:{assets:Asset[];demoMode:boolean;currentUserName:string}){
-  const [incidents,setIncidents]=useState<Incident[]>(demoMode?demoIncidents:[]),[summary,setSummary]=useState<Summary>(demoMode?buildDemoPeriodSummary(demoIncidents,'month'):emptySummary),[period,setPeriod]=useState<'week'|'month'|'year'>('month'),[view,setView]=useState<IncidentView>('all'),[selectedBucket,setSelectedBucket]=useState<{from:string;to:string;label:string}|null>(null),[query,setQuery]=useState(''),[status,setStatus]=useState(''),[category,setCategory]=useState(''),[priority,setPriority]=useState(''),[selected,setSelected]=useState<Incident>(),[creating,setCreating]=useState(false),[loading,setLoading]=useState(false),[error,setError]=useState(''),[users,setUsers]=useState<Lookup[]>([]),[departments,setDepartments]=useState<Lookup[]>([]),[locations,setLocations]=useState<Lookup[]>([])
-  const load=async()=>{if(demoMode)return;setLoading(true);setError('');try{const stats=await api.get<Summary>(`/incidents/summary?period=${period}`),range=selectedBucket||{from:stats.from||periodRange(period).from,to:stats.to||periodRange(period).to},params=new URLSearchParams({page:'1',limit:'100',view,from:range.from,to:new Date(new Date(range.to).getTime()-1).toISOString()});if(query)params.set('search',query);if(status)params.set('status',status);if(category)params.set('category',category);if(priority)params.set('priority',priority);const list=await api.get<{data:Incident[]}>(`/incidents?${params}`);setIncidents(list.data);setSummary(stats)}catch(reason){setError(apiMessage(reason))}finally{setLoading(false)}}
-  useEffect(()=>{if(demoMode){setSummary(buildDemoPeriodSummary(incidents,period));return}const timer=setTimeout(()=>void load(),query?250:0);return()=>clearTimeout(timer)},[demoMode,period,view,selectedBucket?.from,selectedBucket?.to,query,status,category,priority])
-  useEffect(()=>{if(demoMode){setUsers([{id:'it-1',fullName:'Trần Đức Long',email:'it@company.vn',department:{name:'IT'}}]);setDepartments([{id:'d1',name:'IT'},{id:'d2',name:'Kế toán'}]);setLocations([{id:'l1',name:'VP Hà Nội · Tầng 3'},{id:'l2',name:'Phòng Server · Tầng 1'}]);return}void Promise.all([api.get<Lookup[]>('/incidents/operators'),api.get<Lookup[]>('/departments'),api.get<Lookup[]>('/locations')]).then(([u,d,l])=>{setUsers(u);setDepartments(d);setLocations(l)}).catch(reason=>setError(apiMessage(reason)))},[demoMode])
-  const saveNew=async(body:any)=>{try{if(demoMode){const priorityValue:Priority=body.impact==='CRITICAL'||(body.impact==='HIGH'&&body.urgency==='HIGH')?'P1':body.impact==='HIGH'||body.urgency==='HIGH'?'P2':body.impact==='MEDIUM'?'P3':'P4';const now=new Date(),created:Incident={...body,id:`demo-${Date.now()}`,incidentNo:`SC-DEMO-${String(Date.now()).slice(-5)}`,status:'NEW',priority:priorityValue,reportedAt:now.toISOString(),slaResponseDueAt:new Date(now.getTime()+60*60000).toISOString(),slaResolutionDueAt:new Date(now.getTime()+24*60*60000).toISOString(),activities:[{id:'new',type:'CREATED',note:`Tiếp nhận sự cố mức ${priorityValue}`,toStatus:'NEW',createdAt:now.toISOString(),actor:{id:'current',fullName:currentUserName}}]};setIncidents(items=>[created,...items]);setCreating(false);return}await api.post('/incidents',body);setCreating(false);await load()}catch(reason){throw new Error(apiMessage(reason))}}
-  const openDetail=async(item:Incident)=>{if(demoMode){setSelected(item);return}try{setSelected(await api.get<Incident>(`/incidents/${item.id}`))}catch(reason){setError(apiMessage(reason))}}
-  const refreshSelected=async(id:string)=>{if(demoMode){setSelected(incidents.find(x=>x.id===id));return}const value=await api.get<Incident>(`/incidents/${id}`);setSelected(value);await load()}
-  const updateIncident=async(id:string,body:any)=>{if(demoMode){setIncidents(items=>items.map(item=>item.id===id?{...item,...body}:item));setSelected(value=>value?.id===id?{...value,...body}:value);return}await api.patch(`/incidents/${id}`,body);await refreshSelected(id)}
-  const changeStatus=async(id:string,next:Status,note:string)=>{if(demoMode){const now=new Date().toISOString();setIncidents(items=>items.map(item=>item.id===id?{...item,status:next,acknowledgedAt:next==='ACKNOWLEDGED'?now:item.acknowledgedAt,responseStartedAt:next==='IN_PROGRESS'?(item.responseStartedAt||now):item.responseStartedAt,resolvedAt:next==='RESOLVED'?now:item.resolvedAt,closedAt:next==='CLOSED'||next==='CANCELLED'?now:item.closedAt,activities:[...(item.activities||[]),{id:`a-${Date.now()}`,type:'STATUS_CHANGED',note,fromStatus:item.status,toStatus:next,createdAt:now,actor:{id:'current',fullName:currentUserName}}]}:item));setSelected(undefined);return}await api.post(`/incidents/${id}/status`,{status:next,note});await refreshSelected(id)}
-  const addNote=async(id:string,note:string)=>{if(demoMode){const activity={id:`a-${Date.now()}`,type:'NOTE',note,createdAt:new Date().toISOString(),actor:{id:'current',fullName:currentUserName}};setIncidents(items=>items.map(item=>item.id===id?{...item,activities:[...(item.activities||[]),activity]}:item));setSelected(value=>value?{...value,activities:[...(value.activities||[]),activity]}:value);return}await api.post(`/incidents/${id}/activities`,{type:'NOTE',note});await refreshSelected(id)}
-  const resetDrilldown=()=>{setView('all');setSelectedBucket(null);setQuery('');setStatus('');setCategory('');setPriority('')}
-  const changePeriod=(value:'week'|'month'|'year')=>{resetDrilldown();setPeriod(value)}
-  const selectView=(value:IncidentView)=>{setView(value);setSelectedBucket(null);setQuery('');setStatus('');setCategory('');setPriority('');scrollToRegister()}
-  const selectCategory=(value:Category)=>{setView('all');setSelectedBucket(null);setQuery('');setStatus('');setPriority('');setCategory(value);scrollToRegister()}
-  const selectBucket=(label:string,index:number)=>{const periodFrom=summary.from||periodRange(period).from,range=bucketRange(period,periodFrom,index);setView('all');setQuery('');setStatus('');setCategory('');setPriority('');setSelectedBucket({...range,label});scrollToRegister()}
-  const shown=useMemo(()=>{if(!demoMode)return incidents;const range=selectedBucket||{from:summary.from||periodRange(period).from,to:summary.to||periodRange(period).to},from=new Date(range.from).getTime(),to=new Date(range.to).getTime(),now=Date.now();return incidents.filter(item=>{const reported=new Date(item.reportedAt).getTime(),matchesView=view==='all'||view==='open'&&isOpen(item.status)||view==='critical'&&['P1','P2'].includes(item.priority)||view==='resolved'&&['RESOLVED','CLOSED'].includes(item.status)||view==='overdue'&&isOpen(item.status)&&new Date(item.slaResolutionDueAt).getTime()<now||view==='downtime'&&item.downtimeMinutes>0;return reported>=from&&reported<to&&matchesView&&(!query||`${item.incidentNo} ${item.title} ${item.description} ${item.reporterName}`.toLowerCase().includes(query.toLowerCase()))&&(!status||item.status===status)&&(!category||item.category===category)&&(!priority||item.priority===priority)})},[demoMode,incidents,period,summary.from,summary.to,selectedBucket,view,query,status,category,priority])
-  const activeFilter=selectedBucket?`Thời gian: ${selectedBucket.label}`:category?`Loại: ${categoryLabels[category as Category]}`:view!=='all'?viewLabels[view]:''
-  const maxTrend=Math.max(1,...summary.trend.map(x=>x.count)),maxCategory=Math.max(1,...summary.byCategory.map(x=>x.count));const delta=summary.total-summary.previousTotal
-  return <main className="page incident-page">
-    <section className="page-heading incident-heading"><div><h1>Quản lý sự cố</h1><p>Ghi nhận, ứng phó, điều tra nguyên nhân và cải tiến theo ISO/IEC 27035, ISO/IEC 20000-1 và ISO 22301.</p></div><div className="heading-actions"><div className="incident-period">{(['week','month','year'] as const).map(value=><button className={period===value?'active':''} onClick={()=>changePeriod(value)} key={value}>{value==='week'?'Tuần':value==='month'?'Tháng':'Năm'}</button>)}</div><button className="btn primary" onClick={()=>setCreating(true)}><Plus size={17}/>Ghi nhận sự cố</button></div></section>
-    {error&&<div className="incident-error"><AlertTriangle size={16}/>{error}<button onClick={()=>setError('')}><X size={15}/></button></div>}
-    <section className="incident-kpis">
-      <button className={view==='all'&&!selectedBucket&&!category?'selected':''} onClick={()=>selectView('all')}><span className="blue"><FileText size={19}/></span><div><small>Tổng sự cố</small><b>{summary.total}</b><em className={delta>0?'bad':'good'}>{delta>0?'+':''}{delta} so với kỳ trước</em></div></button>
-      <button className={view==='open'?'selected':''} onClick={()=>selectView('open')}><span className="amber"><Activity size={19}/></span><div><small>Đang xử lý</small><b>{summary.open}</b><em>Hồ sơ chưa đóng</em></div></button>
-      <button className={view==='critical'?'selected':''} onClick={()=>selectView('critical')}><span className="red"><ShieldAlert size={19}/></span><div><small>Mức P1 / P2</small><b>{summary.critical}</b><em>Ưu tiên cao</em></div></button>
-      <button className={view==='resolved'?'selected':''} onClick={()=>selectView('resolved')}><span className="green"><CheckCircle2 size={19}/></span><div><small>Đã khắc phục</small><b>{summary.resolved}</b><em>Resolved / Closed</em></div></button>
-      <button className={view==='overdue'?'selected':''} onClick={()=>selectView('overdue')}><span className="red"><Clock3 size={19}/></span><div><small>Quá SLA</small><b>{summary.overdue}</b><em>Cần điều phối ngay</em></div></button>
-      <button className={view==='downtime'?'selected':''} onClick={()=>selectView('downtime')}><span className="purple"><CalendarDays size={19}/></span><div><small>Thời gian gián đoạn</small><b>{duration(summary.downtimeMinutes)}</b><em>Click để xem hồ sơ có gián đoạn</em></div></button>
-    </section>
-    <section className="incident-analytics">
-      <article className="card incident-trend"><header><div><h2>Xu hướng sự cố</h2><p>Click từng cột để xem các hồ sơ được báo cáo trong khoảng thời gian tương ứng.</p></div><span>Phản hồi TB <b>{duration(summary.averageResponseMinutes)}</b></span></header><div className="incident-bars">{summary.trend.map((item,index)=><button className={selectedBucket?.label===item.label?'selected':''} onClick={()=>selectBucket(item.label,index)} title={`Xem ${item.count} sự cố kỳ ${item.label}`} key={`${item.label}-${index}`}><span><i style={{height:`${Math.max(4,item.count/maxTrend*100)}%`}}/></span><small>{item.label}</small><b>{item.count}</b></button>)}</div></article>
-      <article className="card incident-categories"><header><div><h2>Phân loại sự cố</h2><p>Click một nhóm để lọc sổ sự cố bên dưới.</p></div></header><div>{summary.byCategory.length?summary.byCategory.slice(0,6).map(item=><button className={category===item.label?'selected':''} onClick={()=>selectCategory(item.label as Category)} key={item.label}><span>{categoryLabels[item.label as Category]||item.label}</span><i><b style={{width:`${item.count/maxCategory*100}%`}}/></i><strong>{item.count}</strong></button>):<p className="incident-no-data">Chưa có dữ liệu trong kỳ.</p>}</div><footer><span>Khắc phục TB <b>{duration(summary.averageResolutionMinutes)}</b></span><span>Đạt SLA phản hồi <b>{summary.responseSlaMet}/{summary.total}</b></span></footer></article>
-    </section>
-    {activeFilter&&<div className="incident-drilldown"><span>Đang hiển thị: <b>{activeFilter}</b></span><button onClick={resetDrilldown}><X size={14}/>Xóa lựa chọn</button></div>}
-    <section className="card incident-register"><div className="incident-register-head"><div><h2>Sổ sự cố</h2><span>{shown.length} hồ sơ · lưu trữ toàn bộ timeline và CAPA</span></div><div className="incident-filters"><label><Search size={15}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tìm mã, tiêu đề, người báo, tài sản..."/></label><select value={category} onChange={e=>setCategory(e.target.value)}><option value="">Tất cả loại</option>{Object.entries(categoryLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select><select value={status} onChange={e=>setStatus(e.target.value)}><option value="">Tất cả trạng thái</option>{Object.entries(statusLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select><select value={priority} onChange={e=>setPriority(e.target.value)}><option value="">Tất cả ưu tiên</option>{['P1','P2','P3','P4'].map(value=><option key={value}>{value}</option>)}</select></div></div><div className="table-scroll"><table className="incident-table"><thead><tr><th>MÃ SỰ CỐ</th><th>THỜI ĐIỂM / SỰ CỐ</th><th>LOẠI</th><th>ƯU TIÊN</th><th>ẢNH HƯỞNG</th><th>NGƯỜI XỬ LÝ</th><th>TRẠNG THÁI</th><th>SLA KHẮC PHỤC</th><th></th></tr></thead><tbody>{shown.map(item=>{const Icon=categoryIcons[item.category],overdue=isOpen(item.status)&&new Date(item.slaResolutionDueAt)<new Date();return <tr key={item.id} onClick={()=>void openDetail(item)}><td><b className="incident-code">{item.incidentNo}</b></td><td><b>{item.title}</b><small>{dateTime(item.reportedAt)} · Báo bởi {item.reporterName}</small></td><td><span className="incident-category"><Icon size={14}/>{categoryLabels[item.category]}</span></td><td><span className={`incident-priority ${item.priority.toLowerCase()}`}>{item.priority}</span></td><td>{item.affectedUsers?`${item.affectedUsers.toLocaleString('vi-VN')} người`:'Cục bộ'}<small>{item.serviceName||item.asset?.assetTag||'—'}</small></td><td>{item.assignee?.fullName||<span className="muted">Chưa phân công</span>}</td><td><span className={`incident-status ${item.status.toLowerCase()}`}>{statusLabels[item.status]}</span></td><td className={overdue?'sla-overdue':''}>{overdue?'Quá hạn ':''}{dateTime(item.slaResolutionDueAt)}</td><td><ChevronRight size={16}/></td></tr>})}</tbody></table></div>{loading&&<div className="incident-loading">Đang tải hồ sơ sự cố…</div>}{!loading&&!shown.length&&<div className="incident-empty">Không có sự cố phù hợp với bộ lọc.</div>}</section>
-    <section className="incident-standard-note"><ShieldAlert size={19}/><div><b>Hồ sơ kiểm toán và cải tiến liên tục</b><p>Không cho xóa sự cố. Mọi thay đổi trạng thái, người xử lý, ghi chú, RCA và CAPA được lưu thành timeline và audit log. “Phù hợp theo thiết kế” không đồng nghĩa hệ thống hoặc doanh nghiệp đã được chứng nhận ISO.</p></div></section>
-    {creating&&<IncidentCreateModal assets={assets} users={users} departments={departments} locations={locations} reporterName={currentUserName} onClose={()=>setCreating(false)} onSave={saveNew}/>}
-    {selected&&<IncidentDetail incident={selected} users={users} onClose={()=>setSelected(undefined)} onSave={updateIncident} onStatus={changeStatus} onNote={addNote}/>}
-  </main>
+export function IncidentManagement({
+  assets,
+  demoMode,
+  currentUserName,
+}: {
+  assets: Asset[]
+  demoMode: boolean
+  currentUserName: string
+}) {
+  const [incidents, setIncidents] = useState<Incident[]>(demoMode ? demoIncidents : []),
+    [summary, setSummary] = useState<Summary>(demoMode ? buildDemoPeriodSummary(demoIncidents, 'month') : emptySummary),
+    [period, setPeriod] = useState<'week' | 'month' | 'year'>('month'),
+    [view, setView] = useState<IncidentView>('all'),
+    [selectedBucket, setSelectedBucket] = useState<{ from: string; to: string; label: string } | null>(null),
+    [query, setQuery] = useState(''),
+    [status, setStatus] = useState(''),
+    [category, setCategory] = useState(''),
+    [priority, setPriority] = useState(''),
+    [selected, setSelected] = useState<Incident>(),
+    [creating, setCreating] = useState(false),
+    [loading, setLoading] = useState(false),
+    [error, setError] = useState(''),
+    [users, setUsers] = useState<Lookup[]>([]),
+    [departments, setDepartments] = useState<Lookup[]>([]),
+    [locations, setLocations] = useState<Lookup[]>([])
+  const load = async () => {
+    if (demoMode) return
+    setLoading(true)
+    setError('')
+    try {
+      const stats = await api.get<Summary>(`/incidents/summary?period=${period}`),
+        range = selectedBucket || {
+          from: stats.from || periodRange(period).from,
+          to: stats.to || periodRange(period).to,
+        },
+        params = new URLSearchParams({
+          page: '1',
+          limit: '100',
+          view,
+          from: range.from,
+          to: new Date(new Date(range.to).getTime() - 1).toISOString(),
+        })
+      if (query) params.set('search', query)
+      if (status) params.set('status', status)
+      if (category) params.set('category', category)
+      if (priority) params.set('priority', priority)
+      const list = await api.get<{ data: Incident[] }>(`/incidents?${params}`)
+      setIncidents(list.data)
+      setSummary(stats)
+    } catch (reason) {
+      setError(apiMessage(reason))
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => {
+    if (demoMode) {
+      setSummary(buildDemoPeriodSummary(incidents, period))
+      return
+    }
+    const timer = setTimeout(() => void load(), query ? 250 : 0)
+    return () => clearTimeout(timer)
+  }, [demoMode, period, view, selectedBucket?.from, selectedBucket?.to, query, status, category, priority])
+  useEffect(() => {
+    if (demoMode) {
+      setUsers([{ id: 'it-1', fullName: 'Trần Đức Long', email: 'it@company.vn', department: { name: 'IT' } }])
+      setDepartments([
+        { id: 'd1', name: 'IT' },
+        { id: 'd2', name: 'Kế toán' },
+      ])
+      setLocations([
+        { id: 'l1', name: 'VP Hà Nội · Tầng 3' },
+        { id: 'l2', name: 'Phòng Server · Tầng 1' },
+      ])
+      return
+    }
+    void Promise.all([
+      api.get<Lookup[]>('/incidents/operators'),
+      api.get<Lookup[]>('/departments'),
+      api.get<Lookup[]>('/locations'),
+    ])
+      .then(([u, d, l]) => {
+        setUsers(u)
+        setDepartments(d)
+        setLocations(l)
+      })
+      .catch(reason => setError(apiMessage(reason)))
+  }, [demoMode])
+  const saveNew = async (body: any) => {
+    try {
+      if (demoMode) {
+        const priorityValue: Priority =
+          body.impact === 'CRITICAL' || (body.impact === 'HIGH' && body.urgency === 'HIGH')
+            ? 'P1'
+            : body.impact === 'HIGH' || body.urgency === 'HIGH'
+              ? 'P2'
+              : body.impact === 'MEDIUM'
+                ? 'P3'
+                : 'P4'
+        const now = new Date(),
+          created: Incident = {
+            ...body,
+            id: `demo-${Date.now()}`,
+            incidentNo: `SC-DEMO-${String(Date.now()).slice(-5)}`,
+            status: 'NEW',
+            priority: priorityValue,
+            reportedAt: now.toISOString(),
+            slaResponseDueAt: new Date(now.getTime() + 60 * 60000).toISOString(),
+            slaResolutionDueAt: new Date(now.getTime() + 24 * 60 * 60000).toISOString(),
+            activities: [
+              {
+                id: 'new',
+                type: 'CREATED',
+                note: `Tiếp nhận sự cố mức ${priorityValue}`,
+                toStatus: 'NEW',
+                createdAt: now.toISOString(),
+                actor: { id: 'current', fullName: currentUserName },
+              },
+            ],
+          }
+        setIncidents(items => [created, ...items])
+        setCreating(false)
+        return
+      }
+      await api.post('/incidents', body)
+      setCreating(false)
+      await load()
+    } catch (reason) {
+      throw new Error(apiMessage(reason), { cause: reason })
+    }
+  }
+  const openDetail = async (item: Incident) => {
+    if (demoMode) {
+      setSelected(item)
+      return
+    }
+    try {
+      setSelected(await api.get<Incident>(`/incidents/${item.id}`))
+    } catch (reason) {
+      setError(apiMessage(reason))
+    }
+  }
+  const refreshSelected = async (id: string) => {
+    if (demoMode) {
+      setSelected(incidents.find(x => x.id === id))
+      return
+    }
+    const value = await api.get<Incident>(`/incidents/${id}`)
+    setSelected(value)
+    await load()
+  }
+  const updateIncident = async (id: string, body: any) => {
+    if (demoMode) {
+      setIncidents(items => items.map(item => (item.id === id ? { ...item, ...body } : item)))
+      setSelected(value => (value?.id === id ? { ...value, ...body } : value))
+      return
+    }
+    await api.patch(`/incidents/${id}`, body)
+    await refreshSelected(id)
+  }
+  const changeStatus = async (id: string, next: Status, note: string) => {
+    if (demoMode) {
+      const now = new Date().toISOString()
+      setIncidents(items =>
+        items.map(item =>
+          item.id === id
+            ? {
+                ...item,
+                status: next,
+                acknowledgedAt: next === 'ACKNOWLEDGED' ? now : item.acknowledgedAt,
+                responseStartedAt: next === 'IN_PROGRESS' ? item.responseStartedAt || now : item.responseStartedAt,
+                resolvedAt: next === 'RESOLVED' ? now : item.resolvedAt,
+                closedAt: next === 'CLOSED' || next === 'CANCELLED' ? now : item.closedAt,
+                activities: [
+                  ...(item.activities || []),
+                  {
+                    id: `a-${Date.now()}`,
+                    type: 'STATUS_CHANGED',
+                    note,
+                    fromStatus: item.status,
+                    toStatus: next,
+                    createdAt: now,
+                    actor: { id: 'current', fullName: currentUserName },
+                  },
+                ],
+              }
+            : item,
+        ),
+      )
+      setSelected(undefined)
+      return
+    }
+    await api.post(`/incidents/${id}/status`, { status: next, note })
+    await refreshSelected(id)
+  }
+  const addNote = async (id: string, note: string) => {
+    if (demoMode) {
+      const activity = {
+        id: `a-${Date.now()}`,
+        type: 'NOTE',
+        note,
+        createdAt: new Date().toISOString(),
+        actor: { id: 'current', fullName: currentUserName },
+      }
+      setIncidents(items =>
+        items.map(item => (item.id === id ? { ...item, activities: [...(item.activities || []), activity] } : item)),
+      )
+      setSelected(value => (value ? { ...value, activities: [...(value.activities || []), activity] } : value))
+      return
+    }
+    await api.post(`/incidents/${id}/activities`, { type: 'NOTE', note })
+    await refreshSelected(id)
+  }
+  const resetDrilldown = () => {
+    setView('all')
+    setSelectedBucket(null)
+    setQuery('')
+    setStatus('')
+    setCategory('')
+    setPriority('')
+  }
+  const changePeriod = (value: 'week' | 'month' | 'year') => {
+    resetDrilldown()
+    setPeriod(value)
+  }
+  const selectView = (value: IncidentView) => {
+    setView(value)
+    setSelectedBucket(null)
+    setQuery('')
+    setStatus('')
+    setCategory('')
+    setPriority('')
+    scrollToRegister()
+  }
+  const selectCategory = (value: Category) => {
+    setView('all')
+    setSelectedBucket(null)
+    setQuery('')
+    setStatus('')
+    setPriority('')
+    setCategory(value)
+    scrollToRegister()
+  }
+  const selectBucket = (label: string, index: number) => {
+    const periodFrom = summary.from || periodRange(period).from,
+      range = bucketRange(period, periodFrom, index)
+    setView('all')
+    setQuery('')
+    setStatus('')
+    setCategory('')
+    setPriority('')
+    setSelectedBucket({ ...range, label })
+    scrollToRegister()
+  }
+  const shown = useMemo(() => {
+    if (!demoMode) return incidents
+    const range = selectedBucket || {
+        from: summary.from || periodRange(period).from,
+        to: summary.to || periodRange(period).to,
+      },
+      from = new Date(range.from).getTime(),
+      to = new Date(range.to).getTime(),
+      now = Date.now()
+    return incidents.filter(item => {
+      const reported = new Date(item.reportedAt).getTime(),
+        matchesView =
+          view === 'all' ||
+          (view === 'open' && isOpen(item.status)) ||
+          (view === 'critical' && ['P1', 'P2'].includes(item.priority)) ||
+          (view === 'resolved' && ['RESOLVED', 'CLOSED'].includes(item.status)) ||
+          (view === 'overdue' && isOpen(item.status) && new Date(item.slaResolutionDueAt).getTime() < now) ||
+          (view === 'downtime' && item.downtimeMinutes > 0)
+      return (
+        reported >= from &&
+        reported < to &&
+        matchesView &&
+        (!query ||
+          `${item.incidentNo} ${item.title} ${item.description} ${item.reporterName}`
+            .toLowerCase()
+            .includes(query.toLowerCase())) &&
+        (!status || item.status === status) &&
+        (!category || item.category === category) &&
+        (!priority || item.priority === priority)
+      )
+    })
+  }, [demoMode, incidents, period, summary.from, summary.to, selectedBucket, view, query, status, category, priority])
+  const activeFilter = selectedBucket
+    ? `Thời gian: ${selectedBucket.label}`
+    : category
+      ? `Loại: ${categoryLabels[category as Category]}`
+      : view !== 'all'
+        ? viewLabels[view]
+        : ''
+  const maxTrend = Math.max(1, ...summary.trend.map(x => x.count)),
+    maxCategory = Math.max(1, ...summary.byCategory.map(x => x.count))
+  const delta = summary.total - summary.previousTotal
+  return (
+    <main className="page incident-page">
+      <section className="page-heading incident-heading">
+        <div>
+          <h1>Quản lý sự cố</h1>
+          <p>Ghi nhận, ứng phó, điều tra nguyên nhân và cải tiến theo ISO/IEC 27035, ISO/IEC 20000-1 và ISO 22301.</p>
+        </div>
+        <div className="heading-actions">
+          <div className="incident-period">
+            {(['week', 'month', 'year'] as const).map(value => (
+              <button className={period === value ? 'active' : ''} onClick={() => changePeriod(value)} key={value}>
+                {value === 'week' ? 'Tuần' : value === 'month' ? 'Tháng' : 'Năm'}
+              </button>
+            ))}
+          </div>
+          <button className="btn primary" onClick={() => setCreating(true)}>
+            <Plus size={17} />
+            Ghi nhận sự cố
+          </button>
+        </div>
+      </section>
+      {error && (
+        <div className="incident-error">
+          <AlertTriangle size={16} />
+          {error}
+          <button onClick={() => setError('')}>
+            <X size={15} />
+          </button>
+        </div>
+      )}
+      <section className="incident-kpis">
+        <button
+          className={view === 'all' && !selectedBucket && !category ? 'selected' : ''}
+          onClick={() => selectView('all')}
+        >
+          <span className="blue">
+            <FileText size={19} />
+          </span>
+          <div>
+            <small>Tổng sự cố</small>
+            <b>{summary.total}</b>
+            <em className={delta > 0 ? 'bad' : 'good'}>
+              {delta > 0 ? '+' : ''}
+              {delta} so với kỳ trước
+            </em>
+          </div>
+        </button>
+        <button className={view === 'open' ? 'selected' : ''} onClick={() => selectView('open')}>
+          <span className="amber">
+            <Activity size={19} />
+          </span>
+          <div>
+            <small>Đang xử lý</small>
+            <b>{summary.open}</b>
+            <em>Hồ sơ chưa đóng</em>
+          </div>
+        </button>
+        <button className={view === 'critical' ? 'selected' : ''} onClick={() => selectView('critical')}>
+          <span className="red">
+            <ShieldAlert size={19} />
+          </span>
+          <div>
+            <small>Mức P1 / P2</small>
+            <b>{summary.critical}</b>
+            <em>Ưu tiên cao</em>
+          </div>
+        </button>
+        <button className={view === 'resolved' ? 'selected' : ''} onClick={() => selectView('resolved')}>
+          <span className="green">
+            <CheckCircle2 size={19} />
+          </span>
+          <div>
+            <small>Đã khắc phục</small>
+            <b>{summary.resolved}</b>
+            <em>Resolved / Closed</em>
+          </div>
+        </button>
+        <button className={view === 'overdue' ? 'selected' : ''} onClick={() => selectView('overdue')}>
+          <span className="red">
+            <Clock3 size={19} />
+          </span>
+          <div>
+            <small>Quá SLA</small>
+            <b>{summary.overdue}</b>
+            <em>Cần điều phối ngay</em>
+          </div>
+        </button>
+        <button className={view === 'downtime' ? 'selected' : ''} onClick={() => selectView('downtime')}>
+          <span className="purple">
+            <CalendarDays size={19} />
+          </span>
+          <div>
+            <small>Thời gian gián đoạn</small>
+            <b>{duration(summary.downtimeMinutes)}</b>
+            <em>Click để xem hồ sơ có gián đoạn</em>
+          </div>
+        </button>
+      </section>
+      <section className="incident-analytics">
+        <article className="card incident-trend">
+          <header>
+            <div>
+              <h2>Xu hướng sự cố</h2>
+              <p>Click từng cột để xem các hồ sơ được báo cáo trong khoảng thời gian tương ứng.</p>
+            </div>
+            <span>
+              Phản hồi TB <b>{duration(summary.averageResponseMinutes)}</b>
+            </span>
+          </header>
+          <div className="incident-bars">
+            {summary.trend.map((item, index) => (
+              <button
+                className={selectedBucket?.label === item.label ? 'selected' : ''}
+                onClick={() => selectBucket(item.label, index)}
+                title={`Xem ${item.count} sự cố kỳ ${item.label}`}
+                key={`${item.label}-${index}`}
+              >
+                <span>
+                  <i style={{ height: `${Math.max(4, (item.count / maxTrend) * 100)}%` }} />
+                </span>
+                <small>{item.label}</small>
+                <b>{item.count}</b>
+              </button>
+            ))}
+          </div>
+        </article>
+        <article className="card incident-categories">
+          <header>
+            <div>
+              <h2>Phân loại sự cố</h2>
+              <p>Click một nhóm để lọc sổ sự cố bên dưới.</p>
+            </div>
+          </header>
+          <div>
+            {summary.byCategory.length ? (
+              summary.byCategory.slice(0, 6).map(item => (
+                <button
+                  className={category === item.label ? 'selected' : ''}
+                  onClick={() => selectCategory(item.label as Category)}
+                  key={item.label}
+                >
+                  <span>{categoryLabels[item.label as Category] || item.label}</span>
+                  <i>
+                    <b style={{ width: `${(item.count / maxCategory) * 100}%` }} />
+                  </i>
+                  <strong>{item.count}</strong>
+                </button>
+              ))
+            ) : (
+              <p className="incident-no-data">Chưa có dữ liệu trong kỳ.</p>
+            )}
+          </div>
+          <footer>
+            <span>
+              Khắc phục TB <b>{duration(summary.averageResolutionMinutes)}</b>
+            </span>
+            <span>
+              Đạt SLA phản hồi{' '}
+              <b>
+                {summary.responseSlaMet}/{summary.total}
+              </b>
+            </span>
+          </footer>
+        </article>
+      </section>
+      {activeFilter && (
+        <div className="incident-drilldown">
+          <span>
+            Đang hiển thị: <b>{activeFilter}</b>
+          </span>
+          <button onClick={resetDrilldown}>
+            <X size={14} />
+            Xóa lựa chọn
+          </button>
+        </div>
+      )}
+      <section className="card incident-register">
+        <div className="incident-register-head">
+          <div>
+            <h2>Sổ sự cố</h2>
+            <span>{shown.length} hồ sơ · lưu trữ toàn bộ timeline và CAPA</span>
+          </div>
+          <div className="incident-filters">
+            <label>
+              <Search size={15} />
+              <input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Tìm mã, tiêu đề, người báo, tài sản..."
+              />
+            </label>
+            <select value={category} onChange={e => setCategory(e.target.value)}>
+              <option value="">Tất cả loại</option>
+              {Object.entries(categoryLabels).map(([value, label]) => (
+                <option value={value} key={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select value={status} onChange={e => setStatus(e.target.value)}>
+              <option value="">Tất cả trạng thái</option>
+              {Object.entries(statusLabels).map(([value, label]) => (
+                <option value={value} key={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select value={priority} onChange={e => setPriority(e.target.value)}>
+              <option value="">Tất cả ưu tiên</option>
+              {['P1', 'P2', 'P3', 'P4'].map(value => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="table-scroll">
+          <table className="incident-table">
+            <thead>
+              <tr>
+                <th>MÃ SỰ CỐ</th>
+                <th>THỜI ĐIỂM / SỰ CỐ</th>
+                <th>LOẠI</th>
+                <th>ƯU TIÊN</th>
+                <th>ẢNH HƯỞNG</th>
+                <th>NGƯỜI XỬ LÝ</th>
+                <th>TRẠNG THÁI</th>
+                <th>SLA KHẮC PHỤC</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map(item => {
+                const Icon = categoryIcons[item.category],
+                  overdue = isOpen(item.status) && new Date(item.slaResolutionDueAt) < new Date()
+                return (
+                  <tr key={item.id} onClick={() => void openDetail(item)}>
+                    <td>
+                      <b className="incident-code">{item.incidentNo}</b>
+                    </td>
+                    <td>
+                      <b>{item.title}</b>
+                      <small>
+                        {dateTime(item.reportedAt)} · Báo bởi {item.reporterName}
+                      </small>
+                    </td>
+                    <td>
+                      <span className="incident-category">
+                        <Icon size={14} />
+                        {categoryLabels[item.category]}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`incident-priority ${item.priority.toLowerCase()}`}>{item.priority}</span>
+                    </td>
+                    <td>
+                      {item.affectedUsers ? `${item.affectedUsers.toLocaleString('vi-VN')} người` : 'Cục bộ'}
+                      <small>{item.serviceName || item.asset?.assetTag || '—'}</small>
+                    </td>
+                    <td>{item.assignee?.fullName || <span className="muted">Chưa phân công</span>}</td>
+                    <td>
+                      <span className={`incident-status ${item.status.toLowerCase()}`}>
+                        {statusLabels[item.status]}
+                      </span>
+                    </td>
+                    <td className={overdue ? 'sla-overdue' : ''}>
+                      {overdue ? 'Quá hạn ' : ''}
+                      {dateTime(item.slaResolutionDueAt)}
+                    </td>
+                    <td>
+                      <ChevronRight size={16} />
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        {loading && <div className="incident-loading">Đang tải hồ sơ sự cố…</div>}
+        {!loading && !shown.length && <div className="incident-empty">Không có sự cố phù hợp với bộ lọc.</div>}
+      </section>
+      <section className="incident-standard-note">
+        <ShieldAlert size={19} />
+        <div>
+          <b>Hồ sơ kiểm toán và cải tiến liên tục</b>
+          <p>
+            Không cho xóa sự cố. Mọi thay đổi trạng thái, người xử lý, ghi chú, RCA và CAPA được lưu thành timeline và
+            audit log. “Phù hợp theo thiết kế” không đồng nghĩa hệ thống hoặc doanh nghiệp đã được chứng nhận ISO.
+          </p>
+        </div>
+      </section>
+      {creating && (
+        <IncidentCreateModal
+          assets={assets}
+          users={users}
+          departments={departments}
+          locations={locations}
+          reporterName={currentUserName}
+          onClose={() => setCreating(false)}
+          onSave={saveNew}
+        />
+      )}
+      {selected && (
+        <IncidentDetail
+          incident={selected}
+          users={users}
+          onClose={() => setSelected(undefined)}
+          onSave={updateIncident}
+          onStatus={changeStatus}
+          onNote={addNote}
+        />
+      )}
+    </main>
+  )
 }
 
-function IncidentCreateModal({assets,users,departments,locations,reporterName,onClose,onSave}:{assets:Asset[];users:Lookup[];departments:Lookup[];locations:Lookup[];reporterName:string;onClose:()=>void;onSave:(body:any)=>Promise<void>}){
-  const [form,setForm]=useState<any>({title:'',category:'NETWORK',impact:'MEDIUM',urgency:'MEDIUM',description:'',businessImpact:'',reporterName,reporterContact:'',serviceName:'',detectedAt:new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16),affectedUsers:0,downtimeMinutes:0,departmentId:'',locationId:'',assetId:'',assignedToId:'',isSecurityIncident:false,isBusinessContinuityEvent:false}),[error,setError]=useState(''),[saving,setSaving]=useState(false);const set=(key:string,value:unknown)=>setForm((current:any)=>({...current,[key]:value}));const submit=async(event:React.FormEvent)=>{event.preventDefault();setSaving(true);setError('');try{await onSave({...form,detectedAt:new Date(form.detectedAt).toISOString(),affectedUsers:Number(form.affectedUsers||0),downtimeMinutes:Number(form.downtimeMinutes||0),departmentId:form.departmentId||undefined,locationId:form.locationId||undefined,assetId:form.assetId||undefined,assignedToId:form.assignedToId||undefined})}catch(reason){setError(reason instanceof Error?reason.message:'Không thể lưu sự cố')}finally{setSaving(false)}}
-  return <div className="modal-backdrop incident-modal-backdrop" onMouseDown={event=>event.target===event.currentTarget&&onClose()}><form className="modal incident-create-modal" onSubmit={submit}><div className="modal-head"><div><h2>Ghi nhận sự cố mới</h2><p>Phân loại theo tác động và mức khẩn cấp; hệ thống tự tính P1–P4 cùng SLA.</p></div><button type="button" className="icon-btn" onClick={onClose}><X size={20}/></button></div><div className="incident-form-grid"><h3>01 · Tiếp nhận và phân loại</h3><label className="wide">Tiêu đề sự cố<input autoFocus required value={form.title} onChange={e=>set('title',e.target.value)} placeholder="Ví dụ: Mất kết nối Internet văn phòng Hà Nội"/></label><label>Loại sự cố<select value={form.category} onChange={e=>set('category',e.target.value)}>{Object.entries(categoryLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label><label>Thời điểm phát hiện<input required type="datetime-local" value={form.detectedAt} onChange={e=>set('detectedAt',e.target.value)}/></label><label>Mức tác động<select value={form.impact} onChange={e=>set('impact',e.target.value)}>{Object.entries(impactLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label><label>Mức khẩn cấp<select value={form.urgency} onChange={e=>set('urgency',e.target.value)}>{Object.entries(urgencyLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label><label className="wide">Mô tả dấu hiệu và phạm vi<textarea required value={form.description} onChange={e=>set('description',e.target.value)} rows={3} placeholder="Điều gì đã xảy ra, hệ thống hoặc người dùng nào bị ảnh hưởng?"/></label><label className="wide">Ảnh hưởng hoạt động kinh doanh<textarea value={form.businessImpact} onChange={e=>set('businessImpact',e.target.value)} rows={2}/></label><h3>02 · Người báo và phạm vi ảnh hưởng</h3><label>Người phát hiện / báo cáo<input required value={form.reporterName} onChange={e=>set('reporterName',e.target.value)}/></label><label>Liên hệ<input value={form.reporterContact} onChange={e=>set('reporterContact',e.target.value)} placeholder="Email hoặc số điện thoại"/></label><label>Dịch vụ bị ảnh hưởng<input value={form.serviceName} onChange={e=>set('serviceName',e.target.value)} placeholder="Internet, ERP, Endpoint..."/></label><label>Số người bị ảnh hưởng<input type="number" min="0" value={form.affectedUsers} onChange={e=>set('affectedUsers',e.target.value)}/></label><label>Phòng ban<select value={form.departmentId} onChange={e=>set('departmentId',e.target.value)}><option value="">Không xác định / nhiều đơn vị</option>{departments.map(item=><option value={item.id} key={item.id}>{item.name}</option>)}</select></label><label>Vị trí<select value={form.locationId} onChange={e=>set('locationId',e.target.value)}><option value="">Không xác định / nhiều site</option>{locations.map(item=><option value={item.id} key={item.id}>{item.name}</option>)}</select></label><label>Tài sản liên quan<select value={form.assetId} onChange={e=>set('assetId',e.target.value)}><option value="">Không gắn tài sản cụ thể</option>{assets.filter(item=>item.apiId).map(item=><option value={item.apiId} key={item.apiId}>{item.code} · {item.name}</option>)}</select></label><label>Người xử lý<select value={form.assignedToId} onChange={e=>set('assignedToId',e.target.value)}><option value="">Chưa phân công</option>{users.map(item=><option value={item.id} key={item.id}>{item.fullName}</option>)}</select></label><div className="incident-checks wide"><label><input type="checkbox" checked={form.isSecurityIncident} onChange={e=>set('isSecurityIncident',e.target.checked)}/>Sự cố an toàn thông tin</label><label><input type="checkbox" checked={form.isBusinessContinuityEvent} onChange={e=>set('isBusinessContinuityEvent',e.target.checked)}/>Sự kiện ảnh hưởng liên tục kinh doanh</label></div>{error&&<div className="incident-form-error wide">{error}</div>}</div><div className="modal-actions"><button type="button" className="btn secondary" onClick={onClose}>Hủy</button><button className="btn primary" disabled={saving}><Plus size={16}/>{saving?'Đang lưu…':'Tạo hồ sơ sự cố'}</button></div></form></div>
+function IncidentCreateModal({
+  assets,
+  users,
+  departments,
+  locations,
+  reporterName,
+  onClose,
+  onSave,
+}: {
+  assets: Asset[]
+  users: Lookup[]
+  departments: Lookup[]
+  locations: Lookup[]
+  reporterName: string
+  onClose: () => void
+  onSave: (body: any) => Promise<void>
+}) {
+  const [form, setForm] = useState<any>({
+      title: '',
+      category: 'NETWORK',
+      impact: 'MEDIUM',
+      urgency: 'MEDIUM',
+      description: '',
+      businessImpact: '',
+      reporterName,
+      reporterContact: '',
+      serviceName: '',
+      detectedAt: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+      affectedUsers: 0,
+      downtimeMinutes: 0,
+      departmentId: '',
+      locationId: '',
+      assetId: '',
+      assignedToId: '',
+      isSecurityIncident: false,
+      isBusinessContinuityEvent: false,
+    }),
+    [error, setError] = useState(''),
+    [saving, setSaving] = useState(false)
+  const set = (key: string, value: unknown) => setForm((current: any) => ({ ...current, [key]: value }))
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      await onSave({
+        ...form,
+        detectedAt: new Date(form.detectedAt).toISOString(),
+        affectedUsers: Number(form.affectedUsers || 0),
+        downtimeMinutes: Number(form.downtimeMinutes || 0),
+        departmentId: form.departmentId || undefined,
+        locationId: form.locationId || undefined,
+        assetId: form.assetId || undefined,
+        assignedToId: form.assignedToId || undefined,
+      })
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Không thể lưu sự cố')
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <div
+      className="modal-backdrop incident-modal-backdrop"
+      onMouseDown={event => event.target === event.currentTarget && onClose()}
+    >
+      <form className="modal incident-create-modal" onSubmit={submit}>
+        <div className="modal-head">
+          <div>
+            <h2>Ghi nhận sự cố mới</h2>
+            <p>Phân loại theo tác động và mức khẩn cấp; hệ thống tự tính P1–P4 cùng SLA.</p>
+          </div>
+          <button type="button" className="icon-btn" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="incident-form-grid">
+          <h3>01 · Tiếp nhận và phân loại</h3>
+          <label className="wide">
+            Tiêu đề sự cố
+            <input
+              autoFocus
+              required
+              value={form.title}
+              onChange={e => set('title', e.target.value)}
+              placeholder="Ví dụ: Mất kết nối Internet văn phòng Hà Nội"
+            />
+          </label>
+          <label>
+            Loại sự cố
+            <select value={form.category} onChange={e => set('category', e.target.value)}>
+              {Object.entries(categoryLabels).map(([value, label]) => (
+                <option value={value} key={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Thời điểm phát hiện
+            <input
+              required
+              type="datetime-local"
+              value={form.detectedAt}
+              onChange={e => set('detectedAt', e.target.value)}
+            />
+          </label>
+          <label>
+            Mức tác động
+            <select value={form.impact} onChange={e => set('impact', e.target.value)}>
+              {Object.entries(impactLabels).map(([value, label]) => (
+                <option value={value} key={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Mức khẩn cấp
+            <select value={form.urgency} onChange={e => set('urgency', e.target.value)}>
+              {Object.entries(urgencyLabels).map(([value, label]) => (
+                <option value={value} key={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="wide">
+            Mô tả dấu hiệu và phạm vi
+            <textarea
+              required
+              value={form.description}
+              onChange={e => set('description', e.target.value)}
+              rows={3}
+              placeholder="Điều gì đã xảy ra, hệ thống hoặc người dùng nào bị ảnh hưởng?"
+            />
+          </label>
+          <label className="wide">
+            Ảnh hưởng hoạt động kinh doanh
+            <textarea value={form.businessImpact} onChange={e => set('businessImpact', e.target.value)} rows={2} />
+          </label>
+          <h3>02 · Người báo và phạm vi ảnh hưởng</h3>
+          <label>
+            Người phát hiện / báo cáo
+            <input required value={form.reporterName} onChange={e => set('reporterName', e.target.value)} />
+          </label>
+          <label>
+            Liên hệ
+            <input
+              value={form.reporterContact}
+              onChange={e => set('reporterContact', e.target.value)}
+              placeholder="Email hoặc số điện thoại"
+            />
+          </label>
+          <label>
+            Dịch vụ bị ảnh hưởng
+            <input
+              value={form.serviceName}
+              onChange={e => set('serviceName', e.target.value)}
+              placeholder="Internet, ERP, Endpoint..."
+            />
+          </label>
+          <label>
+            Số người bị ảnh hưởng
+            <input
+              type="number"
+              min="0"
+              value={form.affectedUsers}
+              onChange={e => set('affectedUsers', e.target.value)}
+            />
+          </label>
+          <label>
+            Phòng ban
+            <select value={form.departmentId} onChange={e => set('departmentId', e.target.value)}>
+              <option value="">Không xác định / nhiều đơn vị</option>
+              {departments.map(item => (
+                <option value={item.id} key={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Vị trí
+            <select value={form.locationId} onChange={e => set('locationId', e.target.value)}>
+              <option value="">Không xác định / nhiều site</option>
+              {locations.map(item => (
+                <option value={item.id} key={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Tài sản liên quan
+            <select value={form.assetId} onChange={e => set('assetId', e.target.value)}>
+              <option value="">Không gắn tài sản cụ thể</option>
+              {assets
+                .filter(item => item.apiId)
+                .map(item => (
+                  <option value={item.apiId} key={item.apiId}>
+                    {item.code} · {item.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label>
+            Người xử lý
+            <select value={form.assignedToId} onChange={e => set('assignedToId', e.target.value)}>
+              <option value="">Chưa phân công</option>
+              {users.map(item => (
+                <option value={item.id} key={item.id}>
+                  {item.fullName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="incident-checks wide">
+            <label>
+              <input
+                type="checkbox"
+                checked={form.isSecurityIncident}
+                onChange={e => set('isSecurityIncident', e.target.checked)}
+              />
+              Sự cố an toàn thông tin
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={form.isBusinessContinuityEvent}
+                onChange={e => set('isBusinessContinuityEvent', e.target.checked)}
+              />
+              Sự kiện ảnh hưởng liên tục kinh doanh
+            </label>
+          </div>
+          {error && <div className="incident-form-error wide">{error}</div>}
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="btn secondary" onClick={onClose}>
+            Hủy
+          </button>
+          <button className="btn primary" disabled={saving}>
+            <Plus size={16} />
+            {saving ? 'Đang lưu…' : 'Tạo hồ sơ sự cố'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
 }
 
-function IncidentDetail({incident,users,onClose,onSave,onStatus,onNote}:{incident:Incident;users:Lookup[];onClose:()=>void;onSave:(id:string,body:any)=>Promise<void>;onStatus:(id:string,status:Status,note:string)=>Promise<void>;onNote:(id:string,note:string)=>Promise<void>}){
-  const [form,setForm]=useState<any>({assignedToId:incident.assignedToId||incident.assignee?.id||'',initialAssessment:incident.initialAssessment||'',containmentAction:incident.containmentAction||'',resolution:incident.resolution||'',rootCause:incident.rootCause||'',correctiveAction:incident.correctiveAction||'',preventiveAction:incident.preventiveAction||'',lessonsLearned:incident.lessonsLearned||'',downtimeMinutes:incident.downtimeMinutes}),[note,setNote]=useState(''),[message,setMessage]=useState(''),[saving,setSaving]=useState(false),[transitioning,setTransitioning]=useState(false);const set=(key:string,value:unknown)=>setForm((current:any)=>({...current,[key]:value}));const payload=()=>({...form,assignedToId:form.assignedToId||undefined,downtimeMinutes:Number(form.downtimeMinutes||0)});const persist=async()=>{setSaving(true);setMessage('');try{await onSave(incident.id,payload());setMessage('Đã lưu hồ sơ phân tích và hành động.')}catch(reason){setMessage(reason instanceof Error?reason.message:'Không thể lưu')}finally{setSaving(false)}};const transition=async(status:Status)=>{const missing=missingIncidentWorkflowFields(status,form);if(missing.length){setMessage(`Chưa đủ điều kiện chuyển sang “${statusLabels[status]}”: ${missing.map(field=>workflowFieldLabels[field]).join(', ')}.`);return}const reason=window.prompt(`Ghi chú bắt buộc khi chuyển sang “${statusLabels[status]}”:`,`Chuyển trạng thái sang ${statusLabels[status]}`);if(!reason?.trim())return;setTransitioning(true);setMessage('');try{await onSave(incident.id,payload());await onStatus(incident.id,status,reason.trim())}catch(error){setMessage(error instanceof Error?error.message:'Không thể chuyển trạng thái')}finally{setTransitioning(false)}};const add=async()=>{if(!note.trim())return;try{await onNote(incident.id,note);setNote('')}catch(error){setMessage(error instanceof Error?error.message:'Không thể thêm ghi chú')}}
-  const printReport=()=>{const popup=window.open('','_blank','width=900,height=900');if(!popup)return;const row=(label:string,value:unknown)=>`<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value||'—')}</td></tr>`;popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(incident.incidentNo)}</title><style>@page{size:A4;margin:15mm}body{font:12px Arial;color:#111}h1{text-align:center;font-size:20px}h2{font-size:14px;border-bottom:1px solid #333;padding-bottom:5px;margin-top:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #777;padding:7px;text-align:left;vertical-align:top}th{width:28%;background:#eee}.signatures{display:grid;grid-template-columns:1fr 1fr;text-align:center;margin-top:35px}</style></head><body><h1>BÁO CÁO SỰ CỐ CÔNG NGHỆ THÔNG TIN</h1><p style="text-align:center">Mã hồ sơ: <b>${escapeHtml(incident.incidentNo)}</b></p><h2>1. Thông tin chung</h2><table>${row('Tiêu đề',incident.title)}${row('Loại',categoryLabels[incident.category])}${row('Ưu tiên',incident.priority)}${row('Trạng thái',statusLabels[incident.status])}${row('Phát hiện',dateTime(incident.detectedAt))}${row('Người phát hiện',incident.reporterName)}${row('Người xử lý',incident.assignee?.fullName)}${row('Dịch vụ / Tài sản',incident.serviceName||incident.asset?.assetTag)}</table><h2>2. Mô tả và ảnh hưởng</h2><table>${row('Mô tả',incident.description)}${row('Ảnh hưởng kinh doanh',incident.businessImpact)}${row('Số người ảnh hưởng',incident.affectedUsers)}${row('Thời gian gián đoạn',duration(incident.downtimeMinutes))}</table><h2>3. Ứng phó, nguyên nhân và CAPA</h2><table>${row('Đánh giá ban đầu',form.initialAssessment)}${row('Khoanh vùng / Ứng phó',form.containmentAction)}${row('Xử lý / Khôi phục',form.resolution)}${row('Nguyên nhân gốc',form.rootCause)}${row('Hành động khắc phục',form.correctiveAction)}${row('Hành động phòng ngừa',form.preventiveAction)}${row('Bài học kinh nghiệm',form.lessonsLearned)}</table><div class="signatures"><div><b>NGƯỜI LẬP</b><br><br><br>${escapeHtml(incident.reporterName)}</div><div><b>NGƯỜI PHÊ DUYỆT</b><br><br><br>________________</div></div><script>window.onload=()=>window.print()</script></body></html>`);popup.document.close()}
-  const overdue=isOpen(incident.status)&&new Date(incident.slaResolutionDueAt)<new Date()
-  return <div className="incident-detail-backdrop" onMouseDown={event=>event.target===event.currentTarget&&onClose()}><aside className="incident-detail"><header><div><span className={`incident-priority ${incident.priority.toLowerCase()}`}>{incident.priority}</span><div><small>{incident.incidentNo}</small><h2>{incident.title}</h2><p>{categoryLabels[incident.category]} · Báo cáo {dateTime(incident.reportedAt)}</p></div></div><button className="icon-btn" onClick={onClose}><X size={20}/></button></header><div className="incident-detail-actions"><span className={`incident-status ${incident.status.toLowerCase()}`}>{statusLabels[incident.status]}</span>{overdue&&<span className="incident-overdue"><Clock3 size={14}/>Quá SLA khắc phục</span>}<button className="btn secondary" onClick={printReport}><Printer size={15}/>In báo cáo A4</button></div><div className="incident-detail-body"><section className="incident-facts"><h3>Thông tin kiểm soát</h3><dl><div><dt>Phát hiện</dt><dd>{dateTime(incident.detectedAt)}</dd></div><div><dt>Người phát hiện</dt><dd>{incident.reporterName}</dd></div><div><dt>Dịch vụ / tài sản</dt><dd>{incident.serviceName||incident.asset?.assetTag||'—'}</dd></div><div><dt>Phạm vi</dt><dd>{incident.department?.name||incident.location?.name||'Nhiều đơn vị / Chưa xác định'}</dd></div><div><dt>Số người ảnh hưởng</dt><dd>{incident.affectedUsers.toLocaleString('vi-VN')}</dd></div><div><dt>Gián đoạn</dt><dd>{duration(Number(form.downtimeMinutes||0))}</dd></div><div><dt>SLA phản hồi</dt><dd>{dateTime(incident.slaResponseDueAt)}</dd></div><div><dt>SLA khắc phục</dt><dd>{dateTime(incident.slaResolutionDueAt)}</dd></div></dl><p>{incident.description}</p>{incident.businessImpact&&<blockquote><b>Ảnh hưởng kinh doanh</b>{incident.businessImpact}</blockquote>}</section><section className="incident-analysis-form"><h3>Phân tích, xử lý và phòng ngừa</h3><label>Người chịu trách nhiệm<select value={form.assignedToId} disabled={incident.status==='CLOSED'||incident.status==='CANCELLED'} onChange={e=>set('assignedToId',e.target.value)}><option value="">Chưa phân công</option>{users.map(item=><option value={item.id} key={item.id}>{item.fullName}</option>)}</select></label><label>Đánh giá ban đầu<textarea value={form.initialAssessment} disabled={incident.status==='CLOSED'||incident.status==='CANCELLED'} onChange={e=>set('initialAssessment',e.target.value)} rows={2}/></label><label>Khoanh vùng / Ứng phó tức thời<textarea value={form.containmentAction} disabled={incident.status==='CLOSED'||incident.status==='CANCELLED'} onChange={e=>set('containmentAction',e.target.value)} rows={2}/></label><label>Xử lý và khôi phục dịch vụ<textarea value={form.resolution} disabled={incident.status==='CLOSED'||incident.status==='CANCELLED'} onChange={e=>set('resolution',e.target.value)} rows={2}/></label><label>Nguyên nhân gốc (RCA)<textarea value={form.rootCause} disabled={incident.status==='CLOSED'||incident.status==='CANCELLED'} onChange={e=>set('rootCause',e.target.value)} rows={2}/></label><label>Hành động khắc phục<textarea value={form.correctiveAction} disabled={incident.status==='CLOSED'||incident.status==='CANCELLED'} onChange={e=>set('correctiveAction',e.target.value)} rows={2}/></label><label>Hành động phòng ngừa<textarea value={form.preventiveAction} disabled={incident.status==='CLOSED'||incident.status==='CANCELLED'} onChange={e=>set('preventiveAction',e.target.value)} rows={2}/></label><label>Bài học kinh nghiệm<textarea value={form.lessonsLearned} disabled={incident.status==='CLOSED'||incident.status==='CANCELLED'} onChange={e=>set('lessonsLearned',e.target.value)} rows={2}/></label><label>Thời gian gián đoạn (phút)<input type="number" min="0" value={form.downtimeMinutes} disabled={incident.status==='CLOSED'||incident.status==='CANCELLED'} onChange={e=>set('downtimeMinutes',e.target.value)}/></label>{!['CLOSED','CANCELLED'].includes(incident.status)&&<button className="btn primary" disabled={saving} onClick={()=>void persist()}><CheckCircle2 size={15}/>{saving?'Đang lưu…':'Lưu phân tích & CAPA'}</button>}{message&&<p className="incident-detail-message">{message}</p>}</section><section className="incident-timeline"><h3>Timeline và bằng chứng xử lý</h3><div>{(incident.activities||[]).map(item=><article key={item.id}><i/><div><b>{item.actor.fullName}</b><small>{dateTime(item.createdAt)} · {item.type}</small><p>{item.note}</p>{item.toStatus&&<span>{item.fromStatus?statusLabels[item.fromStatus]:'Khởi tạo'} → {statusLabels[item.toStatus]}</span>}</div></article>)}{!incident.activities?.length&&<p className="incident-no-data">Chưa có hoạt động được ghi nhận.</p>}</div>{!['CLOSED','CANCELLED'].includes(incident.status)&&<div className="incident-note"><textarea value={note} onChange={e=>setNote(e.target.value)} rows={2} placeholder="Thêm cập nhật xử lý, bằng chứng hoặc trao đổi với nhà cung cấp..."/><button className="btn secondary" onClick={()=>void add()}>Thêm timeline</button></div>}</section></div><footer><div><b>Quy trình tiếp theo</b><span>Ghi chú là bắt buộc khi thay đổi trạng thái.</span></div>{nextStatuses[incident.status].map(value=><button key={value} className={`btn ${value==='CANCELLED'?'secondary':'primary'}`} onClick={()=>void transition(value)}>{statusLabels[value]}<ChevronRight size={15}/></button>)}</footer></aside></div>
+function IncidentDetail({
+  incident,
+  users,
+  onClose,
+  onSave,
+  onStatus,
+  onNote,
+}: {
+  incident: Incident
+  users: Lookup[]
+  onClose: () => void
+  onSave: (id: string, body: any) => Promise<void>
+  onStatus: (id: string, status: Status, note: string) => Promise<void>
+  onNote: (id: string, note: string) => Promise<void>
+}) {
+  const [form, setForm] = useState<any>({
+      assignedToId: incident.assignedToId || incident.assignee?.id || '',
+      initialAssessment: incident.initialAssessment || '',
+      containmentAction: incident.containmentAction || '',
+      resolution: incident.resolution || '',
+      rootCause: incident.rootCause || '',
+      correctiveAction: incident.correctiveAction || '',
+      preventiveAction: incident.preventiveAction || '',
+      lessonsLearned: incident.lessonsLearned || '',
+      downtimeMinutes: incident.downtimeMinutes,
+    }),
+    [note, setNote] = useState(''),
+    [message, setMessage] = useState(''),
+    [saving, setSaving] = useState(false),
+    [transitioning, setTransitioning] = useState(false)
+  const set = (key: string, value: unknown) => setForm((current: any) => ({ ...current, [key]: value }))
+  const payload = () => ({
+    ...form,
+    assignedToId: form.assignedToId || undefined,
+    downtimeMinutes: Number(form.downtimeMinutes || 0),
+  })
+  const persist = async () => {
+    setSaving(true)
+    setMessage('')
+    try {
+      await onSave(incident.id, payload())
+      setMessage('Đã lưu hồ sơ phân tích và hành động.')
+    } catch (reason) {
+      setMessage(reason instanceof Error ? reason.message : 'Không thể lưu')
+    } finally {
+      setSaving(false)
+    }
+  }
+  const transition = async (status: Status) => {
+    const missing = missingIncidentWorkflowFields(status, form)
+    if (missing.length) {
+      setMessage(
+        `Chưa đủ điều kiện chuyển sang “${statusLabels[status]}”: ${missing.map(field => workflowFieldLabels[field]).join(', ')}.`,
+      )
+      return
+    }
+    const reason = window.prompt(
+      `Ghi chú bắt buộc khi chuyển sang “${statusLabels[status]}”:`,
+      `Chuyển trạng thái sang ${statusLabels[status]}`,
+    )
+    if (!reason?.trim()) return
+    setTransitioning(true)
+    setMessage('')
+    try {
+      await onSave(incident.id, payload())
+      await onStatus(incident.id, status, reason.trim())
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể chuyển trạng thái')
+    } finally {
+      setTransitioning(false)
+    }
+  }
+  const add = async () => {
+    if (!note.trim()) return
+    try {
+      await onNote(incident.id, note)
+      setNote('')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể thêm ghi chú')
+    }
+  }
+  const printReport = () => {
+    const popup = window.open('', '_blank', 'width=900,height=900')
+    if (!popup) return
+    const row = (label: string, value: unknown) =>
+      `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value || '—')}</td></tr>`
+    popup.document.write(
+      `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(incident.incidentNo)}</title><style>@page{size:A4;margin:15mm}body{font:12px Arial;color:#111}h1{text-align:center;font-size:20px}h2{font-size:14px;border-bottom:1px solid #333;padding-bottom:5px;margin-top:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #777;padding:7px;text-align:left;vertical-align:top}th{width:28%;background:#eee}.signatures{display:grid;grid-template-columns:1fr 1fr;text-align:center;margin-top:35px}</style></head><body><h1>BÁO CÁO SỰ CỐ CÔNG NGHỆ THÔNG TIN</h1><p style="text-align:center">Mã hồ sơ: <b>${escapeHtml(incident.incidentNo)}</b></p><h2>1. Thông tin chung</h2><table>${row('Tiêu đề', incident.title)}${row('Loại', categoryLabels[incident.category])}${row('Ưu tiên', incident.priority)}${row('Trạng thái', statusLabels[incident.status])}${row('Phát hiện', dateTime(incident.detectedAt))}${row('Người phát hiện', incident.reporterName)}${row('Người xử lý', incident.assignee?.fullName)}${row('Dịch vụ / Tài sản', incident.serviceName || incident.asset?.assetTag)}</table><h2>2. Mô tả và ảnh hưởng</h2><table>${row('Mô tả', incident.description)}${row('Ảnh hưởng kinh doanh', incident.businessImpact)}${row('Số người ảnh hưởng', incident.affectedUsers)}${row('Thời gian gián đoạn', duration(incident.downtimeMinutes))}</table><h2>3. Ứng phó, nguyên nhân và CAPA</h2><table>${row('Đánh giá ban đầu', form.initialAssessment)}${row('Khoanh vùng / Ứng phó', form.containmentAction)}${row('Xử lý / Khôi phục', form.resolution)}${row('Nguyên nhân gốc', form.rootCause)}${row('Hành động khắc phục', form.correctiveAction)}${row('Hành động phòng ngừa', form.preventiveAction)}${row('Bài học kinh nghiệm', form.lessonsLearned)}</table><div class="signatures"><div><b>NGƯỜI LẬP</b><br><br><br>${escapeHtml(incident.reporterName)}</div><div><b>NGƯỜI PHÊ DUYỆT</b><br><br><br>________________</div></div><script>window.onload=()=>window.print()</script></body></html>`,
+    )
+    popup.document.close()
+  }
+  const overdue = isOpen(incident.status) && new Date(incident.slaResolutionDueAt) < new Date()
+  return (
+    <div className="incident-detail-backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}>
+      <aside className="incident-detail">
+        <header>
+          <div>
+            <span className={`incident-priority ${incident.priority.toLowerCase()}`}>{incident.priority}</span>
+            <div>
+              <small>{incident.incidentNo}</small>
+              <h2>{incident.title}</h2>
+              <p>
+                {categoryLabels[incident.category]} · Báo cáo {dateTime(incident.reportedAt)}
+              </p>
+            </div>
+          </div>
+          <button className="icon-btn" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </header>
+        <div className="incident-detail-actions">
+          <span className={`incident-status ${incident.status.toLowerCase()}`}>{statusLabels[incident.status]}</span>
+          {overdue && (
+            <span className="incident-overdue">
+              <Clock3 size={14} />
+              Quá SLA khắc phục
+            </span>
+          )}
+          <button className="btn secondary" onClick={printReport}>
+            <Printer size={15} />
+            In báo cáo A4
+          </button>
+        </div>
+        <div className="incident-detail-body">
+          <section className="incident-facts">
+            <h3>Thông tin kiểm soát</h3>
+            <dl>
+              <div>
+                <dt>Phát hiện</dt>
+                <dd>{dateTime(incident.detectedAt)}</dd>
+              </div>
+              <div>
+                <dt>Người phát hiện</dt>
+                <dd>{incident.reporterName}</dd>
+              </div>
+              <div>
+                <dt>Dịch vụ / tài sản</dt>
+                <dd>{incident.serviceName || incident.asset?.assetTag || '—'}</dd>
+              </div>
+              <div>
+                <dt>Phạm vi</dt>
+                <dd>{incident.department?.name || incident.location?.name || 'Nhiều đơn vị / Chưa xác định'}</dd>
+              </div>
+              <div>
+                <dt>Số người ảnh hưởng</dt>
+                <dd>{incident.affectedUsers.toLocaleString('vi-VN')}</dd>
+              </div>
+              <div>
+                <dt>Gián đoạn</dt>
+                <dd>{duration(Number(form.downtimeMinutes || 0))}</dd>
+              </div>
+              <div>
+                <dt>SLA phản hồi</dt>
+                <dd>{dateTime(incident.slaResponseDueAt)}</dd>
+              </div>
+              <div>
+                <dt>SLA khắc phục</dt>
+                <dd>{dateTime(incident.slaResolutionDueAt)}</dd>
+              </div>
+            </dl>
+            <p>{incident.description}</p>
+            {incident.businessImpact && (
+              <blockquote>
+                <b>Ảnh hưởng kinh doanh</b>
+                {incident.businessImpact}
+              </blockquote>
+            )}
+          </section>
+          <section className="incident-analysis-form">
+            <h3>Phân tích, xử lý và phòng ngừa</h3>
+            <label>
+              Người chịu trách nhiệm
+              <select
+                value={form.assignedToId}
+                disabled={incident.status === 'CLOSED' || incident.status === 'CANCELLED'}
+                onChange={e => set('assignedToId', e.target.value)}
+              >
+                <option value="">Chưa phân công</option>
+                {users.map(item => (
+                  <option value={item.id} key={item.id}>
+                    {item.fullName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Đánh giá ban đầu
+              <textarea
+                value={form.initialAssessment}
+                disabled={incident.status === 'CLOSED' || incident.status === 'CANCELLED'}
+                onChange={e => set('initialAssessment', e.target.value)}
+                rows={2}
+              />
+            </label>
+            <label>
+              Khoanh vùng / Ứng phó tức thời
+              <textarea
+                value={form.containmentAction}
+                disabled={incident.status === 'CLOSED' || incident.status === 'CANCELLED'}
+                onChange={e => set('containmentAction', e.target.value)}
+                rows={2}
+              />
+            </label>
+            <label>
+              Xử lý và khôi phục dịch vụ
+              <textarea
+                value={form.resolution}
+                disabled={incident.status === 'CLOSED' || incident.status === 'CANCELLED'}
+                onChange={e => set('resolution', e.target.value)}
+                rows={2}
+              />
+            </label>
+            <label>
+              Nguyên nhân gốc (RCA)
+              <textarea
+                value={form.rootCause}
+                disabled={incident.status === 'CLOSED' || incident.status === 'CANCELLED'}
+                onChange={e => set('rootCause', e.target.value)}
+                rows={2}
+              />
+            </label>
+            <label>
+              Hành động khắc phục
+              <textarea
+                value={form.correctiveAction}
+                disabled={incident.status === 'CLOSED' || incident.status === 'CANCELLED'}
+                onChange={e => set('correctiveAction', e.target.value)}
+                rows={2}
+              />
+            </label>
+            <label>
+              Hành động phòng ngừa
+              <textarea
+                value={form.preventiveAction}
+                disabled={incident.status === 'CLOSED' || incident.status === 'CANCELLED'}
+                onChange={e => set('preventiveAction', e.target.value)}
+                rows={2}
+              />
+            </label>
+            <label>
+              Bài học kinh nghiệm
+              <textarea
+                value={form.lessonsLearned}
+                disabled={incident.status === 'CLOSED' || incident.status === 'CANCELLED'}
+                onChange={e => set('lessonsLearned', e.target.value)}
+                rows={2}
+              />
+            </label>
+            <label>
+              Thời gian gián đoạn (phút)
+              <input
+                type="number"
+                min="0"
+                value={form.downtimeMinutes}
+                disabled={incident.status === 'CLOSED' || incident.status === 'CANCELLED'}
+                onChange={e => set('downtimeMinutes', e.target.value)}
+              />
+            </label>
+            {!['CLOSED', 'CANCELLED'].includes(incident.status) && (
+              <button className="btn primary" disabled={saving} onClick={() => void persist()}>
+                <CheckCircle2 size={15} />
+                {saving ? 'Đang lưu…' : 'Lưu phân tích & CAPA'}
+              </button>
+            )}
+            {message && <p className="incident-detail-message">{message}</p>}
+          </section>
+          <section className="incident-timeline">
+            <h3>Timeline và bằng chứng xử lý</h3>
+            <div>
+              {(incident.activities || []).map(item => (
+                <article key={item.id}>
+                  <i />
+                  <div>
+                    <b>{item.actor.fullName}</b>
+                    <small>
+                      {dateTime(item.createdAt)} · {item.type}
+                    </small>
+                    <p>{item.note}</p>
+                    {item.toStatus && (
+                      <span>
+                        {item.fromStatus ? statusLabels[item.fromStatus] : 'Khởi tạo'} → {statusLabels[item.toStatus]}
+                      </span>
+                    )}
+                  </div>
+                </article>
+              ))}
+              {!incident.activities?.length && <p className="incident-no-data">Chưa có hoạt động được ghi nhận.</p>}
+            </div>
+            {!['CLOSED', 'CANCELLED'].includes(incident.status) && (
+              <div className="incident-note">
+                <textarea
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                  rows={2}
+                  placeholder="Thêm cập nhật xử lý, bằng chứng hoặc trao đổi với nhà cung cấp..."
+                />
+                <button className="btn secondary" onClick={() => void add()}>
+                  Thêm timeline
+                </button>
+              </div>
+            )}
+          </section>
+        </div>
+        <footer>
+          <div>
+            <b>Quy trình tiếp theo</b>
+            <span>Ghi chú là bắt buộc khi thay đổi trạng thái.</span>
+          </div>
+          {nextStatuses[incident.status].map(value => (
+            <button
+              key={value}
+              className={`btn ${value === 'CANCELLED' ? 'secondary' : 'primary'}`}
+              disabled={transitioning}
+              onClick={() => void transition(value)}
+            >
+              {statusLabels[value]}
+              <ChevronRight size={15} />
+            </button>
+          ))}
+        </footer>
+      </aside>
+    </div>
+  )
 }
