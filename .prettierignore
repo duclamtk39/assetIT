@@ -1,0 +1,18 @@
+node_modules
+dist
+build
+coverage
+*.tsbuildinfo
+*.log
+package-lock.json
+apps/agent
+apps/web/dist
+apps/api/dist
+apps/api/prisma/migrations
+database/reference
+
+# Prettier is scoped to source code. Prose and infrastructure manifests are
+# maintained by hand so their diffs stay reviewable.
+*.md
+*.yaml
+*.yml

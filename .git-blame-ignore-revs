@@ -1,0 +1,6 @@
+# Revisions to skip when running `git blame`.
+#
+# Enable locally with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# Add the hash of the repository-wide Prettier reformat commit below, one per line.

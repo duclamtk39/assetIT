@@ -57,6 +57,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Formatting
+        run: npm run format:check
       - name: Validate Prisma schema
         run: npm run db:validate
         env:
@@ -122,6 +126,10 @@ jobs:
           DATABASE_URL: postgresql://assetflow_migrator:migrator_ci_password@localhost:5432/assetflow
       - name: Verify migration state
         run: npx prisma migrate status --schema apps/api/prisma/schema.prisma
+      - name: API integration tests against PostgreSQL
+        run: npm run test:integration
+        env:
+          DATABASE_URL: postgresql://assetflow_migrator:migrator_ci_password@localhost:5432/assetflow
         env:
           DATABASE_URL: postgresql://assetflow_migrator:migrator_ci_password@localhost:5432/assetflow
       - name: Verify runtime database role cannot perform DDL

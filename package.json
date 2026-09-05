@@ -21,12 +21,28 @@
     "test": "npm run test:api && npm run test:web",
     "test:api": "npm run test --workspace @assetflow/api",
     "test:web": "npm run test --workspace @assetflow/web",
+    "test:integration": "npm run test:integration --workspace @assetflow/api",
+    "test:integration:docker": "node scripts/integration-db.mjs",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "db:migrate": "npm run db:migrate --workspace @assetflow/api",
     "db:seed": "npm run db:seed --workspace @assetflow/api",
+    "db:seed:docker": "node scripts/demo-seed-docker.mjs",
     "db:generate": "npm run prisma:generate --workspace @assetflow/api",
     "db:validate": "npm run db:validate --workspace @assetflow/api",
     "generate:templates": "node scripts/generate-intake-template.mjs",
     "preview": "npm run preview --workspace @assetflow/web",
-    "verify": "npm run build && npm run test && npm audit --audit-level=high"
+    "verify": "npm run lint && npm run format:check && npm run build && npm run test && npm audit --audit-level=high"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.9.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.6",
+    "typescript-eslint": "^8.69.0"
   }
 }

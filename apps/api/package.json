@@ -8,6 +8,7 @@
     "dev": "nest start --watch",
     "build": "prisma generate && nest build",
     "test": "tsx --test test/**/*.test.ts",
+    "test:integration": "tsx --test --test-concurrency=1 test-integration/**/*.test.ts",
     "prisma:generate": "prisma generate",
     "start": "node dist/main.js",
     "db:migrate": "prisma migrate deploy",
