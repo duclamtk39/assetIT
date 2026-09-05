@@ -78,6 +78,9 @@ PENDING_RECEIPT ──RECEIVE──► READY
 2. Ghi lý do, tình trạng và người phê duyệt nếu cần.
 3. Sau xác nhận, cập nhật vị trí và ghi lịch sử `Điều chuyển`; không tự thay đổi người đang sử dụng hoặc đóng Assignment.
 4. Muốn giao cho người khác phải thực hiện Thu hồi → READY → Cấp phát mới.
+5. Chỉ điều chuyển được vào kho khi tài sản không có người giữ. Tài sản đang sử dụng hoặc đang mượn
+   phải đi qua phiếu Thu hồi, vì chỉ phiếu thu hồi mới đóng Assignment và ghi nhận tình trạng khi nhận lại.
+   Đổi vị trí (không kèm kho) cho tài sản đang sử dụng vẫn hợp lệ, ví dụ khi nhân viên đổi chỗ ngồi.
 
 ## 7. Luồng kiểm kê bằng barcode/QR
 
@@ -103,6 +106,11 @@ PENDING_RECEIPT ──RECEIVE──► READY
 - Không cho phép barcode, mã tài sản hoặc serial bị trùng.
 - Thu hồi chỉ hợp lệ khi tài sản đang có người sử dụng.
 - Điều chuyển không mặc định thay đổi người sử dụng.
+- Tài sản đang có người giữ không được điều chuyển thẳng vào kho. Ràng buộc được chốt ở ba tầng:
+  luật nghiệp vụ `assertTransferAllowed`, kiểm tra trong service, và CHECK constraint
+  `assets_custody_excludes_warehouse` trong database.
+- Bất biến nền: một tài sản hoặc nằm trong kho, hoặc nằm trong tay một người, không bao giờ cả hai.
+  Trạng thái `IN_USE`/`ON_LOAN` luôn đi kèm người giữ; `READY` luôn thuộc về một kho.
 - `DISPOSED` không được quay lại `READY` hoặc tham gia nghiệp vụ mới.
 - Mọi thao tác phải lưu người thực hiện và thời gian theo hệ thống.
 - Tài sản quá ngày dự kiến trả được đánh dấu quá hạn và gửi cảnh báo.
