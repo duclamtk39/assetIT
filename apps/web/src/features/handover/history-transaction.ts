@@ -12,9 +12,10 @@ export function historyToTransaction(item: any, toNumericId: (value: string) => 
   if (!baseType) return null
 
   const assignment = item.assignment
-  const type = item.action === 'ASSIGNED' && String(item.description).toLocaleLowerCase('vi').includes('mượn')
-    ? 'Cho mượn'
-    : baseType
+  const type =
+    item.action === 'ASSIGNED' && String(item.description).toLocaleLowerCase('vi').includes('mượn')
+      ? 'Cho mượn'
+      : baseType
 
   return {
     id: toNumericId(item.id),

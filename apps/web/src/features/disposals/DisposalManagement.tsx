@@ -1,72 +1,832 @@
-import { useEffect,useMemo,useState } from 'react'
-import { AlertTriangle,ArchiveX,CheckCircle2,ChevronRight,ClipboardCheck,FileCheck2,FilePlus2,Plus,Search,ShieldCheck,Trash2,X } from 'lucide-react'
-import { api,ApiError } from '../../services/api-client'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  AlertTriangle,
+  ArchiveX,
+  CheckCircle2,
+  ChevronRight,
+  ClipboardCheck,
+  FileCheck2,
+  FilePlus2,
+  Plus,
+  Search,
+  ShieldCheck,
+  Trash2,
+  X,
+} from 'lucide-react'
+import { api, ApiError } from '../../services/api-client'
 
-type DisposalStatus='DRAFT'|'SUBMITTED'|'APPROVED'|'REJECTED'|'IN_EXECUTION'|'COMPLETED'|'CANCELLED'
-type DisposalType='SALE'|'DONATION'|'RETURN_TO_VENDOR'|'RECYCLE'|'DESTRUCTION'|'OTHER'
-type EvidenceType='APPROVAL_DOCUMENT'|'DATA_ERASURE_CERTIFICATE'|'DESTRUCTION_CERTIFICATE'|'SALE_CONTRACT'|'HANDOVER_MINUTES'|'PHOTO'|'OTHER'
-interface AssetLookup{id:string;assetTag:string;name:string;serialNumber?:string;status:{code:string;name:string};category:{name:string};department?:{name:string};location?:{name:string};warehouse?:{name:string}}
-interface DisposalItem{id:string;conditionAssessment:string;requiresDataSanitization:boolean;sanitizationStatus:string;sanitizationMethod?:string;asset:AssetLookup;sanitizer?:{fullName:string}}
-interface Evidence{id:string;type:EvidenceType;title:string;documentNo?:string;documentDate?:string;storagePath:string;note?:string;createdAt:string;uploader:{fullName:string}}
-interface Activity{id:string;action:string;note?:string;createdAt:string;actor:{fullName:string}}
-interface DisposalCase{id:string;disposalNo:string;title:string;type:DisposalType;status:DisposalStatus;reason:string;policyReference:string;recipient?:string;estimatedProceeds?:number;actualProceeds?:number;currency:string;requestedBy:string;requester:{fullName:string};approver?:{fullName:string};executor?:{fullName:string};submittedAt?:string;approvedAt?:string;completedAt?:string;approvalNote?:string;rejectionReason?:string;completionNote?:string;items:DisposalItem[];evidence:Evidence[];activities:Activity[];_count?:{items:number;evidence:number};createdAt:string}
-interface Summary{total:number;draft:number;pending:number;approved:number;executing:number;completed:number;cancelled:number;totalProceeds:number}
-
-const statusLabels:Record<DisposalStatus,string>={DRAFT:'Nháp',SUBMITTED:'Chờ phê duyệt',APPROVED:'Đã phê duyệt',REJECTED:'Từ chối',IN_EXECUTION:'Đang thực hiện',COMPLETED:'Hoàn tất',CANCELLED:'Đã hủy'}
-const typeLabels:Record<DisposalType,string>={SALE:'Thanh lý bán',DONATION:'Chuyển giao / Tặng',RETURN_TO_VENDOR:'Trả nhà cung cấp',RECYCLE:'Tái chế',DESTRUCTION:'Hủy bỏ / Tiêu hủy',OTHER:'Khác'}
-const evidenceLabels:Record<EvidenceType,string>={APPROVAL_DOCUMENT:'Quyết định phê duyệt',DATA_ERASURE_CERTIFICATE:'Chứng nhận xóa dữ liệu',DESTRUCTION_CERTIFICATE:'Biên bản tiêu hủy',SALE_CONTRACT:'Hợp đồng thanh lý',HANDOVER_MINUTES:'Biên bản bàn giao',PHOTO:'Ảnh hiện trường',OTHER:'Bằng chứng khác'}
-const money=(value:number,currency='VND')=>new Intl.NumberFormat('vi-VN',{style:'currency',currency,maximumFractionDigits:0}).format(value)
-const date=(value?:string)=>value?new Date(value).toLocaleString('vi-VN'):'—'
-const message=(error:unknown)=>error instanceof ApiError?error.message:'Không thể kết nối dịch vụ Thanh lý & Hủy bỏ.'
-const emptySummary:Summary={total:0,draft:0,pending:0,approved:0,executing:0,completed:0,cancelled:0,totalProceeds:0}
-
-export function DisposalManagement({demoMode,role}:{demoMode:boolean;role:string}){
-  const [summary,setSummary]=useState<Summary>(emptySummary),[records,setRecords]=useState<DisposalCase[]>([]),[eligible,setEligible]=useState<AssetLookup[]>([])
-  const [selected,setSelected]=useState<DisposalCase>(),[creating,setCreating]=useState(false),[query,setQuery]=useState(''),[status,setStatus]=useState(''),[type,setType]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(false)
-  const load=async()=>{if(demoMode)return;setLoading(true);setError('');try{const params=new URLSearchParams({page:'1',limit:'100'});if(query)params.set('search',query);if(status)params.set('status',status);if(type)params.set('type',type);const [stats,list,assets]=await Promise.all([api.get<Summary>('/disposals/summary'),api.get<{items:DisposalCase[]}>(`/disposals?${params}`),api.get<AssetLookup[]>('/disposals/eligible-assets')]);setSummary(stats);setRecords(list.items);setEligible(assets)}catch(reason){setError(message(reason))}finally{setLoading(false)}}
-  useEffect(()=>{const timer=setTimeout(()=>void load(),query?250:0);return()=>clearTimeout(timer)},[demoMode,query,status,type])
-  const open=async(item:DisposalCase)=>{if(demoMode)return setSelected(item);try{setSelected(await api.get<DisposalCase>(`/disposals/${item.id}`))}catch(reason){setError(message(reason))}}
-  const action=async(path:string,body?:unknown)=>{if(!selected)return;try{const result=await api.post<DisposalCase>(`/disposals/${selected.id}/${path}`,body);setSelected(result);await load()}catch(reason){setError(message(reason))}}
-  const askAction=(path:string,promptText:string)=>{const note=window.prompt(promptText);if(note?.trim())void action(path,{note:note.trim()})}
-  const filtered=useMemo(()=>demoMode?records.filter(item=>(!query||`${item.disposalNo} ${item.title} ${item.reason}`.toLowerCase().includes(query.toLowerCase()))&&(!status||item.status===status)&&(!type||item.type===type)):records,[demoMode,records,query,status,type])
-  const metrics=[{label:'Tổng hồ sơ',value:summary.total,key:'',icon:ClipboardCheck},{label:'Chờ phê duyệt',value:summary.pending,key:'SUBMITTED',icon:FileCheck2},{label:'Đã phê duyệt',value:summary.approved,key:'APPROVED',icon:ShieldCheck},{label:'Đang thực hiện',value:summary.executing,key:'IN_EXECUTION',icon:ArchiveX},{label:'Hoàn tất',value:summary.completed,key:'COMPLETED',icon:CheckCircle2},{label:'Giá trị thu hồi',value:money(summary.totalProceeds),key:'',icon:Trash2}]
-  return <main className="disposal-management">
-    <header className="disposal-heading"><div><span>ISO 55001 · ISO/IEC 27001 · KIỂM SOÁT VÒNG ĐỜI</span><h1>Thanh lý & Hủy bỏ</h1><p>Kiểm soát đề nghị, phê duyệt, xóa dữ liệu, bàn giao hoặc tiêu hủy và lưu đầy đủ bằng chứng.</p></div><button className="btn primary" onClick={()=>setCreating(true)}><Plus size={16}/>Tạo hồ sơ</button></header>
-    {error&&<div className="disposal-error"><AlertTriangle size={16}/><span>{error}</span><button onClick={()=>setError('')}><X size={15}/></button></div>}
-    <section className="disposal-metrics">{metrics.map((item,index)=><button key={`${item.label}-${index}`} className={item.key&&status===item.key?'active':''} onClick={()=>item.key?setStatus(current=>current===item.key?'':item.key):undefined}><item.icon/><span><small>{item.label}</small><b>{item.value}</b></span></button>)}</section>
-    <section className="disposal-workflow"><b>Quy trình bắt buộc</b><ol><li>1. Lập hồ sơ</li><li>2. Trình duyệt & giữ tài sản</li><li>3. Phê duyệt độc lập</li><li>4. Xóa dữ liệu / Bàn giao</li><li>5. Bằng chứng</li><li>6. Hoàn tất trạng thái cuối</li></ol></section>
-    <section className="disposal-register"><header><div><h2>Sổ hồ sơ thanh lý và hủy bỏ</h2><small>{filtered.length} hồ sơ trong phạm vi</small></div></header><div className="disposal-filters"><label><Search size={16}/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Tìm mã hồ sơ, tiêu đề hoặc lý do..."/></label><select value={type} onChange={event=>setType(event.target.value)}><option value="">Tất cả hình thức</option>{Object.entries(typeLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select><select value={status} onChange={event=>setStatus(event.target.value)}><option value="">Tất cả trạng thái</option>{Object.entries(statusLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></div>
-      <div className="disposal-table-wrap"><table><thead><tr><th>MÃ HỒ SƠ</th><th>HỒ SƠ / LÝ DO</th><th>HÌNH THỨC</th><th>TÀI SẢN</th><th>NGƯỜI ĐỀ NGHỊ</th><th>NGÀY TẠO</th><th>BẰNG CHỨNG</th><th>TRẠNG THÁI</th><th></th></tr></thead><tbody>{filtered.map(item=><tr key={item.id} onClick={()=>void open(item)}><td><b className="table-code">{item.disposalNo}</b></td><td><b>{item.title}</b><small>{item.reason}</small></td><td>{typeLabels[item.type]}</td><td>{item._count?.items??item.items?.length??0}</td><td>{item.requester.fullName}</td><td>{date(item.createdAt)}</td><td>{item._count?.evidence??item.evidence?.length??0}</td><td><span className={`disposal-status ${item.status.toLowerCase()}`}>{statusLabels[item.status]}</span></td><td><ChevronRight size={16}/></td></tr>)}</tbody></table></div>{loading&&<div className="disposal-empty">Đang tải hồ sơ…</div>}{!loading&&!filtered.length&&<div className="disposal-empty">Chưa có hồ sơ phù hợp với bộ lọc.</div>}</section>
-    <section className="disposal-standard"><ShieldCheck/><div><b>Nguyên tắc kiểm soát không thể bỏ qua</b><p>Không thanh lý tài sản đang sử dụng, cho mượn hoặc bảo trì. Người đề nghị không tự phê duyệt. Tài sản có dữ liệu phải có chứng nhận xóa dữ liệu; hủy vật lý phải có biên bản tiêu hủy. Hoàn tất là trạng thái cuối và không được cấp phát lại.</p></div></section>
-    {creating&&<CreateDisposalModal
-      assets={eligible}
-      onClose={()=>setCreating(false)}
-      onSave={async body=>{try{const created=await api.post<DisposalCase>('/disposals',body);setCreating(false);setSelected(created);await load()}catch(reason){setError(message(reason))}}}
-    />}
-    {selected&&<DisposalDetail
-      record={selected}
-      role={role}
-      onClose={()=>setSelected(undefined)}
-      onAction={action}
-      onPrompt={askAction}
-      reload={async()=>{if(!selected)return;setSelected(await api.get<DisposalCase>(`/disposals/${selected.id}`));await load()}}
-      setError={setError}
-    />}
-  </main>
+type DisposalStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'IN_EXECUTION' | 'COMPLETED' | 'CANCELLED'
+type DisposalType = 'SALE' | 'DONATION' | 'RETURN_TO_VENDOR' | 'RECYCLE' | 'DESTRUCTION' | 'OTHER'
+type EvidenceType =
+  | 'APPROVAL_DOCUMENT'
+  | 'DATA_ERASURE_CERTIFICATE'
+  | 'DESTRUCTION_CERTIFICATE'
+  | 'SALE_CONTRACT'
+  | 'HANDOVER_MINUTES'
+  | 'PHOTO'
+  | 'OTHER'
+interface AssetLookup {
+  id: string
+  assetTag: string
+  name: string
+  serialNumber?: string
+  status: { code: string; name: string }
+  category: { name: string }
+  department?: { name: string }
+  location?: { name: string }
+  warehouse?: { name: string }
+}
+interface DisposalItem {
+  id: string
+  conditionAssessment: string
+  requiresDataSanitization: boolean
+  sanitizationStatus: string
+  sanitizationMethod?: string
+  asset: AssetLookup
+  sanitizer?: { fullName: string }
+}
+interface Evidence {
+  id: string
+  type: EvidenceType
+  title: string
+  documentNo?: string
+  documentDate?: string
+  storagePath: string
+  note?: string
+  createdAt: string
+  uploader: { fullName: string }
+}
+interface Activity {
+  id: string
+  action: string
+  note?: string
+  createdAt: string
+  actor: { fullName: string }
+}
+interface DisposalCase {
+  id: string
+  disposalNo: string
+  title: string
+  type: DisposalType
+  status: DisposalStatus
+  reason: string
+  policyReference: string
+  recipient?: string
+  estimatedProceeds?: number
+  actualProceeds?: number
+  currency: string
+  requestedBy: string
+  requester: { fullName: string }
+  approver?: { fullName: string }
+  executor?: { fullName: string }
+  submittedAt?: string
+  approvedAt?: string
+  completedAt?: string
+  approvalNote?: string
+  rejectionReason?: string
+  completionNote?: string
+  items: DisposalItem[]
+  evidence: Evidence[]
+  activities: Activity[]
+  _count?: { items: number; evidence: number }
+  createdAt: string
+}
+interface Summary {
+  total: number
+  draft: number
+  pending: number
+  approved: number
+  executing: number
+  completed: number
+  cancelled: number
+  totalProceeds: number
 }
 
-function CreateDisposalModal({assets,onClose,onSave}:{assets:AssetLookup[];onClose:()=>void;onSave:(body:unknown)=>Promise<void>}){
-  const [form,setForm]=useState({title:'',type:'SALE' as DisposalType,reason:'',policyReference:'Quy chế quản lý tài sản nội bộ',recipient:'',estimatedProceeds:'',conditionAssessment:'',requiresDataSanitization:false}),[selected,setSelected]=useState<string[]>([]),[search,setSearch]=useState(''),[saving,setSaving]=useState(false)
-  const shown=assets.filter(asset=>`${asset.assetTag} ${asset.name} ${asset.serialNumber||''}`.toLowerCase().includes(search.toLowerCase()))
-  const save=async()=>{if(!form.title.trim()||!form.reason.trim()||!form.policyReference.trim()||!form.conditionAssessment.trim()||!selected.length)return alert('Điền đầy đủ trường bắt buộc và chọn ít nhất một tài sản.');setSaving(true);try{await onSave({title:form.title,type:form.type,reason:form.reason,policyReference:form.policyReference,recipient:form.recipient||undefined,estimatedProceeds:form.estimatedProceeds?Number(form.estimatedProceeds):undefined,currency:'VND',items:selected.map(assetId=>({assetId,conditionAssessment:form.conditionAssessment,requiresDataSanitization:form.requiresDataSanitization}))})}finally{setSaving(false)}}
-  return <div className="modal-overlay"><section className="disposal-modal"><header><div><h2>Tạo hồ sơ thanh lý / hủy bỏ</h2><p>Tài sản phải đã thu hồi, sẵn sàng hoặc hỏng và không có nghiệp vụ mở.</p></div><button onClick={onClose}><X/></button></header><div className="disposal-form-grid"><label>Tiêu đề *<input value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></label><label>Hình thức *<select value={form.type} onChange={e=>setForm({...form,type:e.target.value as DisposalType})}>{Object.entries(typeLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label><label className="wide">Lý do và căn cứ đánh giá *<textarea value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})}/></label><label>Quy định / quyết định áp dụng *<input value={form.policyReference} onChange={e=>setForm({...form,policyReference:e.target.value})}/></label><label>Bên nhận / đơn vị xử lý<input value={form.recipient} onChange={e=>setForm({...form,recipient:e.target.value})}/></label><label>Giá trị dự kiến (VND)<input type="number" min="0" value={form.estimatedProceeds} onChange={e=>setForm({...form,estimatedProceeds:e.target.value})}/></label><label>Đánh giá tình trạng chung *<input value={form.conditionAssessment} onChange={e=>setForm({...form,conditionAssessment:e.target.value})}/></label><label className="check"><input type="checkbox" checked={form.requiresDataSanitization} onChange={e=>setForm({...form,requiresDataSanitization:e.target.checked})}/>Các tài sản đã chọn có dữ liệu cần xóa an toàn</label></div><div className="disposal-assets"><div className="asset-picker-heading"><b>Chọn tài sản đủ điều kiện ({selected.length})</b><label><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Mã, tên hoặc serial"/></label></div>{shown.map(asset=><label key={asset.id}><input type="checkbox" checked={selected.includes(asset.id)} onChange={e=>setSelected(current=>e.target.checked?[...current,asset.id]:current.filter(id=>id!==asset.id))}/><span><b>{asset.assetTag} · {asset.name}</b><small>{asset.category.name} · {asset.status.name} · {asset.warehouse?.name||asset.location?.name||'Chưa có vị trí'}</small></span></label>)}{!shown.length&&<p>Không có tài sản đủ điều kiện. Hãy thu hồi hoặc đóng bảo trì trước.</p>}</div><footer><button className="btn secondary" onClick={onClose}>Hủy</button><button className="btn primary" disabled={saving} onClick={()=>void save()}><Plus size={16}/>{saving?'Đang lưu…':'Lưu hồ sơ nháp'}</button></footer></section></div>
+const statusLabels: Record<DisposalStatus, string> = {
+  DRAFT: 'Nháp',
+  SUBMITTED: 'Chờ phê duyệt',
+  APPROVED: 'Đã phê duyệt',
+  REJECTED: 'Từ chối',
+  IN_EXECUTION: 'Đang thực hiện',
+  COMPLETED: 'Hoàn tất',
+  CANCELLED: 'Đã hủy',
+}
+const typeLabels: Record<DisposalType, string> = {
+  SALE: 'Thanh lý bán',
+  DONATION: 'Chuyển giao / Tặng',
+  RETURN_TO_VENDOR: 'Trả nhà cung cấp',
+  RECYCLE: 'Tái chế',
+  DESTRUCTION: 'Hủy bỏ / Tiêu hủy',
+  OTHER: 'Khác',
+}
+const evidenceLabels: Record<EvidenceType, string> = {
+  APPROVAL_DOCUMENT: 'Quyết định phê duyệt',
+  DATA_ERASURE_CERTIFICATE: 'Chứng nhận xóa dữ liệu',
+  DESTRUCTION_CERTIFICATE: 'Biên bản tiêu hủy',
+  SALE_CONTRACT: 'Hợp đồng thanh lý',
+  HANDOVER_MINUTES: 'Biên bản bàn giao',
+  PHOTO: 'Ảnh hiện trường',
+  OTHER: 'Bằng chứng khác',
+}
+const money = (value: number, currency = 'VND') =>
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(value)
+const date = (value?: string) => (value ? new Date(value).toLocaleString('vi-VN') : '—')
+const message = (error: unknown) =>
+  error instanceof ApiError ? error.message : 'Không thể kết nối dịch vụ Thanh lý & Hủy bỏ.'
+const emptySummary: Summary = {
+  total: 0,
+  draft: 0,
+  pending: 0,
+  approved: 0,
+  executing: 0,
+  completed: 0,
+  cancelled: 0,
+  totalProceeds: 0,
 }
 
-function DisposalDetail({record,role,onClose,onAction,onPrompt,reload,setError}:{record:DisposalCase;role:string;onClose:()=>void;onAction:(path:string,body?:unknown)=>Promise<void>;onPrompt:(path:string,text:string)=>void;reload:()=>Promise<void>;setError:(value:string)=>void}){
-  const [showEvidence,setShowEvidence]=useState(false)
-  const evidence=async(body:unknown)=>{try{await api.post(`/disposals/${record.id}/evidence`,body);setShowEvidence(false);await reload()}catch(reason){setError(message(reason))}}
-  const sanitize=async(item:DisposalItem)=>{const method=window.prompt('Phương pháp/tiêu chuẩn xóa dữ liệu (ví dụ NIST SP 800-88 Clear/Purge):',item.sanitizationMethod||'NIST SP 800-88 Clear');if(!method?.trim())return;try{await api.patch(`/disposals/${record.id}/items/${item.id}/sanitization`,{status:'VERIFIED',method:method.trim()});await reload()}catch(reason){setError(message(reason))}}
-  return <div className="drawer-overlay"><aside className="disposal-drawer"><header><div><span className={`disposal-status ${record.status.toLowerCase()}`}>{statusLabels[record.status]}</span><b>{record.disposalNo}</b><h2>{record.title}</h2><p>{typeLabels[record.type]} · Đề nghị bởi {record.requester.fullName}</p></div><button onClick={onClose}><X/></button></header><div className="disposal-detail-body"><section><h3>Thông tin kiểm soát</h3><dl><div><dt>Lý do</dt><dd>{record.reason}</dd></div><div><dt>Căn cứ / Quy định</dt><dd>{record.policyReference}</dd></div><div><dt>Bên nhận</dt><dd>{record.recipient||'—'}</dd></div><div><dt>Người phê duyệt</dt><dd>{record.approver?.fullName||'Chưa phê duyệt'}</dd></div><div><dt>Giá trị dự kiến</dt><dd>{money(Number(record.estimatedProceeds||0),record.currency)}</dd></div><div><dt>Giá trị thực tế</dt><dd>{record.actualProceeds==null?'—':money(Number(record.actualProceeds),record.currency)}</dd></div></dl></section><section><h3>Tài sản trong hồ sơ</h3><div className="disposal-item-list">{record.items.map(item=><article key={item.id}><div><b>{item.asset.assetTag} · {item.asset.name}</b><small>{item.asset.serialNumber||'Không có serial'} · {item.conditionAssessment}</small></div><span className={`sanitization ${item.sanitizationStatus.toLowerCase()}`}>{item.requiresDataSanitization?`Xóa dữ liệu: ${item.sanitizationStatus}`:'Không chứa dữ liệu'}</span>{item.requiresDataSanitization&&['APPROVED','IN_EXECUTION'].includes(record.status)&&item.sanitizationStatus!=='VERIFIED'&&<button className="btn secondary" onClick={()=>void sanitize(item)}>Xác minh xóa dữ liệu</button>}</article>)}</div></section><section><header className="section-title"><h3>Bằng chứng và hồ sơ đính kèm</h3>{['APPROVED','IN_EXECUTION'].includes(record.status)&&<button className="btn secondary" onClick={()=>setShowEvidence(true)}><FilePlus2 size={15}/>Thêm bằng chứng</button>}</header>{showEvidence&&<EvidenceForm onCancel={()=>setShowEvidence(false)} onSave={evidence}/>}<div className="evidence-list">{record.evidence.map(item=><article key={item.id}><FileCheck2/><div><b>{evidenceLabels[item.type]} · {item.title}</b><small>{item.documentNo||'Không có số'} · {item.storagePath}</small><em>{item.uploader.fullName} · {date(item.createdAt)}</em></div></article>)}{!record.evidence.length&&<p>Chưa có bằng chứng. Không thể hoàn tất hồ sơ.</p>}</div></section><section><h3>Nhật ký quy trình</h3><ol className="disposal-timeline">{record.activities.map(item=><li key={item.id}><b>{item.action}</b><span>{item.note||'—'}</span><small>{item.actor.fullName} · {date(item.createdAt)}</small></li>)}</ol></section></div><footer>{record.status==='DRAFT'&&<button className="btn primary" onClick={()=>void onAction('submit')}>Trình phê duyệt</button>}{record.status==='SUBMITTED'&&role==='Admin'&&<><button className="btn danger" onClick={()=>onPrompt('reject','Lý do từ chối hồ sơ:')}>Từ chối</button><button className="btn primary" onClick={()=>onPrompt('approve','Ý kiến phê duyệt:')}>Phê duyệt</button></>}{record.status==='APPROVED'&&<button className="btn primary" onClick={()=>onPrompt('start','Kế hoạch/bàn giao thực hiện:')}>Bắt đầu thực hiện</button>}{record.status==='IN_EXECUTION'&&<button className="btn primary" onClick={()=>{const note=window.prompt('Kết quả thanh lý/hủy bỏ và xác nhận kiểm tra bằng chứng:');if(!note?.trim())return;const actual=record.type==='SALE'?window.prompt('Giá trị thu hồi thực tế (VND):','0'):undefined;void onAction('complete',{note:note.trim(),actualProceeds:actual?Number(actual):undefined})}}>Hoàn tất hồ sơ</button>}{!['COMPLETED','CANCELLED','REJECTED'].includes(record.status)&&<button className="btn secondary" onClick={()=>onPrompt('cancel','Lý do hủy hồ sơ:')}>Hủy hồ sơ</button>}</footer></aside></div>
+export function DisposalManagement({ demoMode, role }: { demoMode: boolean; role: string }) {
+  const [summary, setSummary] = useState<Summary>(emptySummary),
+    [records, setRecords] = useState<DisposalCase[]>([]),
+    [eligible, setEligible] = useState<AssetLookup[]>([])
+  const [selected, setSelected] = useState<DisposalCase>(),
+    [creating, setCreating] = useState(false),
+    [query, setQuery] = useState(''),
+    [status, setStatus] = useState(''),
+    [type, setType] = useState(''),
+    [error, setError] = useState(''),
+    [loading, setLoading] = useState(false)
+  const load = async () => {
+    if (demoMode) return
+    setLoading(true)
+    setError('')
+    try {
+      const params = new URLSearchParams({ page: '1', limit: '100' })
+      if (query) params.set('search', query)
+      if (status) params.set('status', status)
+      if (type) params.set('type', type)
+      const [stats, list, assets] = await Promise.all([
+        api.get<Summary>('/disposals/summary'),
+        api.get<{ items: DisposalCase[] }>(`/disposals?${params}`),
+        api.get<AssetLookup[]>('/disposals/eligible-assets'),
+      ])
+      setSummary(stats)
+      setRecords(list.items)
+      setEligible(assets)
+    } catch (reason) {
+      setError(message(reason))
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => {
+    const timer = setTimeout(() => void load(), query ? 250 : 0)
+    return () => clearTimeout(timer)
+  }, [demoMode, query, status, type])
+  const open = async (item: DisposalCase) => {
+    if (demoMode) return setSelected(item)
+    try {
+      setSelected(await api.get<DisposalCase>(`/disposals/${item.id}`))
+    } catch (reason) {
+      setError(message(reason))
+    }
+  }
+  const action = async (path: string, body?: unknown) => {
+    if (!selected) return
+    try {
+      const result = await api.post<DisposalCase>(`/disposals/${selected.id}/${path}`, body)
+      setSelected(result)
+      await load()
+    } catch (reason) {
+      setError(message(reason))
+    }
+  }
+  const askAction = (path: string, promptText: string) => {
+    const note = window.prompt(promptText)
+    if (note?.trim()) void action(path, { note: note.trim() })
+  }
+  const filtered = useMemo(
+    () =>
+      demoMode
+        ? records.filter(
+            item =>
+              (!query ||
+                `${item.disposalNo} ${item.title} ${item.reason}`.toLowerCase().includes(query.toLowerCase())) &&
+              (!status || item.status === status) &&
+              (!type || item.type === type),
+          )
+        : records,
+    [demoMode, records, query, status, type],
+  )
+  const metrics = [
+    { label: 'Tổng hồ sơ', value: summary.total, key: '', icon: ClipboardCheck },
+    { label: 'Chờ phê duyệt', value: summary.pending, key: 'SUBMITTED', icon: FileCheck2 },
+    { label: 'Đã phê duyệt', value: summary.approved, key: 'APPROVED', icon: ShieldCheck },
+    { label: 'Đang thực hiện', value: summary.executing, key: 'IN_EXECUTION', icon: ArchiveX },
+    { label: 'Hoàn tất', value: summary.completed, key: 'COMPLETED', icon: CheckCircle2 },
+    { label: 'Giá trị thu hồi', value: money(summary.totalProceeds), key: '', icon: Trash2 },
+  ]
+  return (
+    <main className="disposal-management">
+      <header className="disposal-heading">
+        <div>
+          <span>ISO 55001 · ISO/IEC 27001 · KIỂM SOÁT VÒNG ĐỜI</span>
+          <h1>Thanh lý & Hủy bỏ</h1>
+          <p>Kiểm soát đề nghị, phê duyệt, xóa dữ liệu, bàn giao hoặc tiêu hủy và lưu đầy đủ bằng chứng.</p>
+        </div>
+        <button className="btn primary" onClick={() => setCreating(true)}>
+          <Plus size={16} />
+          Tạo hồ sơ
+        </button>
+      </header>
+      {error && (
+        <div className="disposal-error">
+          <AlertTriangle size={16} />
+          <span>{error}</span>
+          <button onClick={() => setError('')}>
+            <X size={15} />
+          </button>
+        </div>
+      )}
+      <section className="disposal-metrics">
+        {metrics.map((item, index) => (
+          <button
+            key={`${item.label}-${index}`}
+            className={item.key && status === item.key ? 'active' : ''}
+            onClick={() => (item.key ? setStatus(current => (current === item.key ? '' : item.key)) : undefined)}
+          >
+            <item.icon />
+            <span>
+              <small>{item.label}</small>
+              <b>{item.value}</b>
+            </span>
+          </button>
+        ))}
+      </section>
+      <section className="disposal-workflow">
+        <b>Quy trình bắt buộc</b>
+        <ol>
+          <li>1. Lập hồ sơ</li>
+          <li>2. Trình duyệt & giữ tài sản</li>
+          <li>3. Phê duyệt độc lập</li>
+          <li>4. Xóa dữ liệu / Bàn giao</li>
+          <li>5. Bằng chứng</li>
+          <li>6. Hoàn tất trạng thái cuối</li>
+        </ol>
+      </section>
+      <section className="disposal-register">
+        <header>
+          <div>
+            <h2>Sổ hồ sơ thanh lý và hủy bỏ</h2>
+            <small>{filtered.length} hồ sơ trong phạm vi</small>
+          </div>
+        </header>
+        <div className="disposal-filters">
+          <label>
+            <Search size={16} />
+            <input
+              value={query}
+              onChange={event => setQuery(event.target.value)}
+              placeholder="Tìm mã hồ sơ, tiêu đề hoặc lý do..."
+            />
+          </label>
+          <select value={type} onChange={event => setType(event.target.value)}>
+            <option value="">Tất cả hình thức</option>
+            {Object.entries(typeLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <select value={status} onChange={event => setStatus(event.target.value)}>
+            <option value="">Tất cả trạng thái</option>
+            {Object.entries(statusLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="disposal-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>MÃ HỒ SƠ</th>
+                <th>HỒ SƠ / LÝ DO</th>
+                <th>HÌNH THỨC</th>
+                <th>TÀI SẢN</th>
+                <th>NGƯỜI ĐỀ NGHỊ</th>
+                <th>NGÀY TẠO</th>
+                <th>BẰNG CHỨNG</th>
+                <th>TRẠNG THÁI</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(item => (
+                <tr key={item.id} onClick={() => void open(item)}>
+                  <td>
+                    <b className="table-code">{item.disposalNo}</b>
+                  </td>
+                  <td>
+                    <b>{item.title}</b>
+                    <small>{item.reason}</small>
+                  </td>
+                  <td>{typeLabels[item.type]}</td>
+                  <td>{item._count?.items ?? item.items?.length ?? 0}</td>
+                  <td>{item.requester.fullName}</td>
+                  <td>{date(item.createdAt)}</td>
+                  <td>{item._count?.evidence ?? item.evidence?.length ?? 0}</td>
+                  <td>
+                    <span className={`disposal-status ${item.status.toLowerCase()}`}>{statusLabels[item.status]}</span>
+                  </td>
+                  <td>
+                    <ChevronRight size={16} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {loading && <div className="disposal-empty">Đang tải hồ sơ…</div>}
+        {!loading && !filtered.length && <div className="disposal-empty">Chưa có hồ sơ phù hợp với bộ lọc.</div>}
+      </section>
+      <section className="disposal-standard">
+        <ShieldCheck />
+        <div>
+          <b>Nguyên tắc kiểm soát không thể bỏ qua</b>
+          <p>
+            Không thanh lý tài sản đang sử dụng, cho mượn hoặc bảo trì. Người đề nghị không tự phê duyệt. Tài sản có dữ
+            liệu phải có chứng nhận xóa dữ liệu; hủy vật lý phải có biên bản tiêu hủy. Hoàn tất là trạng thái cuối và
+            không được cấp phát lại.
+          </p>
+        </div>
+      </section>
+      {creating && (
+        <CreateDisposalModal
+          assets={eligible}
+          onClose={() => setCreating(false)}
+          onSave={async body => {
+            try {
+              const created = await api.post<DisposalCase>('/disposals', body)
+              setCreating(false)
+              setSelected(created)
+              await load()
+            } catch (reason) {
+              setError(message(reason))
+            }
+          }}
+        />
+      )}
+      {selected && (
+        <DisposalDetail
+          record={selected}
+          role={role}
+          onClose={() => setSelected(undefined)}
+          onAction={action}
+          onPrompt={askAction}
+          reload={async () => {
+            if (!selected) return
+            setSelected(await api.get<DisposalCase>(`/disposals/${selected.id}`))
+            await load()
+          }}
+          setError={setError}
+        />
+      )}
+    </main>
+  )
 }
 
-function EvidenceForm({onCancel,onSave}:{onCancel:()=>void;onSave:(body:unknown)=>Promise<void>}){const [form,setForm]=useState({type:'APPROVAL_DOCUMENT' as EvidenceType,title:'',documentNo:'',documentDate:'',storagePath:'',note:''});return <div className="evidence-form"><select value={form.type} onChange={e=>setForm({...form,type:e.target.value as EvidenceType})}>{Object.entries(evidenceLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select><input placeholder="Tên bằng chứng *" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/><input placeholder="Số văn bản" value={form.documentNo} onChange={e=>setForm({...form,documentNo:e.target.value})}/><input type="date" value={form.documentDate} onChange={e=>setForm({...form,documentDate:e.target.value})}/><input className="wide" placeholder="Đường dẫn lưu trữ / URL hồ sơ *" value={form.storagePath} onChange={e=>setForm({...form,storagePath:e.target.value})}/><textarea className="wide" placeholder="Ghi chú kiểm chứng" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/><div className="wide actions"><button className="btn secondary" onClick={onCancel}>Hủy</button><button className="btn primary" onClick={()=>form.title.trim()&&form.storagePath.trim()?void onSave({...form,documentNo:form.documentNo||undefined,documentDate:form.documentDate||undefined,note:form.note||undefined}):alert('Tên và đường dẫn bằng chứng là bắt buộc.')}>Lưu bằng chứng</button></div></div>}
+function CreateDisposalModal({
+  assets,
+  onClose,
+  onSave,
+}: {
+  assets: AssetLookup[]
+  onClose: () => void
+  onSave: (body: unknown) => Promise<void>
+}) {
+  const [form, setForm] = useState({
+      title: '',
+      type: 'SALE' as DisposalType,
+      reason: '',
+      policyReference: 'Quy chế quản lý tài sản nội bộ',
+      recipient: '',
+      estimatedProceeds: '',
+      conditionAssessment: '',
+      requiresDataSanitization: false,
+    }),
+    [selected, setSelected] = useState<string[]>([]),
+    [search, setSearch] = useState(''),
+    [saving, setSaving] = useState(false)
+  const shown = assets.filter(asset =>
+    `${asset.assetTag} ${asset.name} ${asset.serialNumber || ''}`.toLowerCase().includes(search.toLowerCase()),
+  )
+  const save = async () => {
+    if (
+      !form.title.trim() ||
+      !form.reason.trim() ||
+      !form.policyReference.trim() ||
+      !form.conditionAssessment.trim() ||
+      !selected.length
+    )
+      return alert('Điền đầy đủ trường bắt buộc và chọn ít nhất một tài sản.')
+    setSaving(true)
+    try {
+      await onSave({
+        title: form.title,
+        type: form.type,
+        reason: form.reason,
+        policyReference: form.policyReference,
+        recipient: form.recipient || undefined,
+        estimatedProceeds: form.estimatedProceeds ? Number(form.estimatedProceeds) : undefined,
+        currency: 'VND',
+        items: selected.map(assetId => ({
+          assetId,
+          conditionAssessment: form.conditionAssessment,
+          requiresDataSanitization: form.requiresDataSanitization,
+        })),
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <div className="modal-overlay">
+      <section className="disposal-modal">
+        <header>
+          <div>
+            <h2>Tạo hồ sơ thanh lý / hủy bỏ</h2>
+            <p>Tài sản phải đã thu hồi, sẵn sàng hoặc hỏng và không có nghiệp vụ mở.</p>
+          </div>
+          <button onClick={onClose}>
+            <X />
+          </button>
+        </header>
+        <div className="disposal-form-grid">
+          <label>
+            Tiêu đề *<input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+          </label>
+          <label>
+            Hình thức *
+            <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as DisposalType })}>
+              {Object.entries(typeLabels).map(([value, label]) => (
+                <option value={value} key={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="wide">
+            Lý do và căn cứ đánh giá *
+            <textarea value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} />
+          </label>
+          <label>
+            Quy định / quyết định áp dụng *
+            <input value={form.policyReference} onChange={e => setForm({ ...form, policyReference: e.target.value })} />
+          </label>
+          <label>
+            Bên nhận / đơn vị xử lý
+            <input value={form.recipient} onChange={e => setForm({ ...form, recipient: e.target.value })} />
+          </label>
+          <label>
+            Giá trị dự kiến (VND)
+            <input
+              type="number"
+              min="0"
+              value={form.estimatedProceeds}
+              onChange={e => setForm({ ...form, estimatedProceeds: e.target.value })}
+            />
+          </label>
+          <label>
+            Đánh giá tình trạng chung *
+            <input
+              value={form.conditionAssessment}
+              onChange={e => setForm({ ...form, conditionAssessment: e.target.value })}
+            />
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={form.requiresDataSanitization}
+              onChange={e => setForm({ ...form, requiresDataSanitization: e.target.checked })}
+            />
+            Các tài sản đã chọn có dữ liệu cần xóa an toàn
+          </label>
+        </div>
+        <div className="disposal-assets">
+          <div className="asset-picker-heading">
+            <b>Chọn tài sản đủ điều kiện ({selected.length})</b>
+            <label>
+              <Search size={15} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Mã, tên hoặc serial" />
+            </label>
+          </div>
+          {shown.map(asset => (
+            <label key={asset.id}>
+              <input
+                type="checkbox"
+                checked={selected.includes(asset.id)}
+                onChange={e =>
+                  setSelected(current =>
+                    e.target.checked ? [...current, asset.id] : current.filter(id => id !== asset.id),
+                  )
+                }
+              />
+              <span>
+                <b>
+                  {asset.assetTag} · {asset.name}
+                </b>
+                <small>
+                  {asset.category.name} · {asset.status.name} ·{' '}
+                  {asset.warehouse?.name || asset.location?.name || 'Chưa có vị trí'}
+                </small>
+              </span>
+            </label>
+          ))}
+          {!shown.length && <p>Không có tài sản đủ điều kiện. Hãy thu hồi hoặc đóng bảo trì trước.</p>}
+        </div>
+        <footer>
+          <button className="btn secondary" onClick={onClose}>
+            Hủy
+          </button>
+          <button className="btn primary" disabled={saving} onClick={() => void save()}>
+            <Plus size={16} />
+            {saving ? 'Đang lưu…' : 'Lưu hồ sơ nháp'}
+          </button>
+        </footer>
+      </section>
+    </div>
+  )
+}
+
+function DisposalDetail({
+  record,
+  role,
+  onClose,
+  onAction,
+  onPrompt,
+  reload,
+  setError,
+}: {
+  record: DisposalCase
+  role: string
+  onClose: () => void
+  onAction: (path: string, body?: unknown) => Promise<void>
+  onPrompt: (path: string, text: string) => void
+  reload: () => Promise<void>
+  setError: (value: string) => void
+}) {
+  const [showEvidence, setShowEvidence] = useState(false)
+  const evidence = async (body: unknown) => {
+    try {
+      await api.post(`/disposals/${record.id}/evidence`, body)
+      setShowEvidence(false)
+      await reload()
+    } catch (reason) {
+      setError(message(reason))
+    }
+  }
+  const sanitize = async (item: DisposalItem) => {
+    const method = window.prompt(
+      'Phương pháp/tiêu chuẩn xóa dữ liệu (ví dụ NIST SP 800-88 Clear/Purge):',
+      item.sanitizationMethod || 'NIST SP 800-88 Clear',
+    )
+    if (!method?.trim()) return
+    try {
+      await api.patch(`/disposals/${record.id}/items/${item.id}/sanitization`, {
+        status: 'VERIFIED',
+        method: method.trim(),
+      })
+      await reload()
+    } catch (reason) {
+      setError(message(reason))
+    }
+  }
+  return (
+    <div className="drawer-overlay">
+      <aside className="disposal-drawer">
+        <header>
+          <div>
+            <span className={`disposal-status ${record.status.toLowerCase()}`}>{statusLabels[record.status]}</span>
+            <b>{record.disposalNo}</b>
+            <h2>{record.title}</h2>
+            <p>
+              {typeLabels[record.type]} · Đề nghị bởi {record.requester.fullName}
+            </p>
+          </div>
+          <button onClick={onClose}>
+            <X />
+          </button>
+        </header>
+        <div className="disposal-detail-body">
+          <section>
+            <h3>Thông tin kiểm soát</h3>
+            <dl>
+              <div>
+                <dt>Lý do</dt>
+                <dd>{record.reason}</dd>
+              </div>
+              <div>
+                <dt>Căn cứ / Quy định</dt>
+                <dd>{record.policyReference}</dd>
+              </div>
+              <div>
+                <dt>Bên nhận</dt>
+                <dd>{record.recipient || '—'}</dd>
+              </div>
+              <div>
+                <dt>Người phê duyệt</dt>
+                <dd>{record.approver?.fullName || 'Chưa phê duyệt'}</dd>
+              </div>
+              <div>
+                <dt>Giá trị dự kiến</dt>
+                <dd>{money(Number(record.estimatedProceeds || 0), record.currency)}</dd>
+              </div>
+              <div>
+                <dt>Giá trị thực tế</dt>
+                <dd>{record.actualProceeds == null ? '—' : money(Number(record.actualProceeds), record.currency)}</dd>
+              </div>
+            </dl>
+          </section>
+          <section>
+            <h3>Tài sản trong hồ sơ</h3>
+            <div className="disposal-item-list">
+              {record.items.map(item => (
+                <article key={item.id}>
+                  <div>
+                    <b>
+                      {item.asset.assetTag} · {item.asset.name}
+                    </b>
+                    <small>
+                      {item.asset.serialNumber || 'Không có serial'} · {item.conditionAssessment}
+                    </small>
+                  </div>
+                  <span className={`sanitization ${item.sanitizationStatus.toLowerCase()}`}>
+                    {item.requiresDataSanitization ? `Xóa dữ liệu: ${item.sanitizationStatus}` : 'Không chứa dữ liệu'}
+                  </span>
+                  {item.requiresDataSanitization &&
+                    ['APPROVED', 'IN_EXECUTION'].includes(record.status) &&
+                    item.sanitizationStatus !== 'VERIFIED' && (
+                      <button className="btn secondary" onClick={() => void sanitize(item)}>
+                        Xác minh xóa dữ liệu
+                      </button>
+                    )}
+                </article>
+              ))}
+            </div>
+          </section>
+          <section>
+            <header className="section-title">
+              <h3>Bằng chứng và hồ sơ đính kèm</h3>
+              {['APPROVED', 'IN_EXECUTION'].includes(record.status) && (
+                <button className="btn secondary" onClick={() => setShowEvidence(true)}>
+                  <FilePlus2 size={15} />
+                  Thêm bằng chứng
+                </button>
+              )}
+            </header>
+            {showEvidence && <EvidenceForm onCancel={() => setShowEvidence(false)} onSave={evidence} />}
+            <div className="evidence-list">
+              {record.evidence.map(item => (
+                <article key={item.id}>
+                  <FileCheck2 />
+                  <div>
+                    <b>
+                      {evidenceLabels[item.type]} · {item.title}
+                    </b>
+                    <small>
+                      {item.documentNo || 'Không có số'} · {item.storagePath}
+                    </small>
+                    <em>
+                      {item.uploader.fullName} · {date(item.createdAt)}
+                    </em>
+                  </div>
+                </article>
+              ))}
+              {!record.evidence.length && <p>Chưa có bằng chứng. Không thể hoàn tất hồ sơ.</p>}
+            </div>
+          </section>
+          <section>
+            <h3>Nhật ký quy trình</h3>
+            <ol className="disposal-timeline">
+              {record.activities.map(item => (
+                <li key={item.id}>
+                  <b>{item.action}</b>
+                  <span>{item.note || '—'}</span>
+                  <small>
+                    {item.actor.fullName} · {date(item.createdAt)}
+                  </small>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </div>
+        <footer>
+          {record.status === 'DRAFT' && (
+            <button className="btn primary" onClick={() => void onAction('submit')}>
+              Trình phê duyệt
+            </button>
+          )}
+          {record.status === 'SUBMITTED' && role === 'Admin' && (
+            <>
+              <button className="btn danger" onClick={() => onPrompt('reject', 'Lý do từ chối hồ sơ:')}>
+                Từ chối
+              </button>
+              <button className="btn primary" onClick={() => onPrompt('approve', 'Ý kiến phê duyệt:')}>
+                Phê duyệt
+              </button>
+            </>
+          )}
+          {record.status === 'APPROVED' && (
+            <button className="btn primary" onClick={() => onPrompt('start', 'Kế hoạch/bàn giao thực hiện:')}>
+              Bắt đầu thực hiện
+            </button>
+          )}
+          {record.status === 'IN_EXECUTION' && (
+            <button
+              className="btn primary"
+              onClick={() => {
+                const note = window.prompt('Kết quả thanh lý/hủy bỏ và xác nhận kiểm tra bằng chứng:')
+                if (!note?.trim()) return
+                const actual = record.type === 'SALE' ? window.prompt('Giá trị thu hồi thực tế (VND):', '0') : undefined
+                void onAction('complete', { note: note.trim(), actualProceeds: actual ? Number(actual) : undefined })
+              }}
+            >
+              Hoàn tất hồ sơ
+            </button>
+          )}
+          {!['COMPLETED', 'CANCELLED', 'REJECTED'].includes(record.status) && (
+            <button className="btn secondary" onClick={() => onPrompt('cancel', 'Lý do hủy hồ sơ:')}>
+              Hủy hồ sơ
+            </button>
+          )}
+        </footer>
+      </aside>
+    </div>
+  )
+}
+
+function EvidenceForm({ onCancel, onSave }: { onCancel: () => void; onSave: (body: unknown) => Promise<void> }) {
+  const [form, setForm] = useState({
+    type: 'APPROVAL_DOCUMENT' as EvidenceType,
+    title: '',
+    documentNo: '',
+    documentDate: '',
+    storagePath: '',
+    note: '',
+  })
+  return (
+    <div className="evidence-form">
+      <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as EvidenceType })}>
+        {Object.entries(evidenceLabels).map(([value, label]) => (
+          <option value={value} key={value}>
+            {label}
+          </option>
+        ))}
+      </select>
+      <input
+        placeholder="Tên bằng chứng *"
+        value={form.title}
+        onChange={e => setForm({ ...form, title: e.target.value })}
+      />
+      <input
+        placeholder="Số văn bản"
+        value={form.documentNo}
+        onChange={e => setForm({ ...form, documentNo: e.target.value })}
+      />
+      <input type="date" value={form.documentDate} onChange={e => setForm({ ...form, documentDate: e.target.value })} />
+      <input
+        className="wide"
+        placeholder="Đường dẫn lưu trữ / URL hồ sơ *"
+        value={form.storagePath}
+        onChange={e => setForm({ ...form, storagePath: e.target.value })}
+      />
+      <textarea
+        className="wide"
+        placeholder="Ghi chú kiểm chứng"
+        value={form.note}
+        onChange={e => setForm({ ...form, note: e.target.value })}
+      />
+      <div className="wide actions">
+        <button className="btn secondary" onClick={onCancel}>
+          Hủy
+        </button>
+        <button
+          className="btn primary"
+          onClick={() =>
+            form.title.trim() && form.storagePath.trim()
+              ? void onSave({
+                  ...form,
+                  documentNo: form.documentNo || undefined,
+                  documentDate: form.documentDate || undefined,
+                  note: form.note || undefined,
+                })
+              : alert('Tên và đường dẫn bằng chứng là bắt buộc.')
+          }
+        >
+          Lưu bằng chứng
+        </button>
+      </div>
+    </div>
+  )
+}

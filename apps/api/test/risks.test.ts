@@ -16,7 +16,13 @@ test('risk matrix rejects values outside the configured 5 by 5 scale', () => {
 })
 
 test('risk assessment requires review before approval', () => {
-  assert.equal(assessmentStatusAfterDecision(RiskAssessmentStatus.DRAFT, RiskReviewDecision.SUBMIT), RiskAssessmentStatus.IN_REVIEW)
-  assert.equal(assessmentStatusAfterDecision(RiskAssessmentStatus.IN_REVIEW, RiskReviewDecision.APPROVE), RiskAssessmentStatus.APPROVED)
+  assert.equal(
+    assessmentStatusAfterDecision(RiskAssessmentStatus.DRAFT, RiskReviewDecision.SUBMIT),
+    RiskAssessmentStatus.IN_REVIEW,
+  )
+  assert.equal(
+    assessmentStatusAfterDecision(RiskAssessmentStatus.IN_REVIEW, RiskReviewDecision.APPROVE),
+    RiskAssessmentStatus.APPROVED,
+  )
   assert.throws(() => assessmentStatusAfterDecision(RiskAssessmentStatus.DRAFT, RiskReviewDecision.APPROVE))
 })

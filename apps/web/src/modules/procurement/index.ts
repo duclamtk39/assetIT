@@ -1,1 +1,1 @@
-export const procurementModule={id:'procurement'} as const
+export const procurementModule = { id: 'procurement' } as const

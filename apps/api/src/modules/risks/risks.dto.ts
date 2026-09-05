@@ -1,6 +1,27 @@
 import { Transform, Type } from 'class-transformer'
-import { IsArray, IsDateString, IsEnum, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator'
-import { RiskAssessmentStatus, RiskControlStatus, RiskItemStatus, RiskReviewDecision, RiskSource, RiskTreatmentStatus, RiskTreatmentStrategy } from '@prisma/client'
+import {
+  IsArray,
+  IsDateString,
+  IsEnum,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator'
+import {
+  RiskAssessmentStatus,
+  RiskControlStatus,
+  RiskItemStatus,
+  RiskReviewDecision,
+  RiskSource,
+  RiskTreatmentStatus,
+  RiskTreatmentStrategy,
+} from '@prisma/client'
 
 export class ListRiskAssessmentsQuery {
   @IsOptional() @IsString() @MaxLength(200) search?: string

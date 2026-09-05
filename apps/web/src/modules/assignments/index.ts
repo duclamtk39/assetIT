@@ -1,1 +1,1 @@
-export const assignmentsModule={id:'assignments'} as const
+export const assignmentsModule = { id: 'assignments' } as const

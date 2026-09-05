@@ -27,11 +27,8 @@ export const intakeTemplateHeaders = [
   'Ảnh tài sản (URL)',
 ]
 
-export function createIntakeTemplateSheets(
-  categories: IntakeCatalogEntry[],
-  warehouses: IntakeCatalogEntry[],
-) {
-  const header = intakeTemplateHeaders.map((value) => ({
+export function createIntakeTemplateSheets(categories: IntakeCatalogEntry[], warehouses: IntakeCatalogEntry[]) {
+  const header = intakeTemplateHeaders.map(value => ({
     value,
     type: String,
     fontWeight: 'bold' as const,

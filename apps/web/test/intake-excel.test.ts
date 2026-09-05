@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { inferIntakeCategory, IntakeExcelValidationError, parseIntakeExcelRows, resolveIntakeLookup } from '../src/features/intake/intake-excel'
+import {
+  inferIntakeCategory,
+  IntakeExcelValidationError,
+  parseIntakeExcelRows,
+  resolveIntakeLookup,
+} from '../src/features/intake/intake-excel'
 
 const categories = [{ id: 'cat-laptop', code: 'LAPTOP', name: 'Laptop' }]
 const warehouses = [{ id: 'warehouse-hn', code: 'KHO-HN', name: 'Kho Tổng Hà Nội' }]
@@ -16,15 +21,22 @@ test('blank category infers PC from the asset name before using the first defaul
     { id: '2', code: 'PC_DESKTOP', name: 'PC / Desktop' },
   ]
   assert.equal(inferIntakeCategory('PC', options)?.id, '2')
-  const parsed = parseIntakeExcelRows([
-    ['Mã tài sản', 'Tên tài sản', 'Nhóm tài sản', '', '', 'Kho Tổng'],
-    ['PC-001', 'PC', '', '', '', 'Kho Tổng'],
-  ], options, [{ id: 'warehouse', code: 'KHO', name: 'Kho Tổng' }])
+  const parsed = parseIntakeExcelRows(
+    [
+      ['Mã tài sản', 'Tên tài sản', 'Nhóm tài sản', '', '', 'Kho Tổng'],
+      ['PC-001', 'PC', '', '', '', 'Kho Tổng'],
+    ],
+    options,
+    [{ id: 'warehouse', code: 'KHO', name: 'Kho Tổng' }],
+  )
   assert.equal(parsed[0].category.name, 'PC / Desktop')
 })
 
 test('intake rows use configured defaults when optional master-data cells are blank', () => {
-  const rows = [['Mã tài sản', 'Tên tài sản'], ['TS-001', 'Laptop kế toán', '', 'SERIAL-1', '', '', '', '', '25/08/2026', 12000000]]
+  const rows = [
+    ['Mã tài sản', 'Tên tài sản'],
+    ['TS-001', 'Laptop kế toán', '', 'SERIAL-1', '', '', '', '', '25/08/2026', 12000000],
+  ]
   const parsed = parseIntakeExcelRows(rows, categories, warehouses, 'Kế toán')
   assert.equal(parsed[0].category.id, 'cat-laptop')
   assert.equal(parsed[0].warehouse.id, 'warehouse-hn')
@@ -32,11 +44,15 @@ test('intake rows use configured defaults when optional master-data cells are bl
 })
 
 test('intake validation reports the exact row and missing master data', () => {
-  const rows = [['Mã tài sản', 'Tên tài sản'], ['TS-001', 'Laptop', 'Không tồn tại', '', '', 'Kho sai']]
+  const rows = [
+    ['Mã tài sản', 'Tên tài sản'],
+    ['TS-001', 'Laptop', 'Không tồn tại', '', '', 'Kho sai'],
+  ]
   assert.throws(
     () => parseIntakeExcelRows(rows, categories, warehouses),
-    (error: unknown) => error instanceof IntakeExcelValidationError
-      && error.message.includes('Dòng 2: Nhóm tài sản')
-      && error.message.includes('Dòng 2: Kho nhập'),
+    (error: unknown) =>
+      error instanceof IntakeExcelValidationError &&
+      error.message.includes('Dòng 2: Nhóm tài sản') &&
+      error.message.includes('Dòng 2: Kho nhập'),
   )
 })

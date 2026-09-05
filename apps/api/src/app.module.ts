@@ -1,4 +1,4 @@
-import { MiddlewareConsumer,Module,NestModule } from '@nestjs/common'
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { DatabaseModule } from './database/database.module'
 import { HealthController } from './health.controller'
@@ -23,5 +23,34 @@ import { RenewalsModule } from './modules/renewals/renewals.module'
 import { RisksModule } from './modules/risks/risks.module'
 import { DisposalsModule } from './modules/disposals/disposals.module'
 
-@Module({imports:[ConfigModule.forRoot({isGlobal:true}),DatabaseModule,ObservabilityModule,AuthModule,AssetsModule,LookupsModule,DirectoryModule,UsersModule,PeopleModule,CategoriesModule,LifecycleModule,SettingsModule,MasterDataModule,VendorsModule,InventoryModule,AssetImportsModule,DiscoveryModule,IncidentsModule,RenewalsModule,RisksModule,DisposalsModule],controllers:[HealthController]})
-export class AppModule implements NestModule{configure(consumer:MiddlewareConsumer){consumer.apply(RequestLoggerMiddleware).forRoutes('*')}}
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    DatabaseModule,
+    ObservabilityModule,
+    AuthModule,
+    AssetsModule,
+    LookupsModule,
+    DirectoryModule,
+    UsersModule,
+    PeopleModule,
+    CategoriesModule,
+    LifecycleModule,
+    SettingsModule,
+    MasterDataModule,
+    VendorsModule,
+    InventoryModule,
+    AssetImportsModule,
+    DiscoveryModule,
+    IncidentsModule,
+    RenewalsModule,
+    RisksModule,
+    DisposalsModule,
+  ],
+  controllers: [HealthController],
+})
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*')
+  }
+}

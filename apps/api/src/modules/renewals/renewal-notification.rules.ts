@@ -1,12 +1,11 @@
-export function notificationRecipients(
-  configured: string[],
-  notifyOwner: boolean,
-  ownerEmail?: string | null,
-) {
-  return [...new Set([
-    ...configured,
-    ...(notifyOwner && ownerEmail ? [ownerEmail] : []),
-  ].map((value) => value.trim().toLowerCase()).filter(Boolean))]
+export function notificationRecipients(configured: string[], notifyOwner: boolean, ownerEmail?: string | null) {
+  return [
+    ...new Set(
+      [...configured, ...(notifyOwner && ownerEmail ? [ownerEmail] : [])]
+        .map(value => value.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ]
 }
 
 export function nextNotificationAttempt(attempts: number, now = Date.now()) {

@@ -33,10 +33,20 @@ test('new vendor accepts an empty optional evaluation date', async () => {
 
 test('new vendor cannot be approved before an ISO evaluation exists', async () => {
   let saved: any
-  const db = { vendor: { create: async ({ data }: any) => { saved = data; return data } } }
+  const db = {
+    vendor: {
+      create: async ({ data }: any) => {
+        saved = data
+        return data
+      },
+    },
+  }
   const controller = new VendorsController(db as any)
 
-  await controller.create({ ...vendorBody, status: 'Đã phê duyệt', lastEvaluation: undefined } as VendorDto, { authUser: { id: 'admin', role: 'ADMIN' } } as any)
+  await controller.create(
+    { ...vendorBody, status: 'Đã phê duyệt', lastEvaluation: undefined } as VendorDto,
+    { authUser: { id: 'admin', role: 'ADMIN' } } as any,
+  )
 
   assert.equal(saved.code, 'NCC-5501')
   assert.equal(saved.lifecycleStatus, 'ACTIVE')
@@ -48,10 +58,25 @@ test('new vendor cannot be approved before an ISO evaluation exists', async () =
 
 test('vendor lifecycle is independent from the calculated evaluation result', async () => {
   let saved: any
-  const db = { vendor: { create: async ({ data }: any) => { saved = data; return data } } }
+  const db = {
+    vendor: {
+      create: async ({ data }: any) => {
+        saved = data
+        return data
+      },
+    },
+  }
   const controller = new VendorsController(db as any)
 
-  await controller.create({ ...vendorBody, lifecycleStatus: 'SUSPENDED', lastEvaluation: '2026-09-03', scores: { quality: 90, delivery: 85, security: 90, compliance: 90, continuity: 80, sustainability: 80 } } as VendorDto, { authUser: { id: 'admin', role: 'ADMIN' } } as any)
+  await controller.create(
+    {
+      ...vendorBody,
+      lifecycleStatus: 'SUSPENDED',
+      lastEvaluation: '2026-09-03',
+      scores: { quality: 90, delivery: 85, security: 90, compliance: 90, continuity: 80, sustainability: 80 },
+    } as VendorDto,
+    { authUser: { id: 'admin', role: 'ADMIN' } } as any,
+  )
 
   assert.equal(saved.lifecycleStatus, 'SUSPENDED')
   assert.equal(saved.status, 'Đã phê duyệt')
@@ -59,10 +84,26 @@ test('vendor lifecycle is independent from the calculated evaluation result', as
 
 test('evaluated vendor score and approval are calculated on the server', async () => {
   let saved: any
-  const db = { vendor: { create: async ({ data }: any) => { saved = data; return data } } }
+  const db = {
+    vendor: {
+      create: async ({ data }: any) => {
+        saved = data
+        return data
+      },
+    },
+  }
   const controller = new VendorsController(db as any)
 
-  await controller.create({ ...vendorBody, status: 'Cần cải thiện', lastEvaluation: '2026-09-03', score: 1, scores: { quality: 90, delivery: 85, security: 90, compliance: 90, continuity: 80, sustainability: 80 } } as VendorDto, { authUser: { id: 'admin', role: 'ADMIN' } } as any)
+  await controller.create(
+    {
+      ...vendorBody,
+      status: 'Cần cải thiện',
+      lastEvaluation: '2026-09-03',
+      score: 1,
+      scores: { quality: 90, delivery: 85, security: 90, compliance: 90, continuity: 80, sustainability: 80 },
+    } as VendorDto,
+    { authUser: { id: 'admin', role: 'ADMIN' } } as any,
+  )
 
   assert.equal(saved.status, 'Đã phê duyệt')
   assert.equal(saved.score, 87)
@@ -74,7 +115,11 @@ test('evaluated vendor requires a complete zero-to-one-hundred scorecard', async
   const controller = new VendorsController(db as any)
 
   await assert.rejects(
-    () => controller.create({ ...vendorBody, lastEvaluation: '2026-09-03', scores: { quality: 90 } } as VendorDto, { authUser: { id: 'admin', role: 'ADMIN' } } as any),
+    () =>
+      controller.create(
+        { ...vendorBody, lastEvaluation: '2026-09-03', scores: { quality: 90 } } as VendorDto,
+        { authUser: { id: 'admin', role: 'ADMIN' } } as any,
+      ),
     /đầy đủ.*0–100/,
   )
 })
