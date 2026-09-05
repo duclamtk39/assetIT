@@ -128,6 +128,8 @@ jobs:
         run: npx prisma migrate status --schema apps/api/prisma/schema.prisma
         env:
           DATABASE_URL: postgresql://assetflow_migrator:migrator_ci_password@localhost:5432/assetflow
+      - name: Generate the Prisma client for the integration tests
+        run: npm run db:generate
       - name: API integration tests against PostgreSQL
         run: npm run test:integration
         env:
