@@ -4,3 +4,6 @@
 #   git config blame.ignoreRevsFile .git-blame-ignore-revs
 #
 # Add the hash of the repository-wide Prettier reformat commit below, one per line.
+
+# style: apply prettier across the codebase
+7827dc4412a1646ef068b62cda1b1886b62fbdd9
