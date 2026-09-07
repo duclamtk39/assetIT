@@ -6,6 +6,7 @@ import {
   inventoryReportFileName,
   inventoryReportRows,
   inventoryReportSchema,
+  toLookupList,
   type InventoryReportSession,
 } from '../src/features/inventory/inventory-report'
 
@@ -60,4 +61,16 @@ test('inventory reconciliation produces a readable Excel workbook', async () => 
   assert.equal(parsed[0].data[0][0], 'STT')
   assert.equal(parsed[0].data[1][8], 'TS-001')
   assert.equal(parsed[0].data[2][16], 'Thiếu')
+})
+
+test('lookup payloads normalise whichever shape the endpoint answers with', () => {
+  // /locations answers with a bare array, /people with { items }. Calling .map() on the wrong one
+  // threw during render and blanked the inventory screen.
+  assert.deepEqual(toLookupList([{ id: 'a' }]), [{ id: 'a' }])
+  assert.deepEqual(toLookupList({ items: [{ id: 'b' }] }), [{ id: 'b' }])
+})
+
+test('an unusable lookup payload becomes an empty list instead of breaking the render', () => {
+  for (const payload of [undefined, null, {}, { items: null }, { items: 'x' }, 'oops', 42])
+    assert.deepEqual(toLookupList(payload), [])
 })

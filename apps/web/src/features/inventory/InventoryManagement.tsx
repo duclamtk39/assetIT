@@ -6,6 +6,7 @@ import { api } from '../../services/api-client'
 import {
   exportInventoryReport,
   inventoryResultLabel,
+  toLookupList,
   type InventoryReportItem,
   type InventoryReportSession,
   type InventoryResultCode,
@@ -113,10 +114,13 @@ export function InventoryManagement({ assets }: { assets: Asset[] }) {
   }
   useEffect(() => {
     if (env.demoMode) return
-    void Promise.all([api.get<NamedLookup[]>('/locations'), api.get<NamedLookup[]>('/people')])
-      .then(([locationList, peopleList]) => {
-        setLocations(locationList)
-        setPeople(peopleList)
+    // /locations answers with a bare array while /people is paged and answers with { items }.
+    // Both are normalised here, and anything unexpected becomes an empty list rather than being
+    // handed to .map() further down, where it would take the whole screen with it.
+    void Promise.all([api.get<NamedLookup[]>('/locations'), api.get<{ items: NamedLookup[] }>('/people?limit=200')])
+      .then(([locationList, peopleResult]) => {
+        setLocations(toLookupList<NamedLookup>(locationList))
+        setPeople(toLookupList<NamedLookup>(peopleResult))
       })
       .catch(() => undefined)
   }, [])

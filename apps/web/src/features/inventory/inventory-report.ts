@@ -124,3 +124,17 @@ export async function exportInventoryReport(session: InventoryReportSession) {
   const rows = inventoryReportRows(session)
   await writeXlsxFile(rows, { columns: inventoryReportSchema() }).toFile(inventoryReportFileName(session))
 }
+
+/**
+ * Normalises a lookup response into a list.
+ *
+ * The endpoints this screen reads do not agree on a shape: /locations answers with a bare array
+ * while /people is paged and answers with { items }. Assuming one shape and calling .map() on the
+ * other threw during render and blanked the page, so the shape is settled here instead, and anything
+ * unrecognised degrades to an empty list.
+ */
+export function toLookupList<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) return payload as T[]
+  const items = (payload as { items?: unknown } | null | undefined)?.items
+  return Array.isArray(items) ? (items as T[]) : []
+}
