@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM node:22-alpine AS dependencies
+FROM node:26-alpine AS dependencies
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/web/package.json ./apps/web/package.json
@@ -24,7 +24,7 @@ RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w -X main.version=${APP_VERSION}" -o /out/assetflow-agent-linux-arm64 ./cmd/assetflow-agent \
     && cd /out && sha256sum assetflow-agent-* > SHA256SUMS
 
-FROM node:22-alpine AS production-dependencies
+FROM node:26-alpine AS production-dependencies
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/web/package.json ./apps/web/package.json
@@ -34,7 +34,7 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked npm ci --omit=dev --omit
     && npm run prisma:generate --workspace @assetflow/api \
     && npm cache clean --force
 
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 ENV NODE_ENV=production \
     PORT=3000
 WORKDIR /app
