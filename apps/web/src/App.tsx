@@ -99,6 +99,7 @@ import type {
   TransactionType,
 } from './types'
 import { useAppRoute } from './hooks/useAppRoute'
+import { pageForPath } from './routing/routes'
 import { api, ApiError } from './services/api-client'
 import { readApiCollection, type ApiCollectionResponse } from './services/api-response'
 import { env } from './config/env'
@@ -109,6 +110,8 @@ import { DiscoveryCenter } from './features/discovery/DiscoveryCenter'
 import { IncidentManagement } from './features/incidents/IncidentManagement'
 import { RenewalManagement } from './features/renewals/RenewalManagement'
 import { RiskManagement } from './features/risks/RiskManagement'
+import { ControlLibrary } from './features/compliance/ControlLibrary'
+import { DocumentLibrary } from './features/compliance/DocumentLibrary'
 import { DisposalManagement } from './features/disposals/DisposalManagement'
 import { InventoryManagement } from './features/inventory/InventoryManagement'
 import {
@@ -208,6 +211,8 @@ const englishLabels: Record<string, string> = {
   'Khám phá & Agent': 'Discovery & Agent',
   'License & Gia hạn': 'Licenses & Renewals',
   'Đánh giá rủi ro CNTT': 'IT Risk Assessment',
+  'Khung tiêu chuẩn & SoA': 'Standard framework & SoA',
+  'Hệ thống tài liệu': 'Document system',
   'QUẢN TRỊ RỦI RO': 'RISK MANAGEMENT',
 }
 const uiLabel = (value: string, language: string) => (language === 'en-US' ? englishLabels[value] || value : value)
@@ -763,7 +768,14 @@ const navSections: Array<{ title: string; items: Array<{ label: string; icon: ty
       { label: 'Thanh lý & Hủy bỏ', icon: ArchiveX },
     ],
   },
-  { title: 'QUẢN TRỊ RỦI RO', items: [{ label: 'Đánh giá rủi ro CNTT', icon: ShieldAlert }] },
+  {
+    title: 'TUÂN THỦ ISO',
+    items: [
+      { label: 'Khung tiêu chuẩn & SoA', icon: ShieldCheck },
+      { label: 'Hệ thống tài liệu', icon: FileText },
+      { label: 'Đánh giá rủi ro CNTT', icon: ShieldAlert },
+    ],
+  },
   {
     title: 'BÁO CÁO',
     items: [
@@ -7907,6 +7919,11 @@ export default function App() {
     content = <DisposalManagement demoMode={env.demoMode} role={currentUser.role} />
   else if (page === 'Đánh giá rủi ro CNTT' && ['Admin', 'IT'].includes(currentUser.role))
     content = <RiskManagement assets={scopedAssets} demoMode={env.demoMode} currentUserName={currentUser.name} />
+  // The API is the authority on who may read ISMS records; the sidebar only avoids offering a screen
+  // that would answer 403 to everyone below IT.
+  else if (page === 'Khung tiêu chuẩn & SoA' && ['Admin', 'IT'].includes(currentUser.role))
+    content = <ControlLibrary goRoute={route => setPage(pageForPath(route))} />
+  else if (page === 'Hệ thống tài liệu' && ['Admin', 'IT'].includes(currentUser.role)) content = <DocumentLibrary />
   else if (page === 'Cấu hình hệ thống' && isAdmin)
     content = (
       <AdminSettings

@@ -39,7 +39,32 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return payload as T
 }
 
+/**
+ * Multipart upload. The Content-Type header is deliberately left off so the browser sets it together
+ * with the boundary, and the body is passed through instead of being serialised as JSON.
+ */
+async function upload<T>(path: string, file: File): Promise<T> {
+  const form = new FormData()
+  form.append('file', file)
+  const response = await fetch(`${env.apiBaseUrl}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+    body: form,
+  })
+  const payload = (response.headers.get('content-type') || '').includes('application/json')
+    ? await response.json()
+    : undefined
+  if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined')
+      window.dispatchEvent(new Event('assetflow:session-expired'))
+    throw new ApiError(response.status, payload?.code || 'HTTP_ERROR', payload?.message || `HTTP ${response.status}`)
+  }
+  return payload as T
+}
+
 export const api = {
+  upload,
   get: <T>(path: string, signal?: AbortSignal) => request<T>(path, { method: 'GET', signal }),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
   put: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PUT', body }),

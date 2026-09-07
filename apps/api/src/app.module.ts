@@ -21,6 +21,7 @@ import { DiscoveryModule } from './modules/discovery/discovery.module'
 import { IncidentsModule } from './modules/incidents/incidents.module'
 import { RenewalsModule } from './modules/renewals/renewals.module'
 import { RisksModule } from './modules/risks/risks.module'
+import { ComplianceModule } from './modules/compliance/compliance.module'
 import { DisposalsModule } from './modules/disposals/disposals.module'
 
 @Module({
@@ -45,6 +46,7 @@ import { DisposalsModule } from './modules/disposals/disposals.module'
     IncidentsModule,
     RenewalsModule,
     RisksModule,
+    ComplianceModule,
     DisposalsModule,
   ],
   controllers: [HealthController],

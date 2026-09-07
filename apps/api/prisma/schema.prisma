@@ -159,11 +159,13 @@ enum IncidentAssignmentRole {
   PRIMARY
   SUPPORT
 }
+
 enum DigitalEntitlementType {
   LICENSE
   SSL_CERTIFICATE
   DOMAIN
 }
+
 enum DigitalEntitlementStatus {
   ACTIVE
   EXPIRING
@@ -171,16 +173,19 @@ enum DigitalEntitlementStatus {
   SUSPENDED
   RETIRED
 }
+
 enum DigitalAssignmentStatus {
   ACTIVE
   REVOKED
 }
+
 enum DigitalRenewalStatus {
   PLANNED
   APPROVED
   COMPLETED
   CANCELLED
 }
+
 enum RenewalAlertStatus {
   OPEN
   ACKNOWLEDGED
@@ -323,113 +328,124 @@ model Department {
   incidentAssignments    IncidentAssignment[]
   digitalEntitlements    DigitalEntitlement[]
   digitalAssignments     DigitalAssignment[]
-  riskAssessments        RiskAssessment[]       @relation("RiskAssessmentDepartment")
-  riskItems              RiskItem[]             @relation("RiskAffectedDepartment")
+  riskAssessments        RiskAssessment[]     @relation("RiskAssessmentDepartment")
+  riskItems              RiskItem[]           @relation("RiskAffectedDepartment")
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
+  complianceDocuments    ComplianceDocument[] @relation("ComplianceDocumentDepartment")
 
   @@index([managerPersonId])
   @@map("departments")
 }
 
 model User {
-  id                          String                 @id @default(uuid()) @db.Uuid
-  employeeCode                String                 @unique @db.VarChar(50)
-  username                    String                 @unique @db.VarChar(100)
-  fullName                    String                 @db.VarChar(150)
-  email                       String                 @unique @db.VarChar(255)
-  phone                       String?                @db.VarChar(30)
-  passwordHash                String?                @db.VarChar(255)
-  role                        UserRole               @default(USER)
-  authSource                  AuthSource             @default(LOCAL)
-  externalId                  String?                @db.VarChar(255)
-  mustChangePassword          Boolean                @default(false)
+  id                          String                   @id @default(uuid()) @db.Uuid
+  employeeCode                String                   @unique @db.VarChar(50)
+  username                    String                   @unique @db.VarChar(100)
+  fullName                    String                   @db.VarChar(150)
+  email                       String                   @unique @db.VarChar(255)
+  phone                       String?                  @db.VarChar(30)
+  passwordHash                String?                  @db.VarChar(255)
+  role                        UserRole                 @default(USER)
+  authSource                  AuthSource               @default(LOCAL)
+  externalId                  String?                  @db.VarChar(255)
+  mustChangePassword          Boolean                  @default(false)
+  /**
+   * ISMS document library access. Admins always have it; anyone else must be granted it.
+   */
+  complianceAccess            Boolean                  @default(false)
   passwordChangedAt           DateTime?
   lastLoginAt                 DateTime?
-  departmentId                String?                @db.Uuid
-  department                  Department?            @relation(fields: [departmentId], references: [id])
-  status                      RecordStatus           @default(ACTIVE)
+  departmentId                String?                  @db.Uuid
+  department                  Department?              @relation(fields: [departmentId], references: [id])
+  status                      RecordStatus             @default(ACTIVE)
   assignedAssets              Asset[]
-  histories                   AssetHistory[]         @relation("HistoryActor")
-  assignmentsPerformed        AssetAssignment[]      @relation("AssignmentActor")
-  returnsPerformed            AssetReturn[]          @relation("ReturnActor")
-  transfersPerformed          AssetTransfer[]        @relation("TransferActor")
-  maintenancePerformed        MaintenanceRecord[]    @relation("MaintenanceActor")
-  disposalRequests            DisposalCase[]         @relation("DisposalRequester")
-  disposalApprovals           DisposalCase[]         @relation("DisposalApprover")
-  disposalExecutions          DisposalCase[]         @relation("DisposalExecutor")
-  disposalSanitizations       DisposalItem[]         @relation("DisposalSanitizer")
-  disposalEvidenceUploaded    DisposalEvidence[]     @relation("DisposalEvidenceUploader")
-  disposalActivities          DisposalActivity[]     @relation("DisposalActivityActor")
-  incidentsReported           Incident[]             @relation("IncidentReporter")
-  incidentsAssigned           Incident[]             @relation("IncidentAssignee")
-  incidentsCreated            Incident[]             @relation("IncidentCreator")
-  incidentActivities          IncidentActivity[]     @relation("IncidentActivityActor")
-  incidentAssignmentsReceived IncidentAssignment[]   @relation("IncidentAssignmentAssignee")
-  incidentAssignmentsMade     IncidentAssignment[]   @relation("IncidentAssignmentActor")
-  incidentAssignmentsAccepted IncidentAssignment[]   @relation("IncidentAssignmentAcceptor")
-  incidentAssignmentsReleased IncidentAssignment[]   @relation("IncidentAssignmentReleaser")
-  digitalEntitlementsOwned     DigitalEntitlement[]   @relation("DigitalEntitlementOwner")
-  digitalEntitlementsCreated   DigitalEntitlement[]   @relation("DigitalEntitlementCreator")
-  digitalAssignmentsMade       DigitalAssignment[]    @relation("DigitalAssignmentActor")
-  digitalAssignmentsRevoked    DigitalAssignment[]    @relation("DigitalAssignmentRevoker")
-  digitalRenewalsApproved      DigitalRenewal[]       @relation("DigitalRenewalApprover")
-  digitalRenewalsCompleted     DigitalRenewal[]       @relation("DigitalRenewalActor")
-  renewalAlertsAcknowledged    RenewalAlert[]         @relation("RenewalAlertAcknowledger")
-  renewalPoliciesUpdated       RenewalAlertPolicy[]   @relation("RenewalPolicyUpdater")
-  inventorySessions           InventorySession[]     @relation("InventoryCreator")
-  inventoryScans              InventoryItem[]        @relation("InventoryScanner")
-  importBatches               AssetImportBatch[]     @relation("ImportCreator")
-  agentEnrollmentTokens       AgentEnrollmentToken[] @relation("AgentTokenCreator")
-  discoveryResolutions        DiscoveryInboxItem[]   @relation("DiscoveryResolver")
-  riskAssessmentsOwned        RiskAssessment[]        @relation("RiskAssessmentOwner")
-  riskAssessmentsApproved     RiskAssessment[]        @relation("RiskAssessmentApprover")
-  riskAssessmentsCreated      RiskAssessment[]        @relation("RiskAssessmentCreator")
-  riskItemsOwned              RiskItem[]              @relation("RiskItemOwner")
-  riskItemsCreated            RiskItem[]              @relation("RiskItemCreator")
-  riskTreatmentsAssigned      RiskTreatmentAction[]   @relation("RiskTreatmentAssignee")
-  riskTreatmentsCreated       RiskTreatmentAction[]   @relation("RiskTreatmentCreator")
-  riskReviews                 RiskReview[]            @relation("RiskReviewer")
+  histories                   AssetHistory[]           @relation("HistoryActor")
+  assignmentsPerformed        AssetAssignment[]        @relation("AssignmentActor")
+  returnsPerformed            AssetReturn[]            @relation("ReturnActor")
+  transfersPerformed          AssetTransfer[]          @relation("TransferActor")
+  maintenancePerformed        MaintenanceRecord[]      @relation("MaintenanceActor")
+  disposalRequests            DisposalCase[]           @relation("DisposalRequester")
+  disposalApprovals           DisposalCase[]           @relation("DisposalApprover")
+  disposalExecutions          DisposalCase[]           @relation("DisposalExecutor")
+  disposalSanitizations       DisposalItem[]           @relation("DisposalSanitizer")
+  disposalEvidenceUploaded    DisposalEvidence[]       @relation("DisposalEvidenceUploader")
+  disposalActivities          DisposalActivity[]       @relation("DisposalActivityActor")
+  incidentsReported           Incident[]               @relation("IncidentReporter")
+  incidentsAssigned           Incident[]               @relation("IncidentAssignee")
+  incidentsCreated            Incident[]               @relation("IncidentCreator")
+  incidentActivities          IncidentActivity[]       @relation("IncidentActivityActor")
+  incidentAssignmentsReceived IncidentAssignment[]     @relation("IncidentAssignmentAssignee")
+  incidentAssignmentsMade     IncidentAssignment[]     @relation("IncidentAssignmentActor")
+  incidentAssignmentsAccepted IncidentAssignment[]     @relation("IncidentAssignmentAcceptor")
+  incidentAssignmentsReleased IncidentAssignment[]     @relation("IncidentAssignmentReleaser")
+  digitalEntitlementsOwned    DigitalEntitlement[]     @relation("DigitalEntitlementOwner")
+  digitalEntitlementsCreated  DigitalEntitlement[]     @relation("DigitalEntitlementCreator")
+  digitalAssignmentsMade      DigitalAssignment[]      @relation("DigitalAssignmentActor")
+  digitalAssignmentsRevoked   DigitalAssignment[]      @relation("DigitalAssignmentRevoker")
+  digitalRenewalsApproved     DigitalRenewal[]         @relation("DigitalRenewalApprover")
+  digitalRenewalsCompleted    DigitalRenewal[]         @relation("DigitalRenewalActor")
+  renewalAlertsAcknowledged   RenewalAlert[]           @relation("RenewalAlertAcknowledger")
+  renewalPoliciesUpdated      RenewalAlertPolicy[]     @relation("RenewalPolicyUpdater")
+  inventorySessions           InventorySession[]       @relation("InventoryCreator")
+  inventoryScans              InventoryItem[]          @relation("InventoryScanner")
+  importBatches               AssetImportBatch[]       @relation("ImportCreator")
+  agentEnrollmentTokens       AgentEnrollmentToken[]   @relation("AgentTokenCreator")
+  discoveryResolutions        DiscoveryInboxItem[]     @relation("DiscoveryResolver")
+  riskAssessmentsOwned        RiskAssessment[]         @relation("RiskAssessmentOwner")
+  riskAssessmentsApproved     RiskAssessment[]         @relation("RiskAssessmentApprover")
+  riskAssessmentsCreated      RiskAssessment[]         @relation("RiskAssessmentCreator")
+  riskItemsOwned              RiskItem[]               @relation("RiskItemOwner")
+  riskItemsCreated            RiskItem[]               @relation("RiskItemCreator")
+  riskTreatmentsAssigned      RiskTreatmentAction[]    @relation("RiskTreatmentAssignee")
+  riskTreatmentsCreated       RiskTreatmentAction[]    @relation("RiskTreatmentCreator")
+  riskReviews                 RiskReview[]             @relation("RiskReviewer")
   authSessions                AuthSession[]
   person                      Person?
-  createdAt                   DateTime               @default(now())
-  updatedAt                   DateTime               @updatedAt
+  createdAt                   DateTime                 @default(now())
+  updatedAt                   DateTime                 @updatedAt
+  soaVersionsCreated          SoaVersion[]             @relation("SoaCreator")
+  soaVersionsApproved         SoaVersion[]             @relation("SoaApprover")
+  complianceDocumentsOwned    ComplianceDocument[]     @relation("ComplianceDocumentOwner")
+  complianceDocumentsApproved ComplianceDocument[]     @relation("ComplianceDocumentApprover")
+  complianceDocumentsCreated  ComplianceDocument[]     @relation("ComplianceDocumentCreator")
+  complianceFilesUploaded     ComplianceDocumentFile[] @relation("ComplianceFileUploader")
 
   @@unique([authSource, externalId])
   @@map("users")
 }
 
 model DirectoryConfiguration {
-  id                    String             @id @default(uuid()) @db.Uuid
-  provider              DirectoryProvider  @unique
-  enabled               Boolean            @default(false)
-  tenantId              String?            @db.VarChar(100)
-  clientId              String?            @db.VarChar(100)
-  ldapUrl               String?            @db.VarChar(500)
-  baseDn                String?            @db.VarChar(1000)
-  bindDn                String?            @db.VarChar(1000)
-  secretEncrypted       String?
-  caCertificate         String?
-  userFilter            String?            @db.VarChar(2000)
-  useTls                Boolean            @default(true)
-  schedule              String             @default("MANUAL") @db.VarChar(30)
-  syncDisabled          Boolean            @default(false)
-  groupMapping          Json               @default("{}")
-  departmentAttribute   String             @default("department") @db.VarChar(100)
-  emailAttribute        String             @default("mail") @db.VarChar(100)
-  employeeCodeAttribute String             @default("employeeID") @db.VarChar(100)
-  usernameAttribute     String             @default("sAMAccountName") @db.VarChar(100)
-  lastTestAt            DateTime?
-  lastTestOk            Boolean?
-  lastTestMessage       String?
-  lastSyncAt            DateTime?
-  syncLicenses          Boolean            @default(false)
-  lastLicenseSyncAt     DateTime?
-  lastLicenseSyncStatus String?             @db.VarChar(30)
+  id                     String             @id @default(uuid()) @db.Uuid
+  provider               DirectoryProvider  @unique
+  enabled                Boolean            @default(false)
+  tenantId               String?            @db.VarChar(100)
+  clientId               String?            @db.VarChar(100)
+  ldapUrl                String?            @db.VarChar(500)
+  baseDn                 String?            @db.VarChar(1000)
+  bindDn                 String?            @db.VarChar(1000)
+  secretEncrypted        String?
+  caCertificate          String?
+  userFilter             String?            @db.VarChar(2000)
+  useTls                 Boolean            @default(true)
+  schedule               String             @default("MANUAL") @db.VarChar(30)
+  syncDisabled           Boolean            @default(false)
+  groupMapping           Json               @default("{}")
+  departmentAttribute    String             @default("department") @db.VarChar(100)
+  emailAttribute         String             @default("mail") @db.VarChar(100)
+  employeeCodeAttribute  String             @default("employeeID") @db.VarChar(100)
+  usernameAttribute      String             @default("sAMAccountName") @db.VarChar(100)
+  lastTestAt             DateTime?
+  lastTestOk             Boolean?
+  lastTestMessage        String?
+  lastSyncAt             DateTime?
+  syncLicenses           Boolean            @default(false)
+  lastLicenseSyncAt      DateTime?
+  lastLicenseSyncStatus  String?            @db.VarChar(30)
   lastLicenseSyncMessage String?
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
-  syncRuns              DirectorySyncRun[]
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  syncRuns               DirectorySyncRun[]
 
   @@map("directory_configurations")
 }
@@ -467,30 +483,30 @@ model AuthSession {
 }
 
 model Person {
-  id                     String            @id @default(uuid()) @db.Uuid
-  employeeCode           String            @unique @db.VarChar(50)
-  fullName               String            @db.VarChar(150)
-  email                  String?           @unique @db.VarChar(255)
-  phone                  String?           @db.VarChar(30)
-  jobTitle               String?           @db.VarChar(150)
-  departmentId           String            @db.Uuid
-  locationId             String?           @db.Uuid
-  linkedUserId           String?           @unique @db.Uuid
-  source                 AuthSource        @default(LOCAL)
-  externalId             String?           @db.VarChar(255)
-  status                 RecordStatus      @default(ACTIVE)
-  department             Department        @relation("DepartmentMembers", fields: [departmentId], references: [id])
-  managedDepartments     Department[]      @relation("DepartmentManager")
-  location               Location?         @relation(fields: [locationId], references: [id])
-  linkedUser             User?             @relation(fields: [linkedUserId], references: [id], onDelete: SetNull)
-  currentAssets          Asset[]           @relation("CurrentCustodian")
-  assignments            AssetAssignment[]
-  inventoryExpectedItems InventoryItem[]   @relation("InventoryExpectedCustodian")
-  inventoryObservedItems InventoryItem[]   @relation("InventoryObservedCustodian")
-  digitalAssignments      DigitalAssignment[]
+  id                          String                       @id @default(uuid()) @db.Uuid
+  employeeCode                String                       @unique @db.VarChar(50)
+  fullName                    String                       @db.VarChar(150)
+  email                       String?                      @unique @db.VarChar(255)
+  phone                       String?                      @db.VarChar(30)
+  jobTitle                    String?                      @db.VarChar(150)
+  departmentId                String                       @db.Uuid
+  locationId                  String?                      @db.Uuid
+  linkedUserId                String?                      @unique @db.Uuid
+  source                      AuthSource                   @default(LOCAL)
+  externalId                  String?                      @db.VarChar(255)
+  status                      RecordStatus                 @default(ACTIVE)
+  department                  Department                   @relation("DepartmentMembers", fields: [departmentId], references: [id])
+  managedDepartments          Department[]                 @relation("DepartmentManager")
+  location                    Location?                    @relation(fields: [locationId], references: [id])
+  linkedUser                  User?                        @relation(fields: [linkedUserId], references: [id], onDelete: SetNull)
+  currentAssets               Asset[]                      @relation("CurrentCustodian")
+  assignments                 AssetAssignment[]
+  inventoryExpectedItems      InventoryItem[]              @relation("InventoryExpectedCustodian")
+  inventoryObservedItems      InventoryItem[]              @relation("InventoryObservedCustodian")
+  digitalAssignments          DigitalAssignment[]
   microsoftLicenseAssignments MicrosoftLicenseAssignment[]
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
 
   @@unique([source, externalId])
   @@index([departmentId, status])
@@ -865,38 +881,38 @@ model MaintenanceRecord {
 }
 
 model DisposalCase {
-  id                String          @id @default(uuid()) @db.Uuid
-  disposalNo        String          @unique @db.VarChar(50)
-  title             String          @db.VarChar(250)
-  type              DisposalType
-  status            DisposalStatus  @default(DRAFT)
-  reason            String
-  policyReference   String          @db.VarChar(1000)
-  recipient         String?         @db.VarChar(250)
-  vendorReference   String?         @db.VarChar(250)
-  estimatedProceeds Decimal?        @db.Decimal(18, 2)
-  actualProceeds    Decimal?        @db.Decimal(18, 2)
-  currency          String          @default("VND") @db.VarChar(3)
-  requestedBy       String          @db.Uuid
-  submittedAt       DateTime?
-  approvedBy        String?         @db.Uuid
-  approvedAt        DateTime?
-  approvalNote      String?
-  rejectionReason   String?
-  executedBy        String?         @db.Uuid
+  id                 String             @id @default(uuid()) @db.Uuid
+  disposalNo         String             @unique @db.VarChar(50)
+  title              String             @db.VarChar(250)
+  type               DisposalType
+  status             DisposalStatus     @default(DRAFT)
+  reason             String
+  policyReference    String             @db.VarChar(1000)
+  recipient          String?            @db.VarChar(250)
+  vendorReference    String?            @db.VarChar(250)
+  estimatedProceeds  Decimal?           @db.Decimal(18, 2)
+  actualProceeds     Decimal?           @db.Decimal(18, 2)
+  currency           String             @default("VND") @db.VarChar(3)
+  requestedBy        String             @db.Uuid
+  submittedAt        DateTime?
+  approvedBy         String?            @db.Uuid
+  approvedAt         DateTime?
+  approvalNote       String?
+  rejectionReason    String?
+  executedBy         String?            @db.Uuid
   executionStartedAt DateTime?
-  completedAt       DateTime?
-  completionNote    String?
-  cancelledAt       DateTime?
+  completedAt        DateTime?
+  completionNote     String?
+  cancelledAt        DateTime?
   cancellationReason String?
-  requester         User            @relation("DisposalRequester", fields: [requestedBy], references: [id], onDelete: Restrict)
-  approver          User?           @relation("DisposalApprover", fields: [approvedBy], references: [id], onDelete: Restrict)
-  executor          User?           @relation("DisposalExecutor", fields: [executedBy], references: [id], onDelete: Restrict)
-  items             DisposalItem[]
-  evidence          DisposalEvidence[]
-  activities        DisposalActivity[]
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  requester          User               @relation("DisposalRequester", fields: [requestedBy], references: [id], onDelete: Restrict)
+  approver           User?              @relation("DisposalApprover", fields: [approvedBy], references: [id], onDelete: Restrict)
+  executor           User?              @relation("DisposalExecutor", fields: [executedBy], references: [id], onDelete: Restrict)
+  items              DisposalItem[]
+  evidence           DisposalEvidence[]
+  activities         DisposalActivity[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   @@index([status, createdAt])
   @@index([type, status])
@@ -904,21 +920,21 @@ model DisposalCase {
 }
 
 model DisposalItem {
-  id                       String                   @id @default(uuid()) @db.Uuid
-  disposalId               String                   @db.Uuid
-  assetId                  String                   @db.Uuid
-  conditionAssessment      String                   @db.VarChar(2000)
-  requiresDataSanitization Boolean                  @default(false)
-  sanitizationStatus       DataSanitizationStatus   @default(NOT_REQUIRED)
-  sanitizationMethod       String?                  @db.VarChar(1000)
-  sanitizedBy              String?                  @db.Uuid
+  id                       String                 @id @default(uuid()) @db.Uuid
+  disposalId               String                 @db.Uuid
+  assetId                  String                 @db.Uuid
+  conditionAssessment      String                 @db.VarChar(2000)
+  requiresDataSanitization Boolean                @default(false)
+  sanitizationStatus       DataSanitizationStatus @default(NOT_REQUIRED)
+  sanitizationMethod       String?                @db.VarChar(1000)
+  sanitizedBy              String?                @db.Uuid
   sanitizedAt              DateTime?
   assetSnapshot            Json
-  disposal                 DisposalCase             @relation(fields: [disposalId], references: [id], onDelete: Restrict)
-  asset                    Asset                    @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  sanitizer                User?                    @relation("DisposalSanitizer", fields: [sanitizedBy], references: [id], onDelete: Restrict)
-  createdAt                DateTime                 @default(now())
-  updatedAt                DateTime                 @updatedAt
+  disposal                 DisposalCase           @relation(fields: [disposalId], references: [id], onDelete: Restrict)
+  asset                    Asset                  @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  sanitizer                User?                  @relation("DisposalSanitizer", fields: [sanitizedBy], references: [id], onDelete: Restrict)
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
 
   @@unique([disposalId, assetId])
   @@index([assetId, createdAt])
@@ -1021,26 +1037,26 @@ model Incident {
 }
 
 model IncidentAssignment {
-  id           String                 @id @default(uuid()) @db.Uuid
-  incidentId   String                 @db.Uuid
-  assignedToId String                 @db.Uuid
-  departmentId String                 @db.Uuid
-  assignedBy   String                 @db.Uuid
-  role         IncidentAssignmentRole @default(PRIMARY)
-  note         String?
-  assignedAt   DateTime               @default(now())
-  acceptedAt   DateTime?
-  acceptedById String?                 @db.Uuid
-  releasedAt   DateTime?
-  releasedById String?                 @db.Uuid
+  id            String                 @id @default(uuid()) @db.Uuid
+  incidentId    String                 @db.Uuid
+  assignedToId  String                 @db.Uuid
+  departmentId  String                 @db.Uuid
+  assignedBy    String                 @db.Uuid
+  role          IncidentAssignmentRole @default(PRIMARY)
+  note          String?
+  assignedAt    DateTime               @default(now())
+  acceptedAt    DateTime?
+  acceptedById  String?                @db.Uuid
+  releasedAt    DateTime?
+  releasedById  String?                @db.Uuid
   releaseReason String?
-  incident     Incident               @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-  assignee     User                   @relation("IncidentAssignmentAssignee", fields: [assignedToId], references: [id], onDelete: Restrict)
-  department   Department             @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  actor        User                   @relation("IncidentAssignmentActor", fields: [assignedBy], references: [id], onDelete: Restrict)
-  acceptor     User?                  @relation("IncidentAssignmentAcceptor", fields: [acceptedById], references: [id], onDelete: Restrict)
-  releaser     User?                  @relation("IncidentAssignmentReleaser", fields: [releasedById], references: [id], onDelete: Restrict)
-  createdAt    DateTime               @default(now())
+  incident      Incident               @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  assignee      User                   @relation("IncidentAssignmentAssignee", fields: [assignedToId], references: [id], onDelete: Restrict)
+  department    Department             @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  actor         User                   @relation("IncidentAssignmentActor", fields: [assignedBy], references: [id], onDelete: Restrict)
+  acceptor      User?                  @relation("IncidentAssignmentAcceptor", fields: [acceptedById], references: [id], onDelete: Restrict)
+  releaser      User?                  @relation("IncidentAssignmentReleaser", fields: [releasedById], references: [id], onDelete: Restrict)
+  createdAt     DateTime               @default(now())
 
   @@index([incidentId, assignedAt])
   @@index([assignedToId, releasedAt])
@@ -1210,31 +1226,31 @@ model AuditLog {
 }
 
 model RiskAssessment {
-  id             String               @id @default(uuid()) @db.Uuid
-  assessmentNo   String               @unique @db.VarChar(50)
-  title          String               @db.VarChar(250)
-  description    String?
-  scope          String
-  methodology    String               @default("ISO_27005_NIST_800_30") @db.VarChar(80)
-  status         RiskAssessmentStatus @default(DRAFT)
-  ownerId        String               @db.Uuid
-  approverId     String?              @db.Uuid
-  departmentId   String?              @db.Uuid
-  startDate      DateTime             @db.Date
-  targetDate     DateTime?            @db.Date
-  nextReviewAt   DateTime?            @db.Date
-  submittedAt    DateTime?
-  approvedAt     DateTime?
-  closedAt       DateTime?
-  createdBy      String               @db.Uuid
-  owner          User                 @relation("RiskAssessmentOwner", fields: [ownerId], references: [id], onDelete: Restrict)
-  approver       User?                @relation("RiskAssessmentApprover", fields: [approverId], references: [id], onDelete: Restrict)
-  creator        User                 @relation("RiskAssessmentCreator", fields: [createdBy], references: [id], onDelete: Restrict)
-  department     Department?          @relation("RiskAssessmentDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
-  risks          RiskItem[]
-  reviews        RiskReview[]
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  id           String               @id @default(uuid()) @db.Uuid
+  assessmentNo String               @unique @db.VarChar(50)
+  title        String               @db.VarChar(250)
+  description  String?
+  scope        String
+  methodology  String               @default("ISO_27005_NIST_800_30") @db.VarChar(80)
+  status       RiskAssessmentStatus @default(DRAFT)
+  ownerId      String               @db.Uuid
+  approverId   String?              @db.Uuid
+  departmentId String?              @db.Uuid
+  startDate    DateTime             @db.Date
+  targetDate   DateTime?            @db.Date
+  nextReviewAt DateTime?            @db.Date
+  submittedAt  DateTime?
+  approvedAt   DateTime?
+  closedAt     DateTime?
+  createdBy    String               @db.Uuid
+  owner        User                 @relation("RiskAssessmentOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  approver     User?                @relation("RiskAssessmentApprover", fields: [approverId], references: [id], onDelete: Restrict)
+  creator      User                 @relation("RiskAssessmentCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  department   Department?          @relation("RiskAssessmentDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
+  risks        RiskItem[]
+  reviews      RiskReview[]
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
   @@index([status, targetDate])
   @@index([ownerId, status])
@@ -1243,43 +1259,43 @@ model RiskAssessment {
 }
 
 model RiskItem {
-  id                   String                @id @default(uuid()) @db.Uuid
-  riskNo               String                @unique @db.VarChar(50)
-  assessmentId         String                @db.Uuid
-  title                String                @db.VarChar(250)
-  category             String                @db.VarChar(100)
-  scenario             String
-  threat               String
-  vulnerability        String
-  existingControls     String?
-  source               RiskSource            @default(MANUAL)
-  status               RiskItemStatus        @default(IDENTIFIED)
-  likelihood           Int
-  impact               Int
-  inherentScore        Int
-  inherentLevel        RiskLevel
-  residualLikelihood   Int?
-  residualImpact       Int?
-  residualScore        Int?
-  residualLevel        RiskLevel?
-  treatmentStrategy    RiskTreatmentStrategy @default(MITIGATE)
-  acceptanceRationale  String?
-  ownerId              String                @db.Uuid
-  departmentId         String?               @db.Uuid
-  dueDate              DateTime?             @db.Date
-  nextReviewAt         DateTime?             @db.Date
-  createdBy            String                @db.Uuid
-  assessment           RiskAssessment        @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  owner                User                  @relation("RiskItemOwner", fields: [ownerId], references: [id], onDelete: Restrict)
-  creator              User                  @relation("RiskItemCreator", fields: [createdBy], references: [id], onDelete: Restrict)
-  department           Department?           @relation("RiskAffectedDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
-  assets               RiskAsset[]
-  incidents            RiskIncident[]
-  controls             RiskControl[]
-  treatments           RiskTreatmentAction[]
-  reviews              RiskReview[]
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  id                  String                @id @default(uuid()) @db.Uuid
+  riskNo              String                @unique @db.VarChar(50)
+  assessmentId        String                @db.Uuid
+  title               String                @db.VarChar(250)
+  category            String                @db.VarChar(100)
+  scenario            String
+  threat              String
+  vulnerability       String
+  existingControls    String?
+  source              RiskSource            @default(MANUAL)
+  status              RiskItemStatus        @default(IDENTIFIED)
+  likelihood          Int
+  impact              Int
+  inherentScore       Int
+  inherentLevel       RiskLevel
+  residualLikelihood  Int?
+  residualImpact      Int?
+  residualScore       Int?
+  residualLevel       RiskLevel?
+  treatmentStrategy   RiskTreatmentStrategy @default(MITIGATE)
+  acceptanceRationale String?
+  ownerId             String                @db.Uuid
+  departmentId        String?               @db.Uuid
+  dueDate             DateTime?             @db.Date
+  nextReviewAt        DateTime?             @db.Date
+  createdBy           String                @db.Uuid
+  assessment          RiskAssessment        @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  owner               User                  @relation("RiskItemOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  creator             User                  @relation("RiskItemCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  department          Department?           @relation("RiskAffectedDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
+  assets              RiskAsset[]
+  incidents           RiskIncident[]
+  controls            RiskControl[]
+  treatments          RiskTreatmentAction[]
+  reviews             RiskReview[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 
   @@index([assessmentId, status])
   @@index([inherentLevel, residualLevel])
@@ -1339,7 +1355,7 @@ model RiskTreatmentAction {
   description String?
   status      RiskTreatmentStatus @default(PLANNED)
   assigneeId  String              @db.Uuid
-  dueDate     DateTime             @db.Date
+  dueDate     DateTime            @db.Date
   completedAt DateTime?
   progress    Int                 @default(0)
   outcome     String?
@@ -1383,87 +1399,87 @@ model ApplicationSetting {
 }
 
 model Vendor {
-  id             String    @id @default(uuid()) @db.Uuid
-  code           String    @unique @db.VarChar(50)
-  name           String    @db.VarChar(200)
-  taxCode        String?   @db.VarChar(50)
-  category       String    @db.VarChar(150)
-  contact        String    @db.VarChar(150)
-  email          String?   @db.VarChar(255)
-  phone          String?   @db.VarChar(30)
-  address        String?
-  certifications String?
-  lifecycleStatus String    @default("ACTIVE") @db.VarChar(20)
-  status         String    @db.VarChar(30)
-  lastEvaluation DateTime? @db.Date
-  score          Int       @default(0)
-  scores         Json      @default("{}")
-  notes          String?
+  id                  String               @id @default(uuid()) @db.Uuid
+  code                String               @unique @db.VarChar(50)
+  name                String               @db.VarChar(200)
+  taxCode             String?              @db.VarChar(50)
+  category            String               @db.VarChar(150)
+  contact             String               @db.VarChar(150)
+  email               String?              @db.VarChar(255)
+  phone               String?              @db.VarChar(30)
+  address             String?
+  certifications      String?
+  lifecycleStatus     String               @default("ACTIVE") @db.VarChar(20)
+  status              String               @db.VarChar(30)
+  lastEvaluation      DateTime?            @db.Date
+  score               Int                  @default(0)
+  scores              Json                 @default("{}")
+  notes               String?
   digitalEntitlements DigitalEntitlement[]
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@map("vendors")
 }
 
 model DigitalEntitlement {
-  id                    String                   @id @default(uuid()) @db.Uuid
-  code                  String                   @unique @db.VarChar(60)
-  name                  String                   @db.VarChar(250)
-  type                  DigitalEntitlementType
-  status                DigitalEntitlementStatus @default(ACTIVE)
-  productName           String?                  @db.VarChar(200)
-  edition               String?                  @db.VarChar(120)
-  subscriptionIdentifier String?                 @db.VarChar(255)
-  domainName            String?                  @db.VarChar(253)
-  commonName            String?                  @db.VarChar(253)
-  registrar             String?                  @db.VarChar(200)
-  issuer                String?                  @db.VarChar(200)
-  licenseMetric         String?                  @db.VarChar(80)
-  totalQuantity         Int                      @default(1)
-  startDate             DateTime?                @db.Date
-  expiryDate            DateTime?                @db.Date
-  autoRenew             Boolean                  @default(false)
-  renewalPeriodMonths   Int                      @default(12)
-  cancellationDeadline  DateTime?                @db.Date
-  purchaseCost          Decimal?                 @db.Decimal(18, 2)
-  renewalCost           Decimal?                 @db.Decimal(18, 2)
-  currency              String                   @default("VND") @db.VarChar(3)
-  purchaseOrderNo       String?                  @db.VarChar(100)
-  contractNo            String?                  @db.VarChar(100)
-  managementUrl         String?                  @db.VarChar(1000)
-  accountName           String?                  @db.VarChar(255)
-  secretReference       String?                  @db.VarChar(500)
-  technicalContact      String?                  @db.VarChar(255)
-  businessOwner         String?                  @db.VarChar(255)
-  notes                 String?
-  vendorId              String?                  @db.Uuid
-  ownerDepartmentId     String?                  @db.Uuid
-  ownerUserId           String?                  @db.Uuid
-  createdBy             String                   @db.Uuid
-  externalProvider      String?                  @db.VarChar(40)
-  externalTenantId      String?                  @db.VarChar(100)
-  externalSkuId         String?                  @db.VarChar(100)
-  externalSkuPartNumber String?                  @db.VarChar(150)
-  externalAssignedQuantity Int?
+  id                        String                       @id @default(uuid()) @db.Uuid
+  code                      String                       @unique @db.VarChar(60)
+  name                      String                       @db.VarChar(250)
+  type                      DigitalEntitlementType
+  status                    DigitalEntitlementStatus     @default(ACTIVE)
+  productName               String?                      @db.VarChar(200)
+  edition                   String?                      @db.VarChar(120)
+  subscriptionIdentifier    String?                      @db.VarChar(255)
+  domainName                String?                      @db.VarChar(253)
+  commonName                String?                      @db.VarChar(253)
+  registrar                 String?                      @db.VarChar(200)
+  issuer                    String?                      @db.VarChar(200)
+  licenseMetric             String?                      @db.VarChar(80)
+  totalQuantity             Int                          @default(1)
+  startDate                 DateTime?                    @db.Date
+  expiryDate                DateTime?                    @db.Date
+  autoRenew                 Boolean                      @default(false)
+  renewalPeriodMonths       Int                          @default(12)
+  cancellationDeadline      DateTime?                    @db.Date
+  purchaseCost              Decimal?                     @db.Decimal(18, 2)
+  renewalCost               Decimal?                     @db.Decimal(18, 2)
+  currency                  String                       @default("VND") @db.VarChar(3)
+  purchaseOrderNo           String?                      @db.VarChar(100)
+  contractNo                String?                      @db.VarChar(100)
+  managementUrl             String?                      @db.VarChar(1000)
+  accountName               String?                      @db.VarChar(255)
+  secretReference           String?                      @db.VarChar(500)
+  technicalContact          String?                      @db.VarChar(255)
+  businessOwner             String?                      @db.VarChar(255)
+  notes                     String?
+  vendorId                  String?                      @db.Uuid
+  ownerDepartmentId         String?                      @db.Uuid
+  ownerUserId               String?                      @db.Uuid
+  createdBy                 String                       @db.Uuid
+  externalProvider          String?                      @db.VarChar(40)
+  externalTenantId          String?                      @db.VarChar(100)
+  externalSkuId             String?                      @db.VarChar(100)
+  externalSkuPartNumber     String?                      @db.VarChar(150)
+  externalAssignedQuantity  Int?
   externalAvailableQuantity Int?
-  externalCapabilityStatus String?               @db.VarChar(40)
-  externalLastSyncedAt  DateTime?
-  vendor                Vendor?                  @relation(fields: [vendorId], references: [id], onDelete: Restrict)
-  ownerDepartment       Department?              @relation(fields: [ownerDepartmentId], references: [id], onDelete: Restrict)
-  owner                 User?                    @relation("DigitalEntitlementOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  creator               User                     @relation("DigitalEntitlementCreator", fields: [createdBy], references: [id], onDelete: Restrict)
-  assignments           DigitalAssignment[]
-  renewals              DigitalRenewal[]
-  alerts                RenewalAlert[]
-  microsoftAssignments  MicrosoftLicenseAssignment[]
-  createdAt             DateTime                 @default(now())
-  updatedAt             DateTime                 @updatedAt
+  externalCapabilityStatus  String?                      @db.VarChar(40)
+  externalLastSyncedAt      DateTime?
+  vendor                    Vendor?                      @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  ownerDepartment           Department?                  @relation(fields: [ownerDepartmentId], references: [id], onDelete: Restrict)
+  owner                     User?                        @relation("DigitalEntitlementOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  creator                   User                         @relation("DigitalEntitlementCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  assignments               DigitalAssignment[]
+  renewals                  DigitalRenewal[]
+  alerts                    RenewalAlert[]
+  microsoftAssignments      MicrosoftLicenseAssignment[]
+  createdAt                 DateTime                     @default(now())
+  updatedAt                 DateTime                     @updatedAt
 
+  @@unique([externalProvider, externalTenantId, externalSkuId])
   @@index([type, status, expiryDate])
   @@index([ownerDepartmentId, expiryDate])
   @@index([vendorId])
-  @@unique([externalProvider, externalTenantId, externalSkuId])
   @@map("digital_entitlements")
 }
 
@@ -1478,10 +1494,10 @@ model MicrosoftLicenseAssignment {
   assignmentError   String?            @db.VarChar(100)
   personId          String?            @db.Uuid
   entitlement       DigitalEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
-  person             Person?           @relation(fields: [personId], references: [id], onDelete: SetNull)
-  lastSyncedAt       DateTime           @default(now())
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  person            Person?            @relation(fields: [personId], references: [id], onDelete: SetNull)
+  lastSyncedAt      DateTime           @default(now())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@unique([entitlementId, externalUserId])
   @@index([userPrincipalName])
@@ -1523,15 +1539,15 @@ model DigitalRenewal {
   id                 String               @id @default(uuid()) @db.Uuid
   entitlementId      String               @db.Uuid
   status             DigitalRenewalStatus @default(COMPLETED)
-  previousExpiryDate DateTime              @db.Date
-  newExpiryDate      DateTime              @db.Date
-  renewalDate        DateTime              @default(now()) @db.Date
-  amount             Decimal?              @db.Decimal(18, 2)
-  currency           String                @default("VND") @db.VarChar(3)
-  purchaseOrderNo    String?               @db.VarChar(100)
-  invoiceNo          String?               @db.VarChar(100)
-  approvedBy         String?               @db.Uuid
-  renewedBy          String                @db.Uuid
+  previousExpiryDate DateTime             @db.Date
+  newExpiryDate      DateTime             @db.Date
+  renewalDate        DateTime             @default(now()) @db.Date
+  amount             Decimal?             @db.Decimal(18, 2)
+  currency           String               @default("VND") @db.VarChar(3)
+  purchaseOrderNo    String?              @db.VarChar(100)
+  invoiceNo          String?              @db.VarChar(100)
+  approvedBy         String?              @db.Uuid
+  renewedBy          String               @db.Uuid
   notes              String?
   entitlement        DigitalEntitlement   @relation(fields: [entitlementId], references: [id], onDelete: Restrict)
   approver           User?                @relation("DigitalRenewalApprover", fields: [approvedBy], references: [id], onDelete: Restrict)
@@ -1560,24 +1576,24 @@ model RenewalAlertPolicy {
 }
 
 model RenewalAlert {
-  id               String             @id @default(uuid()) @db.Uuid
-  entitlementId    String             @db.Uuid
-  policyId          String             @db.Uuid
-  thresholdDays     Int
-  dueDate           DateTime           @db.Date
-  status            RenewalAlertStatus @default(OPEN)
-  firstTriggeredAt  DateTime           @default(now())
-  lastTriggeredAt   DateTime           @default(now())
-  acknowledgedAt    DateTime?
-  acknowledgedBy    String?            @db.Uuid
-  resolvedAt        DateTime?
-  note              String?
-  entitlement       DigitalEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
-  policy            RenewalAlertPolicy @relation(fields: [policyId], references: [id], onDelete: Restrict)
-  acknowledger      User?              @relation("RenewalAlertAcknowledger", fields: [acknowledgedBy], references: [id], onDelete: Restrict)
-  deliveries        RenewalNotificationDelivery[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id               String                        @id @default(uuid()) @db.Uuid
+  entitlementId    String                        @db.Uuid
+  policyId         String                        @db.Uuid
+  thresholdDays    Int
+  dueDate          DateTime                      @db.Date
+  status           RenewalAlertStatus            @default(OPEN)
+  firstTriggeredAt DateTime                      @default(now())
+  lastTriggeredAt  DateTime                      @default(now())
+  acknowledgedAt   DateTime?
+  acknowledgedBy   String?                       @db.Uuid
+  resolvedAt       DateTime?
+  note             String?
+  entitlement      DigitalEntitlement            @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+  policy           RenewalAlertPolicy            @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  acknowledger     User?                         @relation("RenewalAlertAcknowledger", fields: [acknowledgedBy], references: [id], onDelete: Restrict)
+  deliveries       RenewalNotificationDelivery[]
+  createdAt        DateTime                      @default(now())
+  updatedAt        DateTime                      @updatedAt
 
   @@unique([entitlementId, dueDate, thresholdDays])
   @@index([status, dueDate])
@@ -1585,21 +1601,21 @@ model RenewalAlert {
 }
 
 model RenewalNotificationConfiguration {
-  id                 String   @id @default(uuid()) @db.Uuid
-  enabled            Boolean  @default(false)
-  smtpHost           String?  @db.VarChar(255)
-  smtpPort           Int      @default(587)
-  secure             Boolean  @default(false)
-  username           String?  @db.VarChar(255)
-  passwordEncrypted  String?
-  fromName           String?  @db.VarChar(150)
-  fromAddress        String?  @db.VarChar(255)
-  replyTo            String?  @db.VarChar(255)
-  lastTestAt         DateTime?
-  lastTestOk         Boolean?
-  lastTestMessage    String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                String    @id @default(uuid()) @db.Uuid
+  enabled           Boolean   @default(false)
+  smtpHost          String?   @db.VarChar(255)
+  smtpPort          Int       @default(587)
+  secure            Boolean   @default(false)
+  username          String?   @db.VarChar(255)
+  passwordEncrypted String?
+  fromName          String?   @db.VarChar(150)
+  fromAddress       String?   @db.VarChar(255)
+  replyTo           String?   @db.VarChar(255)
+  lastTestAt        DateTime?
+  lastTestOk        Boolean?
+  lastTestMessage   String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@map("renewal_notification_configurations")
 }
@@ -1621,4 +1637,153 @@ model RenewalNotificationDelivery {
   @@unique([alertId, channel, recipient])
   @@index([status, nextAttemptAt])
   @@map("renewal_notification_deliveries")
+}
+
+// ---------------------------------------------------------------------------
+// ISO/IEC 27001:2022 compliance
+//
+// The Annex A control catalogue itself is fixed reference data and lives in code
+// (src/modules/compliance/annex-a.ts); only per-organization decisions are stored here, keyed by the
+// control code. Files are held on the documents volume and referenced by storagePath.
+// ---------------------------------------------------------------------------
+
+enum SoaStatus {
+  DRAFT
+  ISSUED
+  SUPERSEDED
+}
+
+enum SoaDecision {
+  APPLICABLE
+  EXCLUDED
+}
+
+enum ControlImplementation {
+  NOT_STARTED
+  PLANNED
+  PARTIAL
+  IMPLEMENTED
+}
+
+enum ComplianceDocumentType {
+  POLICY
+  PROCEDURE
+  REGULATION
+  GUIDELINE
+  FORM
+  RECORD
+}
+
+enum ComplianceDocumentStatus {
+  DRAFT
+  ISSUED
+  SUPERSEDED
+  WITHDRAWN
+}
+
+/// ISO/IEC 27001:2022 §6.1.3(d) — the Statement of Applicability, kept as whole versions so an
+/// earlier issue stays readable exactly as it was presented to the auditor.
+model SoaVersion {
+  id         String     @id @default(uuid()) @db.Uuid
+  version    String     @unique @db.VarChar(20)
+  status     SoaStatus  @default(DRAFT)
+  scope      String
+  note       String?
+  issuedAt   DateTime?  @db.Date
+  approvedBy String?    @db.Uuid
+  approvedAt DateTime?
+  createdBy  String     @db.Uuid
+  approver   User?      @relation("SoaApprover", fields: [approvedBy], references: [id], onDelete: Restrict)
+  creator    User       @relation("SoaCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  entries    SoaEntry[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([status])
+  @@map("soa_versions")
+}
+
+model SoaEntry {
+  id                 String                @id @default(uuid()) @db.Uuid
+  soaVersionId       String                @db.Uuid
+  /// Annex A code such as "A.5.11"; validated against the catalogue in code.
+  controlCode        String                @db.VarChar(12)
+  decision           SoaDecision           @default(APPLICABLE)
+  /// §6.1.3(d) requires the reason for including or excluding each control.
+  justification      String
+  implementation     ControlImplementation @default(NOT_STARTED)
+  implementationNote String?
+  soaVersion         SoaVersion            @relation(fields: [soaVersionId], references: [id], onDelete: Cascade)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@unique([soaVersionId, controlCode])
+  @@index([controlCode])
+  @@map("soa_entries")
+}
+
+/// ISO/IEC 27001:2022 §7.5 — documented information under version control.
+model ComplianceDocument {
+  id            String                      @id @default(uuid()) @db.Uuid
+  documentCode  String                      @unique @db.VarChar(60)
+  title         String                      @db.VarChar(250)
+  type          ComplianceDocumentType
+  status        ComplianceDocumentStatus    @default(DRAFT)
+  version       String                      @db.VarChar(20)
+  summary       String?
+  ownerId       String                      @db.Uuid
+  departmentId  String?                     @db.Uuid
+  issuedAt      DateTime?                   @db.Date
+  effectiveFrom DateTime?                   @db.Date
+  nextReviewAt  DateTime?                   @db.Date
+  approvedBy    String?                     @db.Uuid
+  approvedAt    DateTime?
+  withdrawnAt   DateTime?
+  /// Previous issue this one replaces, so the version chain stays walkable.
+  supersedesId  String?                     @unique @db.Uuid
+  createdBy     String                      @db.Uuid
+  owner         User                        @relation("ComplianceDocumentOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  approver      User?                       @relation("ComplianceDocumentApprover", fields: [approvedBy], references: [id], onDelete: Restrict)
+  creator       User                        @relation("ComplianceDocumentCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  department    Department?                 @relation("ComplianceDocumentDepartment", fields: [departmentId], references: [id], onDelete: Restrict)
+  supersedes    ComplianceDocument?         @relation("DocumentVersionChain", fields: [supersedesId], references: [id], onDelete: Restrict)
+  supersededBy  ComplianceDocument?         @relation("DocumentVersionChain")
+  files         ComplianceDocumentFile[]
+  controls      ComplianceDocumentControl[]
+  createdAt     DateTime                    @default(now())
+  updatedAt     DateTime                    @updatedAt
+
+  @@index([status, nextReviewAt])
+  @@index([type, status])
+  @@map("compliance_documents")
+}
+
+model ComplianceDocumentFile {
+  id             String             @id @default(uuid()) @db.Uuid
+  documentId     String             @db.Uuid
+  originalName   String             @db.VarChar(255)
+  /// Path under STORAGE_PATH. Generated, never taken from the upload.
+  storagePath    String             @db.VarChar(500)
+  mimeType       String             @db.VarChar(120)
+  fileSize       Int
+  checksumSha256 String             @db.VarChar(64)
+  uploadedBy     String             @db.Uuid
+  document       ComplianceDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploader       User               @relation("ComplianceFileUploader", fields: [uploadedBy], references: [id], onDelete: Restrict)
+  createdAt      DateTime           @default(now())
+
+  @@index([documentId])
+  @@map("compliance_document_files")
+}
+
+/// Which Annex A controls a document is evidence for, so a control can show what proves it.
+model ComplianceDocumentControl {
+  documentId  String             @db.Uuid
+  controlCode String             @db.VarChar(12)
+  document    ComplianceDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt   DateTime           @default(now())
+
+  @@id([documentId, controlCode])
+  @@index([controlCode])
+  @@map("compliance_document_controls")
 }

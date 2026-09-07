@@ -12,6 +12,8 @@ export const pageRoutes: Record<string, string> = {
   'License & Gia hạn': '/renewals',
   'Bảo trì & Sự cố': '/maintenance',
   'Đánh giá rủi ro CNTT': '/it-risk-assessment',
+  'Khung tiêu chuẩn & SoA': '/compliance/controls',
+  'Hệ thống tài liệu': '/compliance/documents',
   'Báo cáo': '/reports',
   'Cấu hình hệ thống': '/settings',
   'Tùy chỉnh thương hiệu': '/settings/branding',
