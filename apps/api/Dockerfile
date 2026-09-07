@@ -12,7 +12,7 @@ COPY apps/api/tsconfig.json apps/api/nest-cli.json ./apps/api/
 COPY apps/api/src ./apps/api/src
 RUN npm run build --workspace @assetflow/api
 
-FROM --platform=$BUILDPLATFORM golang:1.26.6-alpine AS agent-build
+FROM --platform=$BUILDPLATFORM golang:1.27.1-alpine AS agent-build
 ARG APP_VERSION=development
 WORKDIR /src/apps/agent
 COPY apps/agent/go.mod ./
