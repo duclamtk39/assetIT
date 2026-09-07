@@ -1,4 +1,5 @@
-import { RiskAssessmentStatus, RiskLevel, RiskReviewDecision } from '@prisma/client'
+import { RiskAssessmentStatus, RiskReviewDecision } from '@prisma/client'
+import { riskLevelFor } from './risk-criteria'
 
 export function calculateRiskScore(likelihood: number, impact: number) {
   if (
@@ -10,10 +11,10 @@ export function calculateRiskScore(likelihood: number, impact: number) {
     impact > 5
   )
     throw new Error('Risk likelihood and impact must be integers from 1 to 5')
-  const score = likelihood * impact
-  const level: RiskLevel =
-    score >= 17 ? RiskLevel.CRITICAL : score >= 10 ? RiskLevel.HIGH : score >= 5 ? RiskLevel.MEDIUM : RiskLevel.LOW
-  return { score, level }
+  // The score is kept for sorting and reporting, but the level comes from the criteria matrix: a
+  // product cannot separate a rare catastrophe from a constant nuisance, and ISO/IEC 27005 Annex A
+  // assigns the level per cell for exactly that reason.
+  return { score: likelihood * impact, level: riskLevelFor(likelihood, impact) }
 }
 
 export function assessmentStatusAfterDecision(current: RiskAssessmentStatus, decision: RiskReviewDecision) {

@@ -287,6 +287,7 @@ Caddy :80/:443
 - [Kiến trúc](docs/ARCHITECTURE.md)
 - [Production readiness](docs/PRODUCTION_READINESS.md)
 - [Bảo mật và kiểm thử directory](docs/SECURITY_TESTING.md)
+- [Đánh giá rủi ro CNTT](docs/IT_RISK_ASSESSMENT.md)
 - [Release và CI/CD](docs/RELEASE.md)
 - [Security policy](SECURITY.md)
 

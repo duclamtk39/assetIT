@@ -34,10 +34,24 @@ export class ListRiskAssessmentsQuery {
 export class ListRisksQuery {
   @IsOptional() @IsString() @MaxLength(200) search?: string
   @IsOptional() @IsEnum(RiskItemStatus) status?: RiskItemStatus
+  /** Several statuses at once, so a process stage can filter exactly the set it counted. */
+  @IsOptional()
+  @Transform(({ value }) =>
+    String(value || '')
+      .split(',')
+      .filter(Boolean),
+  )
+  @IsArray()
+  @IsEnum(RiskItemStatus, { each: true })
+  statuses?: RiskItemStatus[]
   @IsOptional() @IsIn(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']) level?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
   @IsOptional() @IsUUID() assessmentId?: string
   @IsOptional() @IsUUID() departmentId?: string
   @IsOptional() @IsUUID() ownerId?: string
+  /** Matrix cell filter. `basis` says which of the two grids the cell was read from. */
+  @IsOptional() @IsIn(['INHERENT', 'RESIDUAL']) basis?: 'INHERENT' | 'RESIDUAL'
+  @IsOptional() @Transform(({ value }) => Number(value)) @IsInt() @Min(1) @Max(5) likelihood?: number
+  @IsOptional() @Transform(({ value }) => Number(value)) @IsInt() @Min(1) @Max(5) impact?: number
   @Transform(({ value }) => Number(value || 1)) @IsInt() @Min(1) page = 1
   @Transform(({ value }) => Number(value || 20)) @IsInt() @Min(1) @Max(100) limit = 20
 }

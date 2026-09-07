@@ -14,6 +14,7 @@ import {
   UpdateRiskTreatmentDto,
 } from './risks.dto'
 import { assessmentStatusAfterDecision, calculateRiskScore } from './risks.rules'
+import { acceptanceRuleFor, riskCriteria } from './risk-criteria'
 
 type Actor = { id: string; role: string; departmentId: string | null }
 
@@ -58,6 +59,12 @@ export class RisksService {
       select: { id: true },
     })
     if (!user) throw new BadRequestException(`${label} phải là tài khoản Admin/IT đang hoạt động`)
+  }
+
+  /** ISO/IEC 27001:2022 §6.1.2(a) — the documented risk criteria every consumer must read from. */
+  criteria(actor: Actor) {
+    this.assertOperator(actor)
+    return riskCriteria
   }
 
   async operators(actor: Actor) {
@@ -108,6 +115,8 @@ export class RisksService {
         likelihood: true,
         impact: true,
         inherentLevel: true,
+        residualLikelihood: true,
+        residualImpact: true,
         residualLevel: true,
         status: true,
         dueDate: true,
@@ -127,13 +136,26 @@ export class RisksService {
       )
         .map(([label, count]) => ({ label, count }))
         .sort((a, b) => b.count - a.count)
-    const matrix = Array.from({ length: 5 }, (_, impactIndex) =>
-      Array.from({ length: 5 }, (_, likelihoodIndex) => ({
-        impact: 5 - impactIndex,
-        likelihood: likelihoodIndex + 1,
-        count: risks.filter(item => item.impact === 5 - impactIndex && item.likelihood === likelihoodIndex + 1).length,
-      })),
-    ).flat()
+    // Two grids, because inherent and residual answer different questions: what the risk would be
+    // without the controls, and what is left once they are in place. Reporting only the first and
+    // then filtering by the second is what made the old matrix disagree with its own cells.
+    const grid = (pick: (item: (typeof risks)[number]) => { likelihood: number | null; impact: number | null }) =>
+      Array.from({ length: 5 }, (_, impactIndex) =>
+        Array.from({ length: 5 }, (_, likelihoodIndex) => {
+          const impact = 5 - impactIndex,
+            likelihood = likelihoodIndex + 1
+          return {
+            impact,
+            likelihood,
+            count: risks.filter(item => {
+              const value = pick(item)
+              return value.impact === impact && value.likelihood === likelihood
+            }).length,
+          }
+        }),
+      ).flat()
+    const matrix = grid(item => ({ likelihood: item.likelihood, impact: item.impact }))
+    const residualMatrix = grid(item => ({ likelihood: item.residualLikelihood, impact: item.residualImpact }))
     return {
       totalOpen: risks.length,
       critical: risks.filter(item => (item.residualLevel || item.inherentLevel) === 'CRITICAL').length,
@@ -143,7 +165,11 @@ export class RisksService {
       treatments: risks.filter(item => item.status === 'TREATMENT_PLANNED' || item.status === 'TREATING').length,
       byCategory: countBy(risks.map(item => item.category)),
       byLevel: countBy(risks.map(item => item.residualLevel || item.inherentLevel)),
+      byStatus: countBy(risks.map(item => item.status)),
+      /** Treated but with no residual figure yet, so §8.3 sign-off cannot even be requested. */
+      residualMissing: risks.filter(item => item.status !== 'IDENTIFIED' && item.residualLevel === null).length,
       matrix,
+      residualMatrix,
     }
   }
 
@@ -235,7 +261,7 @@ export class RisksService {
       assessmentId: query.assessmentId,
       departmentId: query.departmentId,
       ownerId: query.ownerId,
-      status: query.status,
+      status: query.statuses?.length ? { in: query.statuses } : query.status,
       AND: [
         text
           ? {
@@ -251,6 +277,13 @@ export class RisksService {
           : {},
         query.level
           ? { OR: [{ residualLevel: query.level }, { residualLevel: null, inherentLevel: query.level }] }
+          : {},
+        // A matrix cell must return exactly the risks it counted, so the filter reads the same pair
+        // of columns the grid was built from rather than falling back to the level.
+        query.likelihood && query.impact
+          ? query.basis === 'RESIDUAL'
+            ? { residualLikelihood: query.likelihood, residualImpact: query.impact }
+            : { likelihood: query.likelihood, impact: query.impact }
           : {},
       ],
     }
@@ -601,11 +634,15 @@ export class RisksService {
     if (actor.role !== 'ADMIN') throw new ForbiddenException('Chỉ Admin được chấp nhận rủi ro còn lại hoặc đóng hồ sơ')
     if (current.ownerId === actor.id)
       throw new ForbiddenException('Chủ sở hữu rủi ro không được tự chấp nhận rủi ro còn lại')
-    if (
-      body.decision === RiskReviewDecision.ACCEPT_RESIDUAL &&
-      (!current.residualScore || !current.acceptanceRationale)
-    )
-      throw new BadRequestException('Chưa có điểm rủi ro còn lại hoặc lý do chấp nhận')
+    if (body.decision === RiskReviewDecision.ACCEPT_RESIDUAL) {
+      if (!current.residualScore || !current.residualLevel || !current.acceptanceRationale)
+        throw new BadRequestException('Chưa có điểm rủi ro còn lại hoặc lý do chấp nhận')
+      // ISO/IEC 27001:2022 §8.3 — residual risk is accepted against the documented acceptance
+      // criteria, so a level the organization declared unacceptable cannot be signed off at all.
+      const rule = acceptanceRuleFor(current.residualLevel)
+      if (!rule.acceptable)
+        throw new BadRequestException(`Rủi ro còn lại đang ở mức ${rule.label} nên không được chấp nhận. ${rule.rule}`)
+    }
     const status =
       body.decision === RiskReviewDecision.ACCEPT_RESIDUAL ? RiskItemStatus.ACCEPTED : RiskItemStatus.CLOSED
     return this.db.$transaction(async tx => {

@@ -24,6 +24,9 @@ export class RisksController {
   @Get('summary') summary(@Req() req: AuthRequest) {
     return this.risks.summary(req.authUser)
   }
+  @Get('criteria') criteria(@Req() req: AuthRequest) {
+    return this.risks.criteria(req.authUser)
+  }
   @Get('operators') operators(@Req() req: AuthRequest) {
     return this.risks.operators(req.authUser)
   }
