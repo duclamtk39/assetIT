@@ -84,8 +84,10 @@ cd /opt/assetIT/infra/docker/production
 docker compose config --quiet
 docker compose pull
 docker compose up -d
-docker compose ps
+docker compose ps -a
 ```
+
+Dùng `ps -a` vì `migrate` là container chạy một lần rồi thoát; `ps` thường sẽ không hiển thị nó. Trạng thái đúng là `migrate` ở `Exited (0)`, còn `db`, `api`, `web`, `proxy` ở `Up`.
 
 Kiểm tra API, thay IP nếu cần:
 
@@ -119,7 +121,9 @@ Production không tự tạo dữ liệu demo.
 
 ## Cập nhật lên bản mới nhất
 
-Chỉ cập nhật sau khi GitHub Actions của nhánh `main` đã hoàn tất. Luôn backup trước khi tải image và chạy migration mới:
+Tag `edge` được đẩy lên GHCR bởi workflow **Publish edge images**, và workflow này chỉ khởi động sau khi **CI** của nhánh `main` kết thúc thành công. Phải chờ *Publish edge images* xong, không chỉ chờ CI: cập nhật sớm hơn thì `docker compose pull` tải lại đúng image cũ và server trông như không có gì thay đổi.
+
+Luôn backup trước khi tải image và chạy migration mới:
 
 ```bash
 cd /opt/assetIT
@@ -133,18 +137,21 @@ git pull --ff-only origin main
 cd infra/docker/production
 docker compose pull
 docker compose up -d --remove-orphans
-docker compose ps
+docker compose ps -a
 curl -fsS http://192.168.50.15/api/v1/health/ready
 ```
 
 `git pull` cập nhật cấu hình triển khai; `docker compose pull` tải image mới. Container `migrate` phải chạy thành công trước khi API khởi động.
 
-Kiểm tra commit đang có trong repository:
+Sau khi cập nhật, kiểm tra cả cấu hình lẫn image đang chạy thật sự:
 
 ```bash
 cd /opt/assetIT
 git log -1 --oneline
+curl -fsS http://192.168.50.15/api/v1/health/version
 ```
+
+`git log` cho biết cấu hình triển khai đang ở commit nào. `health/version` trả về `edge-<commit>` của chính image API đang chạy — đây là cách duy nhất để phân biệt bản mới với bản cũ, vì `edge` là tag di động nên tên tag không nói lên điều gì. Hai giá trị phải cùng trỏ về một commit khi cập nhật hoàn tất. Image build trước phiên bản này trả về `development`; giá trị đó nghĩa là API vẫn đang chạy image cũ.
 
 ## Backup
 
@@ -268,9 +275,10 @@ Caddy :80/:443
 ## CI/CD và phát hành
 
 - Push/PR chạy build, test, audit dependency và kiểm tra Docker image.
-- Khi CI trên `main` thành công, workflow publish image `edge` lên GHCR.
+- CI trên `main` xanh sẽ kích hoạt workflow **Publish edge images**, đẩy tag `edge` lên GHCR. Đây là bước quyết định thời điểm server UAT có bản mới để tải.
 - GitHub Release phát hành image theo SemVer để ghim phiên bản ổn định.
 - Cập nhật server bằng `git pull`, `docker compose pull` và `docker compose up -d` như hướng dẫn phía trên.
+- Mỗi image mang sẵn `APP_VERSION` của commit đã build, đọc được qua `GET /api/v1/health/version`.
 
 ## Tài liệu
 

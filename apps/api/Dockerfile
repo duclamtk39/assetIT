@@ -38,7 +38,11 @@ FROM node:22-alpine AS runtime
 ENV NODE_ENV=production \
     PORT=3000
 WORKDIR /app
-RUN apk upgrade --no-cache \
+# See apps/web/Dockerfile: the CI layer cache would otherwise pin this image to the package
+# set of the last build, so newly published Alpine fixes never land.
+ARG APK_SNAPSHOT=0
+RUN : "${APK_SNAPSHOT}" \
+    && apk upgrade --no-cache \
     && apk add --no-cache tini \
     && addgroup -S assetflow \
     && adduser -S -G assetflow assetflow \
@@ -53,6 +57,11 @@ COPY --from=build --chown=assetflow:assetflow /app/apps/api/package.json ./apps/
 COPY --from=agent-build --chown=assetflow:assetflow /out ./apps/api/agent-downloads
 COPY --chown=assetflow:assetflow apps/api/docker-entrypoint.sh ./apps/api/docker-entrypoint.sh
 RUN chmod 0555 ./apps/api/docker-entrypoint.sh
+# /health/version reads this. Baking it into the image rather than setting it in compose is what
+# makes the answer trustworthy: `edge` is a moving tag, so only the build itself knows which
+# commit it came from. Declared last so a new version does not invalidate the layers above.
+ARG APP_VERSION=development
+ENV APP_VERSION=${APP_VERSION}
 USER assetflow
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
