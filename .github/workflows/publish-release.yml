@@ -115,7 +115,9 @@ jobs:
         with:
           context: .
           file: apps/${{ matrix.component }}/Dockerfile
-          build-args: APP_VERSION=${{ github.event.release.tag_name }}
+          build-args: |
+            APP_VERSION=${{ github.event.release.tag_name }}
+            APK_SNAPSHOT=${{ github.run_id }}
           platforms: linux/amd64,linux/arm64
           push: true
           sbom: true

@@ -56,7 +56,9 @@ jobs:
         with:
           context: .
           file: apps/${{ matrix.component }}/Dockerfile
-          build-args: APP_VERSION=edge-${{ github.event.workflow_run.head_sha || github.sha }}
+          build-args: |
+            APP_VERSION=edge-${{ github.event.workflow_run.head_sha || github.sha }}
+            APK_SNAPSHOT=${{ github.run_id }}
           # Edge is the continuously deployed UAT channel. Keep it native to
           # the internal amd64 server so every main push finishes inside the
           # workflow timeout. Tagged releases remain multi-architecture.

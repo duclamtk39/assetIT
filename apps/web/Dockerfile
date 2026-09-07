@@ -15,7 +15,12 @@ RUN npm run build --workspace @assetflow/web
 
 FROM nginxinc/nginx-unprivileged:1.30-alpine AS runtime
 USER root
-RUN apk upgrade --no-cache
+# Alpine fixes published after the previous build are otherwise masked by the CI layer cache:
+# the base digest and this command stay identical, so the upgrade never reruns and the image
+# keeps shipping packages the scanner already knows are vulnerable. CI varies APK_SNAPSHOT per
+# run to force it; local builds keep the default and stay cached.
+ARG APK_SNAPSHOT=0
+RUN : "${APK_SNAPSHOT}" && apk upgrade --no-cache
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 USER 101

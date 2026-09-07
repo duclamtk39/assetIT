@@ -156,7 +156,9 @@ jobs:
         with:
           context: .
           file: apps/${{ matrix.component }}/Dockerfile
-          build-args: APP_VERSION=ci
+          build-args: |
+            APP_VERSION=ci
+            APK_SNAPSHOT=${{ github.run_id }}
           push: false
           load: true
           tags: assetflow-${{ matrix.component }}:ci
