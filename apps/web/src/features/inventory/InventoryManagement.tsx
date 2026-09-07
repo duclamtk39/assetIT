@@ -19,6 +19,11 @@ interface InventorySessionListItem {
   startedAt: string
   _count: { items: number }
 }
+interface NamedLookup {
+  id: string
+  name?: string
+  fullName?: string
+}
 interface InventoryDetail extends InventoryReportSession {
   id: string
   summary: Partial<Record<InventoryResultCode, number>>
@@ -52,6 +57,8 @@ export function InventoryManagement({ assets }: { assets: Asset[] }) {
     [demoResults, setDemoResults] = useState<Record<number, InventoryResultCode>>({}),
     [loading, setLoading] = useState(!env.demoMode),
     [working, setWorking] = useState(''),
+    [locations, setLocations] = useState<NamedLookup[]>([]),
+    [people, setPeople] = useState<NamedLookup[]>([]),
     [message, setMessage] = useState('')
   const loadSessions = async (preferredId?: string) => {
     const response = await api.get<{ data: InventorySessionListItem[] }>('/inventories')
@@ -104,6 +111,15 @@ export function InventoryManagement({ assets }: { assets: Asset[] }) {
       setMessage('Đã mở đợt kiểm kê và chốt phạm vi tài sản theo sổ tại thời điểm tạo.')
     })
   }
+  useEffect(() => {
+    if (env.demoMode) return
+    void Promise.all([api.get<NamedLookup[]>('/locations'), api.get<NamedLookup[]>('/people')])
+      .then(([locationList, peopleList]) => {
+        setLocations(locationList)
+        setPeople(peopleList)
+      })
+      .catch(() => undefined)
+  }, [])
   const scan = () => {
     if (!detail || detail.status !== 'OPEN') return
     const value = window.prompt('Quét hoặc nhập mã tài sản / Barcode / QR / Serial:')
@@ -138,6 +154,16 @@ export function InventoryManagement({ assets }: { assets: Asset[] }) {
     })
   }
   const demoMark = (id: number, value: InventoryResultCode) => setDemoResults(current => ({ ...current, [id]: value }))
+  /**
+   * Records what the counter actually saw for one asset. The register value is only a default; the
+   * point of a count is to be able to disagree with it, which the screen previously had no way to do.
+   */
+  const reconcile = async (assetTag: string, body: Record<string, unknown>) => {
+    if (!detail) return
+    await api.post(`/inventories/${detail.id}/scan`, { value: assetTag, ...body })
+    await loadDetail(detail.id)
+    setMessage(`Đã ghi nhận kết quả đối soát cho ${assetTag}.`)
+  }
   return (
     <main className="page inventory-page">
       <section className="page-heading">
@@ -245,7 +271,17 @@ export function InventoryManagement({ assets }: { assets: Asset[] }) {
                 </thead>
                 <tbody>
                   {report.items.map(item => (
-                    <InventoryRow key={item.id} item={item} demo={env.demoMode} onDemoMark={demoMark} />
+                    <InventoryRow
+                      key={item.id}
+                      item={item}
+                      demo={env.demoMode}
+                      editable={detail?.status === 'OPEN'}
+                      locations={locations}
+                      people={people}
+                      onDemoMark={demoMark}
+                      onReconcile={reconcile}
+                      onError={setMessage}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -260,38 +296,125 @@ export function InventoryManagement({ assets }: { assets: Asset[] }) {
 function InventoryRow({
   item,
   demo,
+  editable,
+  locations,
+  people,
   onDemoMark,
+  onReconcile,
+  onError,
 }: {
   item: InventoryReportItem
   demo: boolean
+  editable: boolean
+  locations: NamedLookup[]
+  people: NamedLookup[]
   onDemoMark: (id: number, value: InventoryResultCode) => void
+  onReconcile: (assetTag: string, body: Record<string, unknown>) => Promise<void>
+  onError: (message: string) => void
 }) {
   const expectedLocation = item.expectedLocation?.name || item.asset.warehouse?.name || '—'
+  const [open, setOpen] = useState(false)
+  const [locationId, setLocationId] = useState('')
+  const [custodianId, setCustodianId] = useState('')
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const submit = async (found: boolean) => {
+    setBusy(true)
+    try {
+      await onReconcile(item.asset.assetTag, {
+        found,
+        observedLocationId: found && locationId ? locationId : undefined,
+        observedCustodianId: found && custodianId ? custodianId : undefined,
+        note: note.trim() || undefined,
+      })
+      setOpen(false)
+      setNote('')
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Không ghi nhận được kết quả đối soát.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
-    <tr>
-      <td>
-        <b className="table-code">{item.asset.assetTag}</b>
-      </td>
-      <td>{item.asset.name}</td>
-      <td>{item.asset.serialNumber || '—'}</td>
-      <td>{expectedLocation}</td>
-      <td>{item.expectedCustodian?.fullName || 'Chưa gán'}</td>
-      <td>{item.observedLocation?.name || '—'}</td>
-      <td>
-        {demo ? (
-          <select
-            value={item.result}
-            onChange={event => onDemoMark(Number(item.id), event.target.value as InventoryResultCode)}
-          >
-            <option value="PENDING">Chưa kiểm</option>
-            <option value="MATCHED">Khớp</option>
-            <option value="LOCATION_MISMATCH">Sai vị trí</option>
-            <option value="MISSING">Thiếu</option>
-          </select>
-        ) : (
-          <span className={`inventory-result ${item.result.toLowerCase()}`}>{inventoryResultLabel(item.result)}</span>
-        )}
-      </td>
-    </tr>
+    <>
+      <tr>
+        <td>
+          <b className="table-code">{item.asset.assetTag}</b>
+        </td>
+        <td>{item.asset.name}</td>
+        <td>{item.asset.serialNumber || '—'}</td>
+        <td>{expectedLocation}</td>
+        <td>{item.expectedCustodian?.fullName || 'Chưa gán'}</td>
+        <td>{item.observedLocation?.name || '—'}</td>
+        <td>
+          {demo ? (
+            <select
+              value={item.result}
+              onChange={event => onDemoMark(Number(item.id), event.target.value as InventoryResultCode)}
+            >
+              <option value="PENDING">Chưa kiểm</option>
+              <option value="MATCHED">Khớp</option>
+              <option value="LOCATION_MISMATCH">Sai vị trí</option>
+              <option value="MISSING">Thiếu</option>
+            </select>
+          ) : (
+            <div className="inventory-result-cell">
+              <span className={`inventory-result ${item.result.toLowerCase()}`}>
+                {inventoryResultLabel(item.result)}
+              </span>
+              {editable && (
+                <button type="button" className="btn secondary" onClick={() => setOpen(current => !current)}>
+                  {open ? 'Đóng' : 'Đối soát'}
+                </button>
+              )}
+            </div>
+          )}
+        </td>
+      </tr>
+      {open && (
+        <tr className="inventory-reconcile-row">
+          <td colSpan={7}>
+            <div className="inventory-reconcile">
+              <label>
+                Vị trí thực tế
+                <select value={locationId} onChange={event => setLocationId(event.target.value)}>
+                  <option value="">Đúng như sổ ({expectedLocation})</option>
+                  {locations.map(location => (
+                    <option value={location.id} key={location.id}>
+                      {location.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Người giữ thực tế
+                <select value={custodianId} onChange={event => setCustodianId(event.target.value)}>
+                  <option value="">Đúng như sổ ({item.expectedCustodian?.fullName || 'Chưa gán'})</option>
+                  {people.map(person => (
+                    <option value={person.id} key={person.id}>
+                      {person.fullName || person.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Ghi chú
+                <input value={note} onChange={event => setNote(event.target.value)} placeholder="Tình trạng ghi nhận" />
+              </label>
+              <div className="inventory-reconcile-actions">
+                <button type="button" className="btn primary" disabled={busy} onClick={() => void submit(true)}>
+                  Ghi nhận đã thấy
+                </button>
+                <button type="button" className="btn secondary" disabled={busy} onClick={() => void submit(false)}>
+                  Không tìm thấy
+                </button>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   )
 }

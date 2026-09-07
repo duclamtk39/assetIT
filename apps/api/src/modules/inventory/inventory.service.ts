@@ -170,15 +170,22 @@ export class InventoryService {
         const current = await tx.inventoryItem.findUnique({
           where: { sessionId_assetId: { sessionId: id, assetId: asset.id } },
         })
-        const observedLocationId = body.observedLocationId || asset.locationId,
-          observedCustodianId = body.observedCustodianId || asset.currentCustodianId
-        const result = inventoryResult(
-          current?.expectedLocationId || null,
-          current?.expectedCustodianId || null,
-          observedLocationId,
-          observedCustodianId,
-          Boolean(current),
-        )
+        // Falling back to the asset's own record makes the observation a copy of the book value, so a
+        // count taken that way can only ever agree with itself. Keep the fallback for a plain scan,
+        // which is a confirmation that the asset is where the register says, but let the caller state
+        // what was actually seen — that is the only way a discrepancy can be recorded at all.
+        const found = body.found !== false
+        const observedLocationId = found ? body.observedLocationId || asset.locationId : null
+        const observedCustodianId = found ? body.observedCustodianId || asset.currentCustodianId : null
+        const result = found
+          ? inventoryResult(
+              current?.expectedLocationId || null,
+              current?.expectedCustodianId || null,
+              observedLocationId,
+              observedCustodianId,
+              Boolean(current),
+            )
+          : InventoryResult.MISSING
         const data = {
           observedLocationId,
           observedCustodianId,

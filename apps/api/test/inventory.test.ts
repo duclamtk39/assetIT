@@ -4,6 +4,29 @@ import { InventoryResult } from '@prisma/client'
 import { inventoryResult } from '../src/modules/inventory/inventory.rules'
 import { InventoryService } from '../src/modules/inventory/inventory.service'
 
+test('a count that copies the register can only ever agree with itself', () => {
+  // The scan endpoint fills an omitted observation from the asset record. That default is a
+  // confirmation, not an observation: with it the comparison is the book against the book, so the
+  // discrepancy count stays at zero no matter what is physically on the floor. Recording what was
+  // actually seen is what makes a mismatch reachable.
+  const book = { location: 'loc-1', custodian: 'person-1' }
+  assert.equal(inventoryResult(book.location, book.custodian, book.location, book.custodian), InventoryResult.MATCHED)
+  assert.equal(
+    inventoryResult(book.location, book.custodian, 'loc-9', book.custodian),
+    InventoryResult.LOCATION_MISMATCH,
+  )
+  assert.equal(
+    inventoryResult(book.location, book.custodian, book.location, 'person-9'),
+    InventoryResult.CUSTODIAN_MISMATCH,
+  )
+})
+
+test('an asset with no recorded location still reconciles instead of reporting a false mismatch', () => {
+  assert.equal(inventoryResult(null, null, null, null), InventoryResult.MATCHED)
+  assert.equal(inventoryResult(null, 'person-1', null, 'person-1'), InventoryResult.MATCHED)
+  assert.equal(inventoryResult(null, null, 'loc-1', null), InventoryResult.LOCATION_MISMATCH)
+})
+
 test('inventory distinguishes matching, missing dimensions and unexpected assets', () => {
   assert.equal(inventoryResult('loc-1', 'person-1', 'loc-1', 'person-1'), InventoryResult.MATCHED)
   assert.equal(inventoryResult('loc-1', 'person-1', 'loc-2', 'person-1'), InventoryResult.LOCATION_MISMATCH)

@@ -15770,3 +15770,40 @@ textarea,
   font-family: Consolas, monospace;
   white-space: nowrap;
 }
+
+/* Inventory reconciliation: the result cell now carries an action, and the row expands to record
+   what was actually observed rather than only showing the register value back. */
+.inventory-result-cell {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.inventory-reconcile-row td {
+  background: #f8fafc;
+}
+.inventory-reconcile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 4px 2px;
+}
+.inventory-reconcile label {
+  display: grid;
+  gap: 3px;
+  min-width: 190px;
+  color: #5c6779;
+}
+.inventory-reconcile select,
+.inventory-reconcile input {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #d8e0e8;
+  border-radius: 3px;
+  background: #fff;
+  outline: 0;
+}
+.inventory-reconcile-actions {
+  display: flex;
+  gap: 6px;
+}
