@@ -13,7 +13,7 @@ ENV VITE_API_URL=${VITE_API_URL} \
     VITE_DEMO_MODE=${VITE_DEMO_MODE}
 RUN npm run build --workspace @assetflow/web
 
-FROM nginxinc/nginx-unprivileged:1.30-alpine AS runtime
+FROM nginxinc/nginx-unprivileged:1.31-alpine AS runtime
 USER root
 # Alpine fixes published after the previous build are otherwise masked by the CI layer cache:
 # the base digest and this command stay identical, so the upgrade never reruns and the image
