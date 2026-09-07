@@ -1342,9 +1342,13 @@ function Sidebar({
         <nav>
           {navSections.map(section => {
             const itOnly = ['License & Gia hạn', 'Bảo trì & Sự cố', 'Thanh lý & Hủy bỏ', 'Đánh giá rủi ro CNTT']
-            const permitted = section.items.filter(
-              item => !itOnly.includes(item.label) || ['Admin', 'IT'].includes(user.role),
-            )
+            // The ISMS records stay with the administrator while the module is still being built, so
+            // they are not offered to anyone else rather than being offered and then refused.
+            const adminOnly = ['Khung tiêu chuẩn & SoA', 'Hệ thống tài liệu']
+            const permitted = section.items.filter(item => {
+              if (adminOnly.includes(item.label)) return user.role === 'Admin'
+              return !itOnly.includes(item.label) || ['Admin', 'IT'].includes(user.role)
+            })
             const items = user.role === 'HCNS' ? permitted.filter(item => hcnsAllowed.includes(item.label)) : permitted
             return items.length ? (
               <div className="nav-section" key={section.title}>
@@ -7949,9 +7953,9 @@ export default function App() {
     content = <RiskManagement assets={scopedAssets} demoMode={env.demoMode} currentUserName={currentUser.name} />
   // The API is the authority on who may read ISMS records; the sidebar only avoids offering a screen
   // that would answer 403 to everyone below IT.
-  else if (page === 'Khung tiêu chuẩn & SoA' && ['Admin', 'IT'].includes(currentUser.role))
+  else if (page === 'Khung tiêu chuẩn & SoA' && isAdmin)
     content = <ControlLibrary goRoute={route => setPage(pageForPath(route))} />
-  else if (page === 'Hệ thống tài liệu' && ['Admin', 'IT'].includes(currentUser.role)) content = <DocumentLibrary />
+  else if (page === 'Hệ thống tài liệu' && isAdmin) content = <DocumentLibrary />
   else if (page === 'Cấu hình hệ thống' && ['Admin', 'IT'].includes(currentUser.role))
     content = (
       <AdminSettings
