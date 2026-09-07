@@ -191,7 +191,6 @@ const englishLabels: Record<string, string> = {
   'Thanh lý & Hủy bỏ': 'Disposal & Destruction',
   'Báo cáo': 'Reports',
   'Lịch sử / Audit': 'History / Audit',
-  'Barcode / QR': 'Barcode / QR',
   'Cài đặt': 'Settings',
   'Trợ giúp': 'Help',
   'Chi tiết tài sản': 'Asset details',
@@ -783,14 +782,10 @@ const navSections: Array<{ title: string; items: Array<{ label: string; icon: ty
       { label: 'Lịch sử / Audit', icon: History },
     ],
   },
-  {
-    title: 'CÔNG CỤ',
-    items: [
-      { label: 'Barcode / QR', icon: ScanLine },
-      { label: 'Khám phá & Agent', icon: Wifi },
-    ],
-  },
 ]
+
+/** Pages that live inside the settings area, so the sidebar entry highlights for all of them. */
+const settingsPages = ['Cấu hình hệ thống', 'Tùy chỉnh thương hiệu', 'Cấu hình email', 'Khám phá & Agent']
 
 const statusClass: Record<AssetStatus, string> = {
   'Đang sử dụng': 'green',
@@ -1313,7 +1308,7 @@ function Sidebar({
   branding: BrandingSettings
   language: string
 }) {
-  const hcnsAllowed = ['Tổng quan', 'Sổ tài sản', 'Cấp phát & Thu hồi', 'Lịch sử / Audit', 'Barcode / QR']
+  const hcnsAllowed = ['Tổng quan', 'Sổ tài sản', 'Cấp phát & Thu hồi', 'Lịch sử / Audit']
   const initials = user.name
     .split(' ')
     .slice(-2)
@@ -1346,13 +1341,7 @@ function Sidebar({
         </button>
         <nav>
           {navSections.map(section => {
-            const itOnly = [
-              'Khám phá & Agent',
-              'License & Gia hạn',
-              'Bảo trì & Sự cố',
-              'Thanh lý & Hủy bỏ',
-              'Đánh giá rủi ro CNTT',
-            ]
+            const itOnly = ['License & Gia hạn', 'Bảo trì & Sự cố', 'Thanh lý & Hủy bỏ', 'Đánh giá rủi ro CNTT']
             const permitted = section.items.filter(
               item => !itOnly.includes(item.label) || ['Admin', 'IT'].includes(user.role),
             )
@@ -1379,11 +1368,9 @@ function Sidebar({
           })}
         </nav>
         <div className="sidebar-bottom">
-          {user.role === 'Admin' && (
+          {['Admin', 'IT'].includes(user.role) && (
             <button
-              className={
-                ['Cấu hình hệ thống', 'Tùy chỉnh thương hiệu', 'Cấu hình email'].includes(page) ? 'active' : ''
-              }
+              className={settingsPages.includes(page) ? 'active' : ''}
               onClick={() => {
                 setPage('Cấu hình hệ thống')
                 close()
@@ -1449,9 +1436,7 @@ function Topbar({
     } catch {
       /* dùng cấu hình mặc định */
     }
-  const displayTitle = ['Cấu hình hệ thống', 'Tùy chỉnh thương hiệu', 'Cấu hình email'].includes(title)
-    ? 'Cài đặt'
-    : title
+  const displayTitle = settingsPages.includes(title) ? 'Cài đặt' : title
   const english = language === 'en-US'
   return (
     <header className="topbar">
@@ -5225,6 +5210,11 @@ function AdminSettings({
   removeDepartment,
   saveSite,
   removeSite,
+  role,
+  demoMode,
+  discoveryCategories,
+  discoveryWarehouses,
+  onAssetCreated,
 }: {
   departments: Department[]
   sites: Site[]
@@ -5240,8 +5230,15 @@ function AdminSettings({
   removeDepartment: (id: number) => void
   saveSite: (item: Site) => void
   removeSite: (id: number) => void
+  role: AppUser['role']
+  demoMode: boolean
+  discoveryCategories: ApiLookup[]
+  discoveryWarehouses: ApiLookup[]
+  onAssetCreated: () => Promise<void>
 }) {
-  const [section, setSection] = useState<'catalog' | 'directory' | 'regional' | 'branding' | 'email'>('catalog')
+  const [section, setSection] = useState<'catalog' | 'directory' | 'regional' | 'branding' | 'email' | 'discovery'>(
+    role === 'Admin' ? 'catalog' : 'discovery',
+  )
   const [localBranding, setLocalBranding] = useState<BrandingSettings>(branding)
   const [localEmail, setLocalEmail] = useState<EmailSettings>(email)
   useEffect(() => setLocalBranding(branding), [branding])
@@ -5254,13 +5251,34 @@ function AdminSettings({
     setLocalEmail(value)
     onSaveEmail(value)
   }
+  // Discovery is an operations tool rather than a page of its own, so it lives here. It is the only
+  // section IT may open; everything else stays with the administrator.
   const sections = [
-    { id: 'catalog' as const, label: 'Danh mục hệ thống', desc: 'Phòng ban và site', icon: Settings },
-    { id: 'directory' as const, label: 'Danh tính & người dùng', desc: 'Microsoft 365 hoặc LDAP', icon: UserRound },
-    { id: 'regional' as const, label: 'Ngày giờ & ngôn ngữ', desc: 'Múi giờ và định dạng', icon: Languages },
-    { id: 'branding' as const, label: 'Thương hiệu', desc: 'Logo và tên công ty', icon: Palette },
-    { id: 'email' as const, label: 'Email', desc: 'Thông tin gửi biên bản', icon: Mail },
-  ]
+    { id: 'catalog' as const, label: 'Danh mục hệ thống', desc: 'Phòng ban và site', icon: Settings, admin: true },
+    {
+      id: 'directory' as const,
+      label: 'Danh tính & người dùng',
+      desc: 'Microsoft 365 hoặc LDAP',
+      icon: UserRound,
+      admin: true,
+    },
+    {
+      id: 'regional' as const,
+      label: 'Ngày giờ & ngôn ngữ',
+      desc: 'Múi giờ và định dạng',
+      icon: Languages,
+      admin: true,
+    },
+    { id: 'branding' as const, label: 'Thương hiệu', desc: 'Logo và tên công ty', icon: Palette, admin: true },
+    { id: 'email' as const, label: 'Email', desc: 'Thông tin gửi biên bản', icon: Mail, admin: true },
+    {
+      id: 'discovery' as const,
+      label: 'Khám phá & Agent',
+      desc: 'Endpoint Agent và Discovery Inbox',
+      icon: Wifi,
+      admin: false,
+    },
+  ].filter(item => role === 'Admin' || !item.admin)
   return (
     <div className="settings-hub">
       <aside className="card settings-hub-nav">
@@ -5297,6 +5315,14 @@ function AdminSettings({
           <RegionalConfiguration settings={regional} onSave={onSaveRegional} />
         ) : section === 'branding' ? (
           <BrandingConfiguration settings={localBranding} onSave={saveBranding} />
+        ) : section === 'discovery' ? (
+          <DiscoveryCenter
+            role={role}
+            categories={discoveryCategories}
+            warehouses={discoveryWarehouses}
+            demoMode={demoMode}
+            onAssetCreated={onAssetCreated}
+          />
         ) : (
           <EmailConfiguration settings={localEmail} onSave={saveEmail} />
         )}
@@ -7150,7 +7176,7 @@ export default function App() {
   const [authReady, setAuthReady] = useState(env.demoMode)
   const [identityReady, setIdentityReady] = useState(env.demoMode)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [intakeMode, setIntakeMode] = useState<'manual' | 'import'>('manual')
+  const [intakeMode, setIntakeMode] = useState<'lookup' | 'manual' | 'import'>('manual')
   const [modal, setModal] = useState<Asset | null | undefined>(undefined)
   const [assignmentAsset, setAssignmentAsset] = useState<Asset | undefined>()
   const [barcodeAsset, setBarcodeAsset] = useState<Asset | undefined>()
@@ -7793,9 +7819,11 @@ export default function App() {
   if (currentUser.mustChangePassword)
     return <ChangePasswordScreen user={currentUser} branding={branding} onChange={changeInitialPassword} />
   const isAdmin = currentUser.role === 'Admin'
+  // Scanning is a mode of the intake screen rather than a page of its own; the standalone
+  // Barcode / QR entry showed the very same component with the lookup tab preselected.
   const openScanner = (mode: 'lookup' | 'intake' = 'lookup') => {
-    if (mode === 'intake') setIntakeMode('manual')
-    setPage(mode === 'intake' ? 'Nhập kho' : 'Barcode / QR')
+    setIntakeMode(mode === 'intake' ? 'manual' : 'lookup')
+    setPage('Nhập kho')
   }
   const operations = (
     <OperationsDashboard
@@ -7874,12 +7902,12 @@ export default function App() {
   else if (page === 'Cấp phát & Thu hồi') content = operations
   else if (page === 'Kiểm kê') content = <InventoryManagement assets={scopedAssets} />
   else if (page === 'Lịch sử / Audit') content = <TransactionHistory transactions={scopedTransactions} />
-  else if (page === 'Barcode / QR' || page === 'Nhập kho')
+  else if (page === 'Nhập kho')
     content = (
       <BarcodeCenter
         key={`${page}-${intakeMode}`}
         assets={scopedAssets}
-        initialMode={page === 'Nhập kho' ? intakeMode : 'lookup'}
+        initialMode={intakeMode}
         departmentOptions={departmentOptions}
         warehouseOptions={env.demoMode ? siteOptions : referenceData.warehouses.map(item => item.name)}
         categoryOptions={
@@ -7924,7 +7952,7 @@ export default function App() {
   else if (page === 'Khung tiêu chuẩn & SoA' && ['Admin', 'IT'].includes(currentUser.role))
     content = <ControlLibrary goRoute={route => setPage(pageForPath(route))} />
   else if (page === 'Hệ thống tài liệu' && ['Admin', 'IT'].includes(currentUser.role)) content = <DocumentLibrary />
-  else if (page === 'Cấu hình hệ thống' && isAdmin)
+  else if (page === 'Cấu hình hệ thống' && ['Admin', 'IT'].includes(currentUser.role))
     content = (
       <AdminSettings
         departments={departmentList}
@@ -7937,6 +7965,11 @@ export default function App() {
         onSaveRegional={saveRegionalSetting}
         onSaveBranding={saveBrandingSetting}
         onSaveEmail={saveEmailSetting}
+        role={currentUser.role}
+        demoMode={env.demoMode}
+        discoveryCategories={referenceData.categories}
+        discoveryWarehouses={referenceData.warehouses}
+        onAssetCreated={refreshServerData}
         saveDepartment={saveDepartment}
         removeDepartment={removeDepartment}
         saveSite={saveSite}

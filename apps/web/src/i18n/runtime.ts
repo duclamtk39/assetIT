@@ -158,7 +158,6 @@ const viToEn: Array<[string, string]> = [
   ['Người đang sử dụng', 'Current user'],
   ['Hãng / Model', 'Manufacturer / Model'],
   ['CPU / RAM / Disk', 'CPU / RAM / Disk'],
-  ['Barcode / QR', 'Barcode / QR'],
   ['Danh mục hệ thống', 'System master data'],
   ['Danh tính & người dùng', 'Identity & Users'],
   ['Danh tính & đồng bộ người dùng', 'Identity & User Synchronization'],

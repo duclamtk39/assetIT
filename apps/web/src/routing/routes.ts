@@ -4,7 +4,6 @@ export const pageRoutes: Record<string, string> = {
   'Cấp phát & Thu hồi': '/assignments',
   'Kiểm kê': '/inventory',
   'Lịch sử / Audit': '/audit',
-  'Barcode / QR': '/barcode',
   'Khám phá & Agent': '/discovery',
   'Nhập kho': '/warehouse/receipts',
   'Thanh lý & Hủy bỏ': '/disposals',
@@ -28,6 +27,8 @@ export const pageForPath = (path: string) => {
   if (path.startsWith('/assets/')) return 'Sổ tài sản'
   if (path === '/transfers') return 'Cấp phát & Thu hồi'
   if (path === '/warehouse/issues') return 'Thanh lý & Hủy bỏ'
+  // The standalone scanner page folded into intake; keep older links working.
+  if (path === '/barcode') return 'Nhập kho'
   const decoded = decodeURIComponent(path).toLocaleLowerCase('vi-VN')
   if (decoded === '/license & gia hạn' || decoded === '/license và gia hạn') return 'License & Gia hạn'
   return normalizedEntries.find(([, route]) => route === path)?.[0] || 'Tổng quan'
