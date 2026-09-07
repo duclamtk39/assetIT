@@ -11,6 +11,8 @@ export interface Asset {
   serial: string
   department: string
   location: string
+  /** Warehouse the asset record points at, empty when it is out with someone. */
+  warehouse?: string
   assignedTo: string
   purchaseDate: string
   purchaseCost: number

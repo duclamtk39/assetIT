@@ -121,6 +121,12 @@ import {
 } from './features/intake/intake-excel'
 import { createIntakeTemplateSheets, intakeTemplateFileName } from './features/intake/intake-template'
 import { historyToTransaction } from './features/handover/history-transaction'
+import {
+  isInStock,
+  isOverdue,
+  matchesOperationalStatus,
+  operationalStatusOptions,
+} from './features/assets/asset-status'
 
 const money = (value: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value)
@@ -199,6 +205,9 @@ const englishLabels: Record<string, string> = {
   Hỏng: 'Broken',
   'Cho mượn': 'On loan',
   'Quá hạn': 'Overdue',
+  'Đã giữ chỗ': 'Reserved',
+  'Đã thu hồi': 'Returned',
+  'Đã thanh lý': 'Disposed',
   'Khám phá & Agent': 'Discovery & Agent',
   'License & Gia hạn': 'Licenses & Renewals',
   'Đánh giá rủi ro CNTT': 'IT Risk Assessment',
@@ -677,6 +686,7 @@ const fromApiAsset = (item: any): Asset => ({
   category: item.category?.name || 'Khác',
   department: item.currentCustodian?.department?.name || item.department?.name || 'Chưa gán',
   location: item.location?.name || item.warehouse?.name || 'Chưa xác định',
+  warehouse: item.warehouse?.name || '',
   assignedTo: item.currentCustodian?.fullName || item.assignedUser?.fullName || 'Chưa gán',
   purchaseDate: String(item.purchaseDate || new Date().toISOString()).slice(0, 10),
   purchaseCost: Number(item.purchaseCost || 0),
@@ -783,27 +793,6 @@ const statusClass: Record<AssetStatus, string> = {
   'Bảo trì': 'amber',
   Hỏng: 'red',
   'Đã thanh lý': 'gray',
-}
-const operationalStatusOptions = [
-  'Tất cả trạng thái',
-  'Sẵn sàng',
-  'Đang sử dụng',
-  'Cho mượn',
-  'Sắp đến hạn trả',
-  'Quá hạn trả',
-  'Bảo trì',
-  'Hỏng',
-]
-const matchesOperationalStatus = (asset: Asset, status: string) => {
-  if (!status || status === 'Tất cả trạng thái') return true
-  if (status === 'Cho mượn') return asset.assignmentType === 'Cho mượn'
-  if (status === 'Quá hạn trả') return Boolean(asset.dueDate && new Date(asset.dueDate) < new Date())
-  if (status === 'Sắp đến hạn trả') {
-    if (!asset.dueDate) return false
-    const days = (new Date(asset.dueDate).getTime() - Date.now()) / 86400000
-    return days >= 0 && days <= 7
-  }
-  return asset.status === status
 }
 
 type SupplierStatus = 'Chưa đánh giá' | 'Đã phê duyệt' | 'Có điều kiện' | 'Cần cải thiện'
@@ -1536,9 +1525,9 @@ function Dashboard({
   const [activeView, setActiveView] = useState<DashboardView>('all')
   const [activeCategory, setActiveCategory] = useState('')
   const inUse = assets.filter(a => a.status === 'Đang sử dụng').length
-  const inStock = assets.filter(a => a.status === 'Sẵn sàng' && a.assignedTo === 'Chưa gán').length
+  const inStock = assets.filter(isInStock).length
   const maintenance = assets.filter(a => a.status === 'Bảo trì' || a.status === 'Hỏng').length
-  const overdue = assets.filter(a => a.dueDate && new Date(a.dueDate) < new Date()).length
+  const overdue = assets.filter(asset => isOverdue(asset)).length
   const typeCounts = countDashboardLabels(
     assets.map(asset => asset.category),
     english ? 'Uncategorized' : 'Chưa phân loại',
@@ -1618,9 +1607,9 @@ function Dashboard({
   const visibleAssets = assets.filter(asset => {
     if (activeCategory && !dashboardLabelsEqual(asset.category, activeCategory)) return false
     if (activeView === 'inUse') return asset.status === 'Đang sử dụng'
-    if (activeView === 'stock') return asset.status === 'Sẵn sàng' && asset.assignedTo === 'Chưa gán'
+    if (activeView === 'stock') return isInStock(asset)
     if (activeView === 'attention') return asset.status === 'Bảo trì' || asset.status === 'Hỏng'
-    if (activeView === 'overdue') return Boolean(asset.dueDate && new Date(asset.dueDate) < new Date())
+    if (activeView === 'overdue') return isOverdue(asset)
     return true
   })
   const selectView = (view: DashboardView) => {
@@ -1632,16 +1621,9 @@ function Dashboard({
     setActiveView('all')
   }
   const displayStatus = (asset: Asset) =>
-    uiLabel(
-      asset.dueDate && new Date(asset.dueDate) < new Date()
-        ? 'Quá hạn'
-        : asset.assignmentType === 'Cho mượn'
-          ? 'Cho mượn'
-          : asset.status,
-      language,
-    )
+    uiLabel(isOverdue(asset) ? 'Quá hạn' : asset.assignmentType === 'Cho mượn' ? 'Cho mượn' : asset.status, language)
   const statusClass = (asset: Asset) =>
-    asset.dueDate && new Date(asset.dueDate) < new Date()
+    isOverdue(asset)
       ? 'broken'
       : asset.status === 'Đang sử dụng'
         ? 'using'
@@ -1961,7 +1943,7 @@ function OperationsDashboard({
     [menuId, setMenuId] = useState<number>()
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const assignedAssets = assets.filter(a => a.assignedTo !== 'Chưa gán'),
-    stockAssets = assets.filter(a => a.assignedTo === 'Chưa gán' && a.status === 'Sẵn sàng' && /kho/i.test(a.location)),
+    stockAssets = assets.filter(isInStock),
     dueAssets = assignedAssets.filter(a => a.dueDate)
   const baseAssets =
     activeView === 'assigned'
@@ -1971,12 +1953,7 @@ function OperationsDashboard({
         : activeView === 'due'
           ? dueAssets
           : assets
-  const options = (values: string[]) => {
-    const unique = [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'))
-    return unique.length > 0 && unique.every(value => ['Đang sử dụng', 'Sẵn sàng', 'Bảo trì', 'Hỏng'].includes(value))
-      ? operationalStatusOptions.slice(1)
-      : unique
-  }
+  const options = (values: string[]) => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'))
   const filtered = useMemo(
     () =>
       baseAssets
@@ -2127,7 +2104,7 @@ function OperationsDashboard({
           </select>
           <select value={status} onChange={e => setStatus(e.target.value)}>
             <option value="">Trạng thái: Tất cả</option>
-            {options(assets.map(a => a.status)).map(x => (
+            {operationalStatusOptions.slice(1).map(x => (
               <option key={x}>{x}</option>
             ))}
           </select>
@@ -2193,7 +2170,7 @@ function OperationsDashboard({
               {visible.map(a => {
                 const issued = lastTransaction(a.id, ['Cấp phát', 'Cho mượn']),
                   returned = lastTransaction(a.id, ['Thu hồi'])
-                const inStock = a.assignedTo === 'Chưa gán' && a.status === 'Sẵn sàng' && /kho/i.test(a.location)
+                const inStock = isInStock(a)
                 return (
                   <tr key={a.id} className={selectedIds.includes(a.id) ? 'selected-row' : ''}>
                     <td className="check-cell">
@@ -2573,11 +2550,9 @@ function IntakeForm({
             onChange={e => update('location', e.target.value)}
           />
           <datalist id="intake-sites">
-            {siteOptions
-              .filter(x => /kho/i.test(x))
-              .map(x => (
-                <option key={x} value={x} />
-              ))}
+            {siteOptions.map(x => (
+              <option key={x} value={x} />
+            ))}
           </datalist>
           <small>Nhập kho luôn tạo tài sản ở trạng thái Sẵn sàng và chưa gán người sử dụng.</small>
         </label>
@@ -6771,7 +6746,7 @@ function AssignmentModal({
             <>
               <AlertTriangle size={16} />
               <span>
-                {asset.status === 'Sẵn sàng' && !/kho/i.test(asset.location) ? (
+                {asset.status === 'Sẵn sàng' && !asset.warehouse ? (
                   <>Tài sản chưa nằm trong Kho. Hãy điều chuyển về kho trước khi cấp phát.</>
                 ) : (
                   <>
