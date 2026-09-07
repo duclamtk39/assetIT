@@ -46,7 +46,6 @@ import {
   ShieldCheck,
   Cloud,
   Database,
-  ShoppingCart,
   BadgeCheck,
   LockKeyhole,
   Barcode,
@@ -185,7 +184,6 @@ const englishLabels: Record<string, string> = {
   'Nhập kho': 'Stock receipt',
   'Kho & Vị trí': 'Warehouses & Locations',
   'Kiểm kê': 'Inventory audit',
-  'Mua sắm & PO': 'Purchasing & PO',
   'Nhà cung cấp': 'Suppliers',
   'Bảo trì & Sự cố': 'Maintenance & Incidents',
   'Thanh lý & Hủy bỏ': 'Disposal & Destruction',
@@ -761,7 +759,6 @@ const navSections: Array<{ title: string; items: Array<{ label: string; icon: ty
   {
     title: 'NGHIỆP VỤ',
     items: [
-      { label: 'Mua sắm & PO', icon: ShoppingCart },
       { label: 'Nhà cung cấp', icon: Building2 },
       { label: 'License & Gia hạn', icon: KeyRound },
       { label: 'Bảo trì & Sự cố', icon: Wrench },
@@ -6039,7 +6036,6 @@ function SupplierManagement() {
 function Placeholder({ title, language }: { title: string; language: string }) {
   if (title === 'Nhà cung cấp') return <SupplierManagement />
   const info: Record<string, [string, typeof Box]> = {
-    'Mua sắm & PO': ['Quản lý kế hoạch mua sắm, nhà cung cấp và đơn đặt hàng.', FileText],
     'Kho & Điều chuyển': ['Theo dõi nhập kho, xuất kho và luân chuyển tài sản.', Warehouse],
     'Bảo trì & Sự cố': ['Tiếp nhận sự cố, lên lịch và theo dõi lịch sử bảo trì.', Wrench],
     'Kiểm kê': ['Tổ chức đợt kiểm kê và đối soát tài sản bằng QR.', QrCode],

@@ -90,7 +90,6 @@ try {
     '/warehouse/receipts',
     '/warehouse/issues',
     '/warehouses',
-    '/procurement',
     '/vendors',
     '/renewals',
     '/maintenance',

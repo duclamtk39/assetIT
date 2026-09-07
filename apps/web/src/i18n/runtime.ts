@@ -114,7 +114,6 @@ const viToEn: Array<[string, string]> = [
   ['Tải file mẫu', 'Download template'],
   ['Kho & Vị trí', 'Warehouses & Locations'],
   ['Kiểm kê tài sản', 'Asset inventory'],
-  ['Mua sắm & PO', 'Purchasing & PO'],
   ['Nhà cung cấp', 'Suppliers'],
   ['Bảo trì & Sự cố', 'Maintenance & Incidents'],
   ['Lịch sử / Audit', 'History / Audit'],
