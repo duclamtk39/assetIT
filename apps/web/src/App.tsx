@@ -5578,6 +5578,7 @@ function SupplierFormModal({
           </button>
         </div>
         <div className="form-grid">
+          <h3 className="form-section span-2">Hồ sơ pháp lý</h3>
           <label>
             Mã nhà cung cấp
             <input required value={form.code} onChange={e => update('code', e.target.value.toUpperCase())} />
@@ -5607,6 +5608,15 @@ function SupplierFormModal({
             </select>
           </label>
           <label>
+            Chứng nhận / hồ sơ năng lực
+            <input
+              value={form.certifications}
+              onChange={e => update('certifications', e.target.value)}
+              placeholder="Ví dụ: ISO 9001, ISO/IEC 27001"
+            />
+          </label>
+          <h3 className="form-section span-2">Trạng thái hợp tác</h3>
+          <label>
             Trạng thái sử dụng
             <select value={form.lifecycleStatus} onChange={e => update('lifecycleStatus', e.target.value)}>
               <option value="ACTIVE">Đang hợp tác</option>
@@ -5616,13 +5626,14 @@ function SupplierFormModal({
             <small>Kiểm soát việc được phép tiếp tục giao dịch với nhà cung cấp.</small>
           </label>
           <label>
-            Người liên hệ
-            <input required value={form.contact} onChange={e => update('contact', e.target.value)} />
-          </label>
-          <label>
             Kết quả đánh giá
             <input value={form.status} disabled />
             <small>Kết quả được tính từ phiếu chấm điểm, không nhập thủ công.</small>
+          </label>
+          <h3 className="form-section span-2">Đầu mối liên hệ</h3>
+          <label>
+            Người liên hệ
+            <input required value={form.contact} onChange={e => update('contact', e.target.value)} />
           </label>
           <label>
             Số điện thoại
@@ -5635,14 +5646,6 @@ function SupplierFormModal({
           <label>
             Địa chỉ
             <input value={form.address} onChange={e => update('address', e.target.value)} />
-          </label>
-          <label className="span-2">
-            Chứng nhận / hồ sơ năng lực
-            <input
-              value={form.certifications}
-              onChange={e => update('certifications', e.target.value)}
-              placeholder="Ví dụ: ISO 9001, ISO/IEC 27001"
-            />
           </label>
           <label className="span-2">
             Ghi chú
