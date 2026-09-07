@@ -1656,6 +1656,9 @@ tbody tr:hover {
   color: #5c5c68;
   display: grid;
   gap: 7px;
+  /* Auto rows stretch by default, so a cell whose neighbour carries a <small> hint grew its
+     label row and pushed the control down out of line with the rest of the row. */
+  align-content: start;
 }
 .form-grid .span-2 {
   grid-column: span 2;
