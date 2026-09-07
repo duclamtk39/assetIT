@@ -92,6 +92,11 @@ interface Risk {
   controls: Control[]
   treatments: Treatment[]
 }
+interface MatrixCell {
+  impact: number
+  likelihood: number
+  count: number
+}
 interface Summary {
   totalOpen: number
   critical: number
@@ -101,7 +106,48 @@ interface Summary {
   treatments: number
   byCategory: Array<{ label: string; count: number }>
   byLevel: Array<{ label: string; count: number }>
-  matrix: Array<{ impact: number; likelihood: number; count: number }>
+  byStatus: Array<{ label: string; count: number }>
+  residualMissing: number
+  matrix: MatrixCell[]
+  residualMatrix: MatrixCell[]
+}
+
+/**
+ * The documented risk criteria of ISO/IEC 27001:2022 §6.1.2(a). The server owns them and this screen
+ * renders whatever it is told, so the scale definitions, the matrix and the acceptance rules cannot
+ * drift away from the levels the API actually stores.
+ */
+interface ScaleLevel {
+  value: number
+  label: string
+  definition: string
+}
+interface ImpactLevel extends ScaleLevel {
+  dimensions: Record<string, string>
+}
+interface AcceptanceRule {
+  level: Level
+  label: string
+  treatmentRequired: boolean
+  acceptable: boolean
+  approver: string
+  reviewMonths: number
+  rule: string
+}
+interface ProcessStep {
+  key: string
+  name: string
+  clause: string
+  summary: string
+}
+interface Criteria {
+  methodology: string
+  likelihoodScale: ScaleLevel[]
+  impactScale: ImpactLevel[]
+  impactDimensions: string[]
+  matrix: Array<{ impact: number; likelihood: number; level: Level }>
+  acceptanceCriteria: AcceptanceRule[]
+  processSteps: ProcessStep[]
 }
 
 const levelLabels: Record<Level, string> = { LOW: 'Thấp', MEDIUM: 'Trung bình', HIGH: 'Cao', CRITICAL: 'Nghiêm trọng' }
@@ -129,6 +175,8 @@ const strategyLabels: Record<TreatmentStrategy, string> = {
   TRANSFER: 'Chuyển giao',
   ACCEPT: 'Chấp nhận',
 }
+const emptyMatrix = (): MatrixCell[] =>
+  Array.from({ length: 25 }, (_, i) => ({ impact: 5 - Math.floor(i / 5), likelihood: (i % 5) + 1, count: 0 }))
 const emptySummary: Summary = {
   totalOpen: 0,
   critical: 0,
@@ -138,13 +186,105 @@ const emptySummary: Summary = {
   treatments: 0,
   byCategory: [],
   byLevel: [],
-  matrix: Array.from({ length: 25 }, (_, i) => ({ impact: 5 - Math.floor(i / 5), likelihood: (i % 5) + 1, count: 0 })),
+  byStatus: [],
+  residualMissing: 0,
+  matrix: emptyMatrix(),
+  residualMatrix: emptyMatrix(),
 }
 const apiMessage = (error: unknown) =>
   error instanceof ApiError ? error.message : 'Không thể kết nối dịch vụ đánh giá rủi ro.'
 const date = (value?: string) => (value ? new Date(value).toLocaleDateString('vi-VN') : '—')
-const scoreLevel = (score: number): Level =>
-  score >= 17 ? 'CRITICAL' : score >= 10 ? 'HIGH' : score >= 5 ? 'MEDIUM' : 'LOW'
+/** Reads the level out of the served criteria. The client never decides a threshold of its own. */
+const cellLevel = (criteria: Criteria | undefined, likelihood: number, impact: number): Level | undefined =>
+  criteria?.matrix.find(cell => cell.likelihood === likelihood && cell.impact === impact)?.level
+
+/**
+ * Demo-only sample of what the server serves at /risk-assessments/criteria, kept beside the other
+ * demo fixtures. The authoritative definition lives in the API; nothing here is used in production.
+ */
+const demoCriteria: Criteria = {
+  methodology: 'ISO/IEC 27005:2022 · ISO/IEC 27001:2022 · NIST SP 800-30 Rev.1',
+  likelihoodScale: [
+    { value: 1, label: 'Hiếm', definition: 'Trên 5 năm một lần.' },
+    { value: 2, label: 'Khó xảy ra', definition: 'Khoảng 2–5 năm một lần.' },
+    { value: 3, label: 'Có thể xảy ra', definition: 'Khoảng 1–2 năm một lần.' },
+    { value: 4, label: 'Nhiều khả năng', definition: 'Vài lần mỗi năm.' },
+    { value: 5, label: 'Gần như chắc chắn', definition: 'Hằng tháng hoặc thường xuyên hơn.' },
+  ],
+  impactScale: [1, 2, 3, 4, 5].map(value => ({
+    value,
+    label: ['Không đáng kể', 'Nhẹ', 'Trung bình', 'Nghiêm trọng', 'Thảm khốc'][value - 1],
+    definition: 'Xem tiêu chí đầy đủ do máy chủ cung cấp.',
+    dimensions: { 'Tài chính': '—', 'Gián đoạn dịch vụ': '—', 'Dữ liệu': '—', 'Tuân thủ pháp lý': '—', 'Uy tín': '—' },
+  })),
+  impactDimensions: ['Tài chính', 'Gián đoạn dịch vụ', 'Dữ liệu', 'Tuân thủ pháp lý', 'Uy tín'],
+  matrix: (
+    [
+      [5, ['HIGH', 'HIGH', 'CRITICAL', 'CRITICAL', 'CRITICAL']],
+      [4, ['MEDIUM', 'HIGH', 'HIGH', 'CRITICAL', 'CRITICAL']],
+      [3, ['LOW', 'MEDIUM', 'MEDIUM', 'HIGH', 'HIGH']],
+      [2, ['LOW', 'LOW', 'MEDIUM', 'MEDIUM', 'HIGH']],
+      [1, ['LOW', 'LOW', 'LOW', 'LOW', 'MEDIUM']],
+    ] as Array<[number, Level[]]>
+  ).flatMap(([impact, row]) => row.map((level, index) => ({ impact, likelihood: index + 1, level }))),
+  acceptanceCriteria: [
+    {
+      level: 'LOW',
+      label: 'Thấp',
+      treatmentRequired: false,
+      acceptable: true,
+      approver: 'Chủ sở hữu rủi ro',
+      reviewMonths: 12,
+      rule: 'Chấp nhận và theo dõi định kỳ.',
+    },
+    {
+      level: 'MEDIUM',
+      label: 'Trung bình',
+      treatmentRequired: false,
+      acceptable: true,
+      approver: 'Trưởng đơn vị hoặc Quản trị viên',
+      reviewMonths: 6,
+      rule: 'Xử lý khi chi phí hợp lý, nếu chấp nhận phải ghi rõ lý do.',
+    },
+    {
+      level: 'HIGH',
+      label: 'Cao',
+      treatmentRequired: true,
+      acceptable: true,
+      approver: 'Quản trị viên',
+      reviewMonths: 3,
+      rule: 'Bắt buộc có kế hoạch xử lý và phê duyệt độc lập.',
+    },
+    {
+      level: 'CRITICAL',
+      label: 'Nghiêm trọng',
+      treatmentRequired: true,
+      acceptable: false,
+      approver: 'Không được chấp nhận',
+      reviewMonths: 1,
+      rule: 'Phải đưa rủi ro còn lại xuống Cao trở xuống trước khi phê duyệt.',
+    },
+  ],
+  processSteps: [
+    { key: 'CONTEXT', name: 'Thiết lập bối cảnh', clause: 'ISO 27005 §5', summary: 'Phạm vi và tiêu chí rủi ro.' },
+    {
+      key: 'IDENTIFICATION',
+      name: 'Nhận diện rủi ro',
+      clause: 'ISO 27005 §7.2',
+      summary: 'Tài sản, đe dọa, điểm yếu.',
+    },
+    {
+      key: 'ANALYSIS',
+      name: 'Phân tích rủi ro',
+      clause: 'ISO 27005 §7.3',
+      summary: 'Xác suất, ảnh hưởng, mức vốn có.',
+    },
+    { key: 'EVALUATION', name: 'Định giá rủi ro', clause: 'ISO 27005 §7.4', summary: 'So với tiêu chí chấp nhận.' },
+    { key: 'TREATMENT', name: 'Xử lý rủi ro', clause: 'ISO 27005 §8', summary: 'Kiểm soát và kế hoạch xử lý.' },
+    { key: 'ACCEPTANCE', name: 'Chấp nhận rủi ro còn lại', clause: 'ISO 27001 §8.3', summary: 'Phê duyệt độc lập.' },
+    { key: 'MONITORING', name: 'Theo dõi và rà soát', clause: 'ISO 27005 §10', summary: 'Rà soát định kỳ.' },
+  ],
+}
 
 const demoAssessment: Assessment = {
   id: 'demo-assessment',
@@ -291,13 +431,26 @@ function summarize(items: Risk[]): Summary {
     treatments: open.filter(item => ['TREATMENT_PLANNED', 'TREATING'].includes(item.status)).length,
     byCategory: by(open.map(item => item.category)),
     byLevel: by(open.map(item => item.residualLevel || item.inherentLevel)),
-    matrix: Array.from({ length: 25 }, (_, i) => ({
-      impact: 5 - Math.floor(i / 5),
-      likelihood: (i % 5) + 1,
-      count: open.filter(item => item.impact === 5 - Math.floor(i / 5) && item.likelihood === (i % 5) + 1).length,
-    })),
+    byStatus: by(open.map(item => item.status)),
+    residualMissing: open.filter(item => item.status !== 'IDENTIFIED' && !item.residualLevel).length,
+    matrix: grid(open, item => [item.likelihood, item.impact]),
+    residualMatrix: grid(open, item => [item.residualLikelihood, item.residualImpact]),
   }
 }
+
+const grid = (items: Risk[], pick: (item: Risk) => [number | undefined, number | undefined]): MatrixCell[] =>
+  Array.from({ length: 25 }, (_, i) => {
+    const impact = 5 - Math.floor(i / 5),
+      likelihood = (i % 5) + 1
+    return {
+      impact,
+      likelihood,
+      count: items.filter(item => {
+        const [itemLikelihood, itemImpact] = pick(item)
+        return itemLikelihood === likelihood && itemImpact === impact
+      }).length,
+    }
+  })
 
 export function RiskManagement({
   assets,
@@ -320,7 +473,11 @@ export function RiskManagement({
       : [],
   )
   const [departments, setDepartments] = useState<Lookup[]>(demoMode ? [{ id: 'd-it', name: 'IT' }] : [])
+  const [criteria, setCriteria] = useState<Criteria | undefined>(demoMode ? demoCriteria : undefined)
   const [tab, setTab] = useState<'register' | 'assessments'>('register')
+  const [basis, setBasis] = useState<'INHERENT' | 'RESIDUAL'>('INHERENT')
+  const [cell, setCell] = useState<{ likelihood: number; impact: number }>()
+  const [showCriteria, setShowCriteria] = useState(false)
   const [query, setQuery] = useState(''),
     [level, setLevel] = useState(''),
     [status, setStatus] = useState('')
@@ -338,7 +495,13 @@ export function RiskManagement({
       const params = new URLSearchParams({ page: '1', limit: '100' })
       if (query) params.set('search', query)
       if (level) params.set('level', level)
-      if (status) params.set('status', status)
+      // A stage may filter several statuses at once; the API takes them as `statuses`.
+      if (status) params.set(status.includes(',') ? 'statuses' : 'status', status)
+      if (cell) {
+        params.set('basis', basis)
+        params.set('likelihood', String(cell.likelihood))
+        params.set('impact', String(cell.impact))
+      }
       const [stats, riskResult, assessmentResult] = await Promise.all([
         api.get<Summary>('/risk-assessments/summary'),
         api.get<{ data: Risk[] }>(`/risk-assessments/risks?${params}`),
@@ -356,7 +519,7 @@ export function RiskManagement({
   useEffect(() => {
     const timer = setTimeout(() => void load(), query ? 250 : 0)
     return () => clearTimeout(timer)
-  }, [demoMode, query, level, status])
+  }, [demoMode, query, level, status, cell, basis])
   useEffect(() => {
     if (demoMode) return
     void Promise.all([api.get<Lookup[]>('/risk-assessments/operators'), api.get<Lookup[]>('/departments')])
@@ -364,6 +527,10 @@ export function RiskManagement({
         setOperators(users)
         setDepartments(deps)
       })
+      .catch(() => undefined)
+    void api
+      .get<Criteria>('/risk-assessments/criteria')
+      .then(setCriteria)
       .catch(() => undefined)
   }, [demoMode])
   const shown = useMemo(
@@ -376,11 +543,54 @@ export function RiskManagement({
                   .toLowerCase()
                   .includes(query.toLowerCase())) &&
               (!level || (item.residualLevel || item.inherentLevel) === level) &&
-              (!status || item.status === status),
+              (!status || status.split(',').includes(item.status)) &&
+              (!cell ||
+                (basis === 'RESIDUAL'
+                  ? item.residualLikelihood === cell.likelihood && item.residualImpact === cell.impact
+                  : item.likelihood === cell.likelihood && item.impact === cell.impact)),
           )
         : risks,
-    [demoMode, risks, query, level, status],
+    [demoMode, risks, query, level, status, cell, basis],
   )
+
+  /**
+   * ISO/IEC 27001:2022 §8.3 — residual risk has to be signed off by someone other than the risk
+   * owner. The API already enforces that and the acceptance criteria; the UI simply had no way to
+   * ask for it, which left the whole decision step invisible.
+   */
+  const reviewRisk = async (id: string, decision: 'ACCEPT_RESIDUAL' | 'CLOSE', note: string) => {
+    if (demoMode) {
+      setError('Chế độ demo không ghi nhận phê duyệt.')
+      return
+    }
+    await api.post(`/risk-assessments/risks/${id}/reviews`, { decision, note })
+    setSelected(await api.get<Risk>(`/risk-assessments/risks/${id}`))
+    await load()
+  }
+  const reviewAssessment = async (id: string, decision: 'SUBMIT' | 'APPROVE' | 'RETURN_FOR_CHANGES', note: string) => {
+    if (demoMode) {
+      setError('Chế độ demo không ghi nhận phê duyệt.')
+      return
+    }
+    await api.post(`/risk-assessments/${id}/reviews`, { decision, note })
+    await load()
+  }
+
+  const submitAssessment = async (item: Assessment, decision: 'SUBMIT' | 'APPROVE' | 'RETURN_FOR_CHANGES') => {
+    const prompts: Record<typeof decision, string> = {
+      SUBMIT: `Trình duyệt ${item.assessmentNo}. Ghi căn cứ trình duyệt:`,
+      APPROVE: `Phê duyệt ${item.assessmentNo}. Ghi căn cứ phê duyệt:`,
+      RETURN_FOR_CHANGES: `Trả lại ${item.assessmentNo}. Ghi nội dung cần sửa:`,
+    }
+    // ISO/IEC 27005 §8.6 keeps the rationale with the decision, and the API rejects an empty note.
+    const note = window.prompt(prompts[decision])?.trim()
+    if (!note) return
+    try {
+      await reviewAssessment(item.id, decision, note)
+    } catch (reason) {
+      setError(apiMessage(reason))
+    }
+  }
 
   const openDetail = async (item: Risk) => {
     if (demoMode) return setSelected(item)
@@ -422,9 +632,11 @@ export function RiskManagement({
         riskNo: `RR-DEMO-${risks.length + 1}`,
         status: 'IDENTIFIED',
         inherentScore,
-        inherentLevel: scoreLevel(inherentScore),
+        inherentLevel: cellLevel(criteria, body.likelihood, body.impact),
         residualScore,
-        residualLevel: residualScore ? scoreLevel(residualScore) : undefined,
+        residualLevel: residualScore
+          ? cellLevel(criteria, Number(body.residualLikelihood), Number(body.residualImpact))
+          : undefined,
         owner: operators.find(x => x.id === body.ownerId)!,
         department: departments.find(x => x.id === body.departmentId),
         assessment,
@@ -504,6 +716,66 @@ export function RiskManagement({
     await load()
   }
 
+  const activeMatrix = basis === 'RESIDUAL' ? summary.residualMatrix : summary.matrix
+  const statusOptions = Object.keys(statusLabels)
+  const countByStatus = (...values: RiskStatus[]) =>
+    values.reduce((total, value) => total + (summary.byStatus.find(item => item.label === value)?.count || 0), 0)
+  const switchBasis = (next: 'INHERENT' | 'RESIDUAL') => {
+    setBasis(next)
+    // The same coordinates mean a different set of risks on the other grid, so a cell selection made
+    // on one basis must not silently carry over to the other.
+    setCell(undefined)
+  }
+  const selectCell = (item: MatrixCell) => {
+    if (!item.count && !(cell?.likelihood === item.likelihood && cell?.impact === item.impact)) return
+    setCell(current =>
+      current?.likelihood === item.likelihood && current?.impact === item.impact
+        ? undefined
+        : { likelihood: item.likelihood, impact: item.impact },
+    )
+  }
+  const likelihoodHint = (value: number) => {
+    const step = criteria?.likelihoodScale.find(item => item.value === value)
+    return step ? `${step.label}: ${step.definition}` : ''
+  }
+  const impactHint = (value: number) => {
+    const step = criteria?.impactScale.find(item => item.value === value)
+    return step ? `${step.label}: ${step.definition}` : ''
+  }
+  const filterByStatus =
+    (...values: RiskStatus[]) =>
+    () => {
+      setCell(undefined)
+      setLevel('')
+      setTab('register')
+      // Joined, so the register shows exactly the set the stage counted rather than a subset of it.
+      const next = values.join(',')
+      setStatus(current => (current === next ? '' : next))
+    }
+  /**
+   * The ISO/IEC 27005 process with the live count of risks sitting at each stage, so the panel says
+   * where the work actually is rather than describing the standard in the abstract.
+   */
+  const processStages = (criteria?.processSteps || []).map(step => {
+    if (step.key === 'CONTEXT') return { ...step, count: undefined, onOpen: () => setShowCriteria(true) }
+    if (step.key === 'IDENTIFICATION')
+      return { ...step, count: countByStatus('IDENTIFIED'), onOpen: filterByStatus('IDENTIFIED') }
+    // Every open risk already carries an inherent score, so analysis is done for all of them and the
+    // stage reports coverage rather than a queue of its own.
+    if (step.key === 'ANALYSIS') return { ...step, count: summary.totalOpen, onOpen: undefined }
+    if (step.key === 'EVALUATION')
+      return { ...step, count: countByStatus('ASSESSED'), onOpen: filterByStatus('ASSESSED') }
+    if (step.key === 'TREATMENT')
+      return {
+        ...step,
+        count: countByStatus('TREATMENT_PLANNED', 'TREATING'),
+        onOpen: filterByStatus('TREATMENT_PLANNED', 'TREATING'),
+      }
+    if (step.key === 'ACCEPTANCE')
+      return { ...step, count: countByStatus('MONITORING'), onOpen: filterByStatus('MONITORING') }
+    return { ...step, count: summary.reviewDue, onOpen: undefined }
+  })
+
   const metrics = [
     { key: '', label: 'Rủi ro đang mở', value: summary.totalOpen, note: 'Cần theo dõi và xử lý', icon: ShieldAlert },
     {
@@ -578,42 +850,74 @@ export function RiskManagement({
         <article className="risk-panel risk-matrix">
           <header>
             <div>
-              <h2>Ma trận rủi ro vốn có 5 × 5</h2>
-              <p>Nhấp ô để lọc danh sách theo mức rủi ro.</p>
+              <h2>Ma trận rủi ro 5 × 5</h2>
+              <p>Mức của từng ô lấy từ tiêu chí đã phê duyệt. Nhấp ô để xem đúng các rủi ro trong ô đó.</p>
             </div>
-            <span>Xác suất → · Ảnh hưởng ↓</span>
+            <div className="risk-basis-toggle">
+              <button className={basis === 'INHERENT' ? 'active' : ''} onClick={() => switchBasis('INHERENT')}>
+                Vốn có
+              </button>
+              <button className={basis === 'RESIDUAL' ? 'active' : ''} onClick={() => switchBasis('RESIDUAL')}>
+                Còn lại
+              </button>
+            </div>
           </header>
           <div className="matrix-body">
             <div className="matrix-axis">
               {[5, 4, 3, 2, 1].map(value => (
-                <b key={value}>{value}</b>
+                <b key={value} title={impactHint(value)}>
+                  {value}
+                </b>
               ))}
             </div>
             <div className="matrix-cells">
-              {summary.matrix.map(cell => {
-                const cellLevel = scoreLevel(cell.impact * cell.likelihood)
+              {activeMatrix.map(item => {
+                const itemLevel = cellLevel(criteria, item.likelihood, item.impact)
+                const active = cell?.likelihood === item.likelihood && cell?.impact === item.impact
                 return (
                   <button
-                    key={`${cell.impact}-${cell.likelihood}`}
-                    className={cellLevel.toLowerCase()}
-                    onClick={() => setLevel(cellLevel)}
-                    title={`Xác suất ${cell.likelihood}, ảnh hưởng ${cell.impact}`}
+                    key={`${item.impact}-${item.likelihood}`}
+                    className={`${(itemLevel || 'low').toLowerCase()}${active ? ' selected' : ''}`}
+                    onClick={() => selectCell(item)}
+                    title={`Xác suất ${item.likelihood} — ${likelihoodHint(item.likelihood)}
+Ảnh hưởng ${item.impact} — ${impactHint(item.impact)}
+Mức: ${itemLevel ? levelLabels[itemLevel] : '—'}`}
                   >
-                    <b>{cell.count}</b>
+                    <b>{item.count}</b>
                     <small>
-                      {cell.likelihood}×{cell.impact}
+                      {item.likelihood}×{item.impact}
                     </small>
                   </button>
                 )
               })}
             </div>
           </div>
-          <div className="matrix-legend">
-            <span className="low">Thấp</span>
-            <span className="medium">Trung bình</span>
-            <span className="high">Cao</span>
-            <span className="critical">Nghiêm trọng</span>
+          <div className="matrix-footer">
+            <div className="matrix-legend">
+              <span className="low">Thấp</span>
+              <span className="medium">Trung bình</span>
+              <span className="high">Cao</span>
+              <span className="critical">Nghiêm trọng</span>
+            </div>
+            <button className="risk-link" onClick={() => setShowCriteria(true)}>
+              <FileCheck2 size={14} />
+              Tiêu chí đánh giá
+            </button>
           </div>
+          {basis === 'RESIDUAL' && summary.residualMissing > 0 && (
+            <p className="matrix-note">
+              {summary.residualMissing} rủi ro chưa chấm điểm còn lại nên không xuất hiện trong lưới này.
+            </p>
+          )}
+          {cell && (
+            <p className="matrix-note">
+              Đang lọc ô xác suất {cell.likelihood} × ảnh hưởng {cell.impact} (
+              {basis === 'RESIDUAL' ? 'còn lại' : 'vốn có'}).{' '}
+              <button className="risk-link" onClick={() => setCell(undefined)}>
+                Bỏ lọc
+              </button>
+            </p>
+          )}
         </article>
         <article className="risk-panel risk-categories">
           <header>
@@ -642,32 +946,31 @@ export function RiskManagement({
         <article className="risk-panel risk-workflow">
           <header>
             <div>
-              <h2>Quy trình kiểm soát</h2>
-              <p>Trạng thái hồ sơ và trách nhiệm.</p>
+              <h2>Quy trình quản lý rủi ro</h2>
+              <p>{criteria?.methodology || 'ISO/IEC 27005'}</p>
             </div>
             <ShieldCheck size={18} />
           </header>
           <ol>
-            <li>
-              <b>1</b>
-              <span>Khoanh vùng tài sản và dịch vụ</span>
-            </li>
-            <li>
-              <b>2</b>
-              <span>Nhận diện đe dọa, điểm yếu</span>
-            </li>
-            <li>
-              <b>3</b>
-              <span>Đánh giá rủi ro vốn có</span>
-            </li>
-            <li>
-              <b>4</b>
-              <span>Kiểm soát và xử lý</span>
-            </li>
-            <li>
-              <b>5</b>
-              <span>Rủi ro còn lại, phê duyệt</span>
-            </li>
+            {processStages.map((stage, index) => (
+              <li key={stage.key} className={stage.count ? 'has-work' : ''}>
+                <b>{index + 1}</b>
+                <span>
+                  <em>
+                    {stage.name}
+                    <i>{stage.clause}</i>
+                  </em>
+                  <small>{stage.summary}</small>
+                </span>
+                {stage.onOpen ? (
+                  <button className="risk-stage-count" onClick={stage.onOpen}>
+                    {stage.count === undefined ? 'Xem' : stage.count}
+                  </button>
+                ) : (
+                  <span className="risk-stage-count muted">{stage.count ?? '—'}</span>
+                )}
+              </li>
+            ))}
           </ol>
         </article>
       </section>
@@ -701,8 +1004,13 @@ export function RiskManagement({
                   </option>
                 ))}
               </select>
-              <select value={status} onChange={event => setStatus(event.target.value)}>
-                <option value="">Tất cả trạng thái</option>
+              <select
+                value={statusOptions.includes(status) ? status : ''}
+                onChange={event => setStatus(event.target.value)}
+              >
+                <option value="">
+                  {status && !statusOptions.includes(status) ? 'Nhiều trạng thái' : 'Tất cả trạng thái'}
+                </option>
                 {Object.entries(statusLabels).map(([value, label]) => (
                   <option value={value} key={value}>
                     {label}
@@ -785,6 +1093,7 @@ export function RiskManagement({
                   <th>THỜI GIAN</th>
                   <th>SỐ RỦI RO</th>
                   <th>TRẠNG THÁI</th>
+                  <th>PHÊ DUYỆT</th>
                 </tr>
               </thead>
               <tbody>
@@ -807,6 +1116,27 @@ export function RiskManagement({
                       <span className={`assessment-status ${item.status.toLowerCase()}`}>
                         {assessmentLabels[item.status]}
                       </span>
+                    </td>
+                    <td className="risk-assessment-actions">
+                      {item.status === 'DRAFT' && (
+                        <button className="btn secondary" onClick={() => void submitAssessment(item, 'SUBMIT')}>
+                          Trình duyệt
+                        </button>
+                      )}
+                      {item.status === 'IN_REVIEW' && (
+                        <>
+                          <button className="btn primary" onClick={() => void submitAssessment(item, 'APPROVE')}>
+                            Phê duyệt
+                          </button>
+                          <button
+                            className="btn secondary"
+                            onClick={() => void submitAssessment(item, 'RETURN_FOR_CHANGES')}
+                          >
+                            Trả lại
+                          </button>
+                        </>
+                      )}
+                      {item.status !== 'DRAFT' && item.status !== 'IN_REVIEW' && <span className="muted">—</span>}
                     </td>
                   </tr>
                 ))}
@@ -835,12 +1165,14 @@ export function RiskManagement({
           onSave={saveAssessment}
         />
       )}
+      {showCriteria && criteria && <CriteriaModal criteria={criteria} onClose={() => setShowCriteria(false)} />}
       {creatingRisk && (
         <RiskModal
           assessments={assessments}
           operators={operators}
           departments={departments}
           assets={assets}
+          criteria={criteria}
           onClose={() => setCreatingRisk(false)}
           onSave={saveRisk}
         />
@@ -849,6 +1181,8 @@ export function RiskManagement({
         <RiskDetail
           risk={selected}
           operators={operators}
+          criteria={criteria}
+          reviewRisk={reviewRisk}
           onClose={() => setSelected(undefined)}
           addControl={addControl}
           addTreatment={addTreatment}
@@ -1006,11 +1340,130 @@ function AssessmentModal({
   )
 }
 
+/**
+ * ISO/IEC 27001:2022 §6.1.2(a) requires the risk criteria to be documented information. This renders
+ * exactly what the API serves, so what an auditor reads on screen is what the API used to score.
+ */
+function CriteriaModal({ criteria, onClose }: { criteria: Criteria; onClose: () => void }) {
+  return (
+    <div className="modal-backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}>
+      <div className="modal risk-criteria-modal">
+        <div className="modal-head">
+          <div>
+            <h2>Tiêu chí đánh giá rủi ro</h2>
+            <p>{criteria.methodology}</p>
+          </div>
+          <button type="button" className="icon-btn" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="risk-criteria-body">
+          <section>
+            <h3>Thang xác suất</h3>
+            <table className="risk-criteria-table">
+              <thead>
+                <tr>
+                  <th>Mức</th>
+                  <th>Tên gọi</th>
+                  <th>Định nghĩa</th>
+                </tr>
+              </thead>
+              <tbody>
+                {criteria.likelihoodScale.map(item => (
+                  <tr key={item.value}>
+                    <td>
+                      <b>{item.value}</b>
+                    </td>
+                    <td>{item.label}</td>
+                    <td>{item.definition}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+          <section>
+            <h3>Thang ảnh hưởng</h3>
+            <p className="risk-criteria-hint">
+              Kịch bản lấy mức cao nhất mà nó chạm tới ở bất kỳ khía cạnh nào, không lấy trung bình.
+            </p>
+            <div className="risk-table-wrap">
+              <table className="risk-criteria-table">
+                <thead>
+                  <tr>
+                    <th>Mức</th>
+                    <th>Tên gọi</th>
+                    {criteria.impactDimensions.map(dimension => (
+                      <th key={dimension}>{dimension}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {criteria.impactScale.map(item => (
+                    <tr key={item.value}>
+                      <td>
+                        <b>{item.value}</b>
+                      </td>
+                      <td>{item.label}</td>
+                      {criteria.impactDimensions.map(dimension => (
+                        <td key={dimension}>{item.dimensions[dimension]}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section>
+            <h3>Tiêu chí chấp nhận rủi ro</h3>
+            <table className="risk-criteria-table">
+              <thead>
+                <tr>
+                  <th>Mức</th>
+                  <th>Bắt buộc xử lý</th>
+                  <th>Được chấp nhận</th>
+                  <th>Thẩm quyền phê duyệt</th>
+                  <th>Chu kỳ rà soát</th>
+                  <th>Quy định</th>
+                </tr>
+              </thead>
+              <tbody>
+                {criteria.acceptanceCriteria.map(item => (
+                  <tr key={item.level}>
+                    <td>
+                      <span className={`risk-level ${item.level.toLowerCase()}`}>{item.label}</span>
+                    </td>
+                    <td>{item.treatmentRequired ? 'Có' : 'Không'}</td>
+                    <td>{item.acceptable ? 'Có' : 'Không'}</td>
+                    <td>{item.approver}</td>
+                    <td>{item.reviewMonths} tháng</td>
+                    <td>{item.rule}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+          <p className="risk-criteria-source">
+            Tiêu chí do máy chủ cung cấp tại <code>GET /api/v1/risk-assessments/criteria</code> và được dùng chung cho
+            việc chấm điểm ở API lẫn hiển thị tại đây. Sửa tiêu chí là sửa hệ thống quản lý an toàn thông tin: phải phê
+            duyệt lại các đợt đánh giá đang mở.
+          </p>
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="btn secondary" onClick={onClose}>
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function RiskModal({
   assessments,
   operators,
   departments,
   assets,
+  criteria,
   onClose,
   onSave,
 }: {
@@ -1018,6 +1471,7 @@ function RiskModal({
   operators: Lookup[]
   departments: Lookup[]
   assets: Asset[]
+  criteria?: Criteria
   onClose: () => void
   onSave: (body: any) => Promise<void>
 }) {
@@ -1069,8 +1523,16 @@ function RiskModal({
     }
   }
   const inherent = Number(form.likelihood) * Number(form.impact),
+    inherentLevel = cellLevel(criteria, Number(form.likelihood), Number(form.impact)),
     residual =
-      form.residualLikelihood && form.residualImpact ? Number(form.residualLikelihood) * Number(form.residualImpact) : 0
+      form.residualLikelihood && form.residualImpact
+        ? Number(form.residualLikelihood) * Number(form.residualImpact)
+        : 0,
+    residualLevel =
+      form.residualLikelihood && form.residualImpact
+        ? cellLevel(criteria, Number(form.residualLikelihood), Number(form.residualImpact))
+        : undefined,
+    residualRule = residualLevel ? criteria?.acceptanceCriteria.find(item => item.level === residualLevel) : undefined
   return (
     <div className="modal-backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}>
       <form className="modal risk-modal risk-item-modal" onSubmit={submit}>
@@ -1163,11 +1625,9 @@ function RiskModal({
               ))}
             </select>
           </label>
-          <div className={`risk-score-preview ${scoreLevel(inherent).toLowerCase()}`}>
+          <div className={`risk-score-preview ${(inherentLevel || '').toLowerCase()}`}>
             <span>Rủi ro vốn có</span>
-            <b>
-              {inherent} · {levelLabels[scoreLevel(inherent)]}
-            </b>
+            <b>{inherentLevel ? `${inherent} · ${levelLabels[inherentLevel]}` : `${inherent}`}</b>
           </div>
           <label>
             Chiến lược
@@ -1198,9 +1658,10 @@ function RiskModal({
               ))}
             </select>
           </label>
-          <div className={`risk-score-preview ${residual ? scoreLevel(residual).toLowerCase() : ''}`}>
+          <div className={`risk-score-preview ${(residualLevel || '').toLowerCase()}`}>
             <span>Rủi ro còn lại</span>
-            <b>{residual ? `${residual} · ${levelLabels[scoreLevel(residual)]}` : 'Chưa đánh giá'}</b>
+            <b>{residualLevel ? `${residual} · ${levelLabels[residualLevel]}` : 'Chưa đánh giá'}</b>
+            {residualRule && !residualRule.acceptable && <small>{residualRule.rule}</small>}
           </div>
           <label>
             Chủ sở hữu
@@ -1270,21 +1731,42 @@ function RiskModal({
 function RiskDetail({
   risk,
   operators,
+  criteria,
   onClose,
   addControl,
   addTreatment,
   completeTreatment,
+  reviewRisk,
 }: {
   risk: Risk
   operators: Lookup[]
+  criteria?: Criteria
   onClose: () => void
   addControl: (id: string, body: any) => Promise<void>
   addTreatment: (id: string, body: any) => Promise<void>
   completeTreatment: (id: string, treatment: Treatment) => Promise<void>
+  reviewRisk: (id: string, decision: 'ACCEPT_RESIDUAL' | 'CLOSE', note: string) => Promise<void>
 }) {
   const [control, setControl] = useState({ controlCode: '', title: '', framework: 'ISO/IEC 27001', status: 'PLANNED' }),
     [treatment, setTreatment] = useState({ title: '', assigneeId: operators[0]?.id || '', dueDate: '' }),
+    [reviewNote, setReviewNote] = useState(''),
     [message, setMessage] = useState('')
+  const residualRule = risk.residualLevel
+    ? criteria?.acceptanceCriteria.find(item => item.level === risk.residualLevel)
+    : undefined
+  const decided = risk.status === 'ACCEPTED' || risk.status === 'CLOSED'
+  // The API is the authority on all three conditions; mirroring them here only keeps the button from
+  // offering an action that is certain to be refused.
+  const canAccept = Boolean(residualRule?.acceptable && risk.residualLevel && risk.acceptanceRationale)
+  const submitReview = async (decision: 'ACCEPT_RESIDUAL' | 'CLOSE') => {
+    try {
+      await reviewRisk(risk.id, decision, reviewNote)
+      setReviewNote('')
+      setMessage(decision === 'ACCEPT_RESIDUAL' ? 'Đã ghi nhận chấp nhận rủi ro còn lại.' : 'Đã đóng hồ sơ rủi ro.')
+    } catch (error) {
+      setMessage(apiMessage(error))
+    }
+  }
   const saveControl = async () => {
     if (!control.title.trim()) return
     try {
@@ -1470,6 +1952,65 @@ function RiskDetail({
               </button>
             </div>
             {message && <p className="risk-detail-message">{message}</p>}
+          </section>
+          <section className="risk-acceptance">
+            <h3>Chấp nhận rủi ro còn lại</h3>
+            {!residualRule ? (
+              <p className="risk-acceptance-note">
+                Chưa chấm điểm rủi ro còn lại. Phải có mức rủi ro còn lại trước khi trình phê duyệt theo ISO/IEC 27001
+                §8.3.
+              </p>
+            ) : (
+              <>
+                <p className="risk-acceptance-note">
+                  Mức còn lại{' '}
+                  <span className={`risk-level ${residualRule.level.toLowerCase()}`}>{residualRule.label}</span> · thẩm
+                  quyền: {residualRule.approver} · rà soát mỗi {residualRule.reviewMonths} tháng.
+                </p>
+                <p className="risk-acceptance-rule">{residualRule.rule}</p>
+              </>
+            )}
+            {decided ? (
+              <p className="risk-acceptance-note">
+                Hồ sơ đã ở trạng thái {statusLabels[risk.status]}, không cần quyết định thêm.
+              </p>
+            ) : (
+              <>
+                <textarea
+                  rows={2}
+                  value={reviewNote}
+                  onChange={e => setReviewNote(e.target.value)}
+                  placeholder="Căn cứ phê duyệt: biện pháp đã áp dụng, lý do chấp nhận hoặc lý do đóng hồ sơ"
+                />
+                <div className="risk-acceptance-actions">
+                  <button
+                    className="btn primary"
+                    disabled={!canAccept || !reviewNote.trim()}
+                    title={
+                      residualRule && !residualRule.acceptable
+                        ? residualRule.rule
+                        : !risk.acceptanceRationale
+                          ? 'Cần ghi lý do chấp nhận trong hồ sơ rủi ro trước'
+                          : undefined
+                    }
+                    onClick={() => void submitReview('ACCEPT_RESIDUAL')}
+                  >
+                    <Check size={15} />
+                    Chấp nhận rủi ro còn lại
+                  </button>
+                  <button
+                    className="btn secondary"
+                    disabled={!reviewNote.trim()}
+                    onClick={() => void submitReview('CLOSE')}
+                  >
+                    Đóng hồ sơ
+                  </button>
+                </div>
+                <small className="risk-acceptance-note">
+                  Chủ sở hữu rủi ro không được tự phê duyệt. Quyết định được ghi vào nhật ký kiểm toán.
+                </small>
+              </>
+            )}
           </section>
         </div>
       </aside>

@@ -302,6 +302,160 @@
 }
 .risk-workflow li span {
   font-weight: 500;
+  flex: 1;
+  min-width: 0;
+}
+.risk-workflow li span em {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-style: normal;
+}
+.risk-workflow li span em i {
+  font-style: normal;
+  font-size: 9.5px;
+  font-weight: 500;
+  color: #7c869a;
+  white-space: nowrap;
+}
+.risk-workflow li span small {
+  display: block;
+  margin-top: 1px;
+  font-weight: 400;
+  color: #7c869a;
+}
+.risk-workflow li.has-work b {
+  background: #e8f0fb;
+  color: #1c4f96;
+}
+.risk-stage-count {
+  min-width: 30px;
+  padding: 2px 7px;
+  border: 1px solid #d7dfea;
+  border-radius: 3px;
+  background: #fff;
+  color: #245fae;
+  font-weight: 600;
+  cursor: pointer;
+}
+.risk-stage-count.muted {
+  border-color: transparent;
+  background: transparent;
+  color: #9aa3b2;
+  cursor: default;
+}
+
+/* Matrix: basis toggle, selected cell and the criteria link under the legend. */
+.risk-basis-toggle {
+  display: flex;
+  border: 1px solid #d7dfea;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.risk-basis-toggle button {
+  padding: 3px 10px;
+  border: 0;
+  background: #fff;
+  color: #5c6779;
+  cursor: pointer;
+}
+.risk-basis-toggle button.active {
+  background: #245fae;
+  color: #fff;
+}
+.matrix-cells button.selected {
+  outline: 2px solid #1c4f96;
+  outline-offset: -2px;
+}
+.matrix-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.risk-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #245fae;
+  font-weight: 500;
+  cursor: pointer;
+}
+.matrix-note {
+  margin: 0 12px 10px;
+  color: #6b7688;
+}
+
+/* Risk criteria: the documented ISO 27001 6.1.2(a) artefact. */
+.risk-criteria-modal {
+  width: min(1040px, 100%);
+}
+.risk-criteria-body {
+  padding: 4px 20px 14px;
+  overflow: auto;
+  max-height: 70vh;
+}
+.risk-criteria-body section {
+  margin-bottom: 18px;
+}
+.risk-criteria-body h3 {
+  margin: 0 0 6px;
+}
+.risk-criteria-hint,
+.risk-criteria-source {
+  margin: 0 0 8px;
+  color: #6b7688;
+}
+.risk-criteria-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.risk-criteria-table th,
+.risk-criteria-table td {
+  padding: 6px 9px;
+  border: 1px solid #e4e9f0;
+  text-align: left;
+  vertical-align: top;
+}
+.risk-criteria-table th {
+  background: #f6f8fb;
+  font-weight: 600;
+}
+
+/* Residual risk sign-off (ISO/IEC 27001 §8.3). */
+.risk-acceptance textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #dbe1ea;
+  border-radius: 3px;
+  outline: 0;
+  resize: vertical;
+}
+.risk-acceptance-actions {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 6px;
+  flex-wrap: wrap;
+}
+.risk-acceptance-note,
+.risk-acceptance-rule {
+  margin: 0 0 6px;
+  color: #6b7688;
+}
+.risk-acceptance-rule {
+  padding: 7px 9px;
+  border-left: 3px solid #e0c07a;
+  background: #fdf8ec;
+  color: #7a5c14;
+}
+.risk-assessment-actions {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
 }
 .risk-register {
   background: #fff;
