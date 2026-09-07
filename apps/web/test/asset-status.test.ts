@@ -10,6 +10,9 @@ import {
   operationalStatusOptions,
 } from '../src/features/assets/asset-status'
 
+// `now` is always built from local components: daysUntilDue reads the current calendar day
+// through the local getters, so an ISO string with a fixed offset would land on a different day
+// depending on the runner's timezone and make these assertions pass only in UTC+7.
 const asset = (overrides: Partial<Asset> = {}): Asset =>
   ({
     id: 1,
@@ -28,7 +31,7 @@ const asset = (overrides: Partial<Asset> = {}): Asset =>
   }) as Asset
 
 test('an asset is not overdue on the calendar day it is due', () => {
-  const now = new Date('2026-09-07T15:30:00+07:00')
+  const now = new Date(2026, 8, 7, 15, 30)
   const dueToday = asset({ dueDate: '2026-09-07T00:00:00.000Z' })
   assert.equal(daysUntilDue(dueToday.dueDate, now), 0)
   assert.equal(isOverdue(dueToday, now), false)
@@ -36,13 +39,13 @@ test('an asset is not overdue on the calendar day it is due', () => {
 })
 
 test('an asset becomes overdue only once the due day has passed', () => {
-  const now = new Date('2026-09-07T00:30:00+07:00')
+  const now = new Date(2026, 8, 7, 0, 30)
   assert.equal(isOverdue(asset({ dueDate: '2026-09-06T00:00:00.000Z' }), now), true)
   assert.equal(isOverdue(asset({ dueDate: '2026-09-08T00:00:00.000Z' }), now), false)
 })
 
 test('due-soon covers the whole window and stops outside it', () => {
-  const now = new Date('2026-09-07T09:00:00+07:00')
+  const now = new Date(2026, 8, 7, 9, 0)
   assert.equal(isDueSoon(asset({ dueDate: '2026-09-14T00:00:00.000Z' }), 7, now), true)
   assert.equal(isDueSoon(asset({ dueDate: '2026-09-15T00:00:00.000Z' }), 7, now), false)
   assert.equal(isDueSoon(asset({ dueDate: '2026-09-06T00:00:00.000Z' }), 7, now), false)
@@ -66,7 +69,7 @@ test('an asset that is assigned or unavailable is not in stock', () => {
 })
 
 test('operational status filter matches loans, due states and plain statuses', () => {
-  const now = new Date('2026-09-07T09:00:00+07:00')
+  const now = new Date(2026, 8, 7, 9, 0)
   const loan = asset({ assignmentType: 'Cho mượn', assignedTo: 'Nguyễn Minh Anh', status: 'Đang sử dụng' })
   assert.equal(matchesOperationalStatus(loan, 'Cho mượn'), true)
   // A loan is still an asset in use, so it stays visible under the plain status too.
