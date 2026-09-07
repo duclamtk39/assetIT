@@ -182,7 +182,6 @@ const englishLabels: Record<string, string> = {
   'Cấp phát & Thu hồi': 'Issue & Return',
   'Điều chuyển': 'Transfer',
   'Nhập kho': 'Stock receipt',
-  'Kho & Vị trí': 'Warehouses & Locations',
   'Kiểm kê': 'Inventory audit',
   'Nhà cung cấp': 'Suppliers',
   'Bảo trì & Sự cố': 'Maintenance & Incidents',
@@ -752,7 +751,6 @@ const navSections: Array<{ title: string; items: Array<{ label: string; icon: ty
       { label: 'Sổ tài sản', icon: Box },
       { label: 'Cấp phát & Thu hồi', icon: UserPlus },
       { label: 'Nhập kho', icon: ArrowDownRight },
-      { label: 'Kho & Vị trí', icon: Warehouse },
       { label: 'Kiểm kê', icon: ClipboardCheck },
     ],
   },
@@ -1695,7 +1693,6 @@ function Dashboard({
           <article className="dashboard-reference-card location-overview">
             <header>
               <h2>{english ? 'Top locations' : 'Vị trí có nhiều tài sản'}</h2>
-              <button onClick={() => goPage('Kho & Vị trí')}>{english ? 'View all' : 'Xem tất cả'}</button>
             </header>
             <div>
               {locationCounts.map((item, index) => (
@@ -6036,7 +6033,6 @@ function SupplierManagement() {
 function Placeholder({ title, language }: { title: string; language: string }) {
   if (title === 'Nhà cung cấp') return <SupplierManagement />
   const info: Record<string, [string, typeof Box]> = {
-    'Kho & Điều chuyển': ['Theo dõi nhập kho, xuất kho và luân chuyển tài sản.', Warehouse],
     'Bảo trì & Sự cố': ['Tiếp nhận sự cố, lên lịch và theo dõi lịch sử bảo trì.', Wrench],
     'Kiểm kê': ['Tổ chức đợt kiểm kê và đối soát tài sản bằng QR.', QrCode],
     'Báo cáo': ['Phân tích khấu hao, chi phí và tình trạng tài sản.', BarChart3],

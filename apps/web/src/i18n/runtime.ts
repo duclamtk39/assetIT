@@ -112,7 +112,6 @@ const viToEn: Array<[string, string]> = [
   ['Địa chỉ MAC', 'MAC address'],
   ['Xác nhận nhập kho', 'Confirm receipt'],
   ['Tải file mẫu', 'Download template'],
-  ['Kho & Vị trí', 'Warehouses & Locations'],
   ['Kiểm kê tài sản', 'Asset inventory'],
   ['Nhà cung cấp', 'Suppliers'],
   ['Bảo trì & Sự cố', 'Maintenance & Incidents'],

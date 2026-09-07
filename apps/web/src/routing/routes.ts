@@ -8,7 +8,6 @@ export const pageRoutes: Record<string, string> = {
   'Khám phá & Agent': '/discovery',
   'Nhập kho': '/warehouse/receipts',
   'Thanh lý & Hủy bỏ': '/disposals',
-  'Kho & Vị trí': '/warehouses',
   'Nhà cung cấp': '/vendors',
   'License & Gia hạn': '/renewals',
   'Bảo trì & Sự cố': '/maintenance',

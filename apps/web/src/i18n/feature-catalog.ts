@@ -763,7 +763,6 @@ export const featureTranslations: UiTranslation[] = [
   ['Ví dụ: 16 GB DDR5', 'Example: 16 GB DDR5'],
   ['Ví dụ: SSD 512 GB', 'Example: SSD 512 GB'],
   ['Xóa ảnh', 'Remove image'],
-  ['Theo dõi nhập kho, xuất kho và luân chuyển tài sản.', 'Track receipts, issues and asset movements.'],
   [
     'Tiếp nhận sự cố, lên lịch và theo dõi lịch sử bảo trì.',
     'Receive incidents, schedule work and track maintenance history.',
