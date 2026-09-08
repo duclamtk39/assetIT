@@ -4,12 +4,9 @@ import QRCode from 'qrcode'
 import {
   AlertTriangle,
   Archive,
-  ArchiveX,
-  ArrowDownRight,
   ArrowUpRight,
   BarChart3,
   Bell,
-  BellRing,
   Box,
   Building2,
   CalendarDays,
@@ -23,7 +20,6 @@ import {
   FileText,
   Filter,
   HelpCircle,
-  LayoutDashboard,
   Laptop,
   MapPin,
   Menu,
@@ -35,7 +31,6 @@ import {
   Plus,
   Printer,
   QrCode,
-  Router,
   Search,
   Server,
   Settings,
@@ -76,8 +71,6 @@ import {
   Wifi,
   Languages,
   Clock3,
-  KeyRound,
-  ShieldAlert,
 } from 'lucide-react'
 import {
   categories,
@@ -103,6 +96,7 @@ import type {
 } from './types'
 import { useAppRoute } from './hooks/useAppRoute'
 import { pageForPath } from './routing/routes'
+import { navSections } from './routing/navigation'
 import { api, ApiError } from './services/api-client'
 import { readApiCollection, type ApiCollectionResponse } from './services/api-response'
 import { env } from './config/env'
@@ -755,51 +749,6 @@ interface ReferenceData {
 }
 const emptyReferenceData: ReferenceData = { categories: [], departments: [], locations: [], warehouses: [], people: [] }
 const apiErrorMessage = (error: unknown) => (error instanceof Error ? error.message : 'Không thể xử lý yêu cầu')
-
-const navSections: Array<{ title: string; items: Array<{ label: string; icon: typeof Box; count?: string }> }> = [
-  { title: '', items: [{ label: 'Tổng quan', icon: LayoutDashboard }] },
-  {
-    title: 'TÀI SẢN',
-    items: [
-      { label: 'Sổ tài sản', icon: Box },
-      { label: 'Cấp phát & Thu hồi', icon: UserPlus },
-      { label: 'Nhập kho', icon: ArrowDownRight },
-      { label: 'Kiểm kê', icon: ClipboardCheck },
-    ],
-  },
-  {
-    title: 'NGHIỆP VỤ',
-    items: [
-      { label: 'Nhà cung cấp', icon: Building2 },
-      { label: 'License & Gia hạn', icon: KeyRound },
-      { label: 'Bảo trì & Sự cố', icon: Wrench },
-      { label: 'Thanh lý & Hủy bỏ', icon: ArchiveX },
-    ],
-  },
-  {
-    title: 'GIÁM SÁT MẠNG',
-    items: [
-      { label: 'Sơ đồ mạng', icon: Network },
-      { label: 'Thiết bị mạng', icon: Router },
-      { label: 'Cảnh báo mạng', icon: BellRing },
-    ],
-  },
-  {
-    title: 'TUÂN THỦ ISO',
-    items: [
-      { label: 'Khung tiêu chuẩn & SoA', icon: ShieldCheck },
-      { label: 'Hệ thống tài liệu', icon: FileText },
-      { label: 'Đánh giá rủi ro CNTT', icon: ShieldAlert },
-    ],
-  },
-  {
-    title: 'BÁO CÁO',
-    items: [
-      { label: 'Báo cáo', icon: BarChart3 },
-      { label: 'Lịch sử / Audit', icon: History },
-    ],
-  },
-]
 
 /** Pages that live inside the settings area, so the sidebar entry highlights for all of them. */
 const settingsPages = ['Cấu hình hệ thống', 'Tùy chỉnh thương hiệu', 'Cấu hình email', 'Khám phá & Agent', 'Dải mạng']

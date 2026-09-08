@@ -1,3 +1,9 @@
+/**
+ * Every page reachable from the sidebar needs an entry here. `page` is derived from the URL rather
+ * than held in state, so a label with no route navigates to an encoded fallback path that
+ * pageForPath cannot match, and the app lands back on Tổng quan - the click looks like it did
+ * nothing. routes.test.ts asserts the sidebar and this table stay in step.
+ */
 export const pageRoutes: Record<string, string> = {
   'Tổng quan': '/',
   'Sổ tài sản': '/assets',
@@ -11,6 +17,9 @@ export const pageRoutes: Record<string, string> = {
   'License & Gia hạn': '/renewals',
   'Bảo trì & Sự cố': '/maintenance',
   'Đánh giá rủi ro CNTT': '/it-risk-assessment',
+  'Sơ đồ mạng': '/network',
+  'Thiết bị mạng': '/network/devices',
+  'Cảnh báo mạng': '/network/alerts',
   'Khung tiêu chuẩn & SoA': '/compliance/controls',
   'Hệ thống tài liệu': '/compliance/documents',
   'Báo cáo': '/reports',
