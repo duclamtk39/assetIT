@@ -125,6 +125,7 @@ import { createIntakeTemplateSheets, intakeTemplateFileName } from './features/i
 import { historyToTransaction } from './features/handover/history-transaction'
 import {
   assetRecordStatuses,
+  assetStatusCodes,
   isInStock,
   isOverdue,
   matchesOperationalStatus,
@@ -6114,12 +6115,14 @@ function AssetModal({
   asset,
   departmentOptions,
   siteOptions,
+  role,
   onClose,
   onSave,
 }: {
   asset: Asset | null | undefined
   departmentOptions: string[]
   siteOptions: string[]
+  role: string
   onClose: () => void
   onSave: (a: Asset) => void | Promise<void>
 }) {
@@ -6140,6 +6143,7 @@ function AssetModal({
     icon: 'laptop',
   }
   const [form, setForm] = useState<Asset>(asset || blank)
+  const canEditStatus = !editing || role === 'Admin'
   const update = (key: keyof Asset, value: string | number) =>
     setForm(f => ({ ...f, [key]: value, ...(key === 'category' ? { icon: assetIconForCategory(String(value)) } : {}) }))
   const uploadImage = (file?: File) => {
@@ -6163,10 +6167,13 @@ function AssetModal({
       alert('Nguyên giá phải là số không âm.')
       return
     }
+    // Ownership and placement still belong to the lifecycle commands, so an edit never carries them.
+    // Status is the exception for an administrator: it is the only way to correct a record whose
+    // state is simply wrong, and the API records the correction in the asset history.
     const protectedState =
       editing && asset
         ? {
-            status: asset.status,
+            ...(canEditStatus ? {} : { status: asset.status }),
             assignedTo: asset.assignedTo,
             department: asset.department,
             location: asset.location,
@@ -6260,11 +6267,12 @@ function AssetModal({
           </label>
           <label>
             Trạng thái{' '}
-            <select disabled={editing} value={form.status} onChange={e => update('status', e.target.value)}>
+            <select disabled={!canEditStatus} value={form.status} onChange={e => update('status', e.target.value)}>
               {assetRecordStatuses.map(s => (
                 <option key={s}>{s}</option>
               ))}
             </select>
+            {editing && canEditStatus && <small>Điều chỉnh trạng thái được ghi vào lịch sử tài sản.</small>}
           </label>
           <label>
             Phòng ban{' '}
@@ -7463,7 +7471,16 @@ export default function App() {
         ipAddress: secured.ipAddress || undefined,
         macAddress: secured.macAddress || undefined,
       }
-      if (secured.apiId) await api.patch(`/assets/${secured.apiId}`, common)
+      if (secured.apiId)
+        await api.patch(`/assets/${secured.apiId}`, {
+          ...common,
+          // Only an administrator may set this, and only when it actually differs; the API rejects
+          // the field for anyone else, so sending it unconditionally would break IT's own edits.
+          statusCode:
+            currentUser?.role === 'Admin' && secured.status !== assets.find(a => a.id === secured.id)?.status
+              ? assetStatusCodes[secured.status]
+              : undefined,
+        })
       else {
         const warehouse = referenceData.warehouses.find(
           item => item.name === secured.location || item.location?.name === secured.location,
@@ -8029,6 +8046,7 @@ export default function App() {
           asset={modal}
           departmentOptions={departmentOptions}
           siteOptions={siteOptions}
+          role={currentUser.role}
           onClose={() => setModal(undefined)}
           onSave={save}
         />

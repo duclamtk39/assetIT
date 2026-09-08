@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common'
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { IncidentStatus, Prisma } from '@prisma/client'
 import { randomUUID } from 'node:crypto'
 import { PrismaService } from '../../database/prisma.service'
@@ -536,9 +530,9 @@ export class IncidentsService {
 
   /**
    * Deletes a maintenance or incident record. Activities and assignments go with it through the
-   * cascade; a link from the risk register does not, because that link is the traceability between a
-   * risk and the event that evidenced it, and the register should lose it deliberately rather than
-   * as a side effect. The record itself, including its timeline, is copied into the audit log first.
+   * cascade; links from the risk register are declared Restrict, so they are cleared here first,
+   * with the risks they pointed at named in the audit entry - the register loses the citation, and
+   * the audit log is where it can still be found. The record and its timeline go in there too.
    */
   async remove(id: string, actor: Actor) {
     if (actor.role !== 'ADMIN') throw new ForbiddenException('Chỉ Admin được xóa hồ sơ sự cố')
@@ -551,10 +545,6 @@ export class IncidentsService {
       },
     })
     if (!incident) throw new NotFoundException('Không tìm thấy hồ sơ sự cố')
-    if (incident.riskLinks.length) {
-      const list = incident.riskLinks.map(link => link.risk.riskNo).join(', ')
-      throw new ConflictException(`Hồ sơ đang được rủi ro ${list} tham chiếu; hãy bỏ liên kết ở sổ rủi ro trước`)
-    }
     return this.db.$transaction(async tx => {
       await tx.auditLog.create({
         data: {
@@ -578,9 +568,11 @@ export class IncidentsService {
               note: activity.note,
               at: activity.createdAt.toISOString(),
             })),
+            riskLinks: incident.riskLinks.map(link => ({ riskNo: link.risk.riskNo, title: link.risk.title })),
           } as Prisma.InputJsonValue,
         },
       })
+      await tx.riskIncident.deleteMany({ where: { incidentId: id } })
       await tx.incident.delete({ where: { id } })
       return { success: true }
     })

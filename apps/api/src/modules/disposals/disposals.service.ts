@@ -491,25 +491,37 @@ export class DisposalsService {
   }
 
   /**
-   * Deletes a disposal case. Only the states where no asset depends on the case are removable:
-   * a draft never touched the assets, and reject and cancel both put them back. Between submit and
-   * execution the assets sit in RESERVED for this case, so the case must be cancelled first or they
-   * would be stranded held by a case that no longer exists. A completed case is refused outright —
-   * its assets are already DISPOSED, and deleting it would leave them retired with nothing saying
-   * why, how they were sanitized, or who approved it. Items, evidence and activities are removed
-   * explicitly because they are declared Restrict, not Cascade.
+   * Deletes a disposal case in any state. No state is refused, because an administrator has to be
+   * able to clear a case made in error or in testing, but a case that is holding or has retired its
+   * assets cannot simply vanish underneath them: whatever it did to an asset is undone first. A
+   * submitted or executing case has its assets in RESERVED, and a completed one has moved them to
+   * DISPOSED; both are put back to the status recorded in the item snapshot when the case was
+   * raised, and the release is written to the asset history. Placement that completion cleared
+   * (kho, vị trí, phòng ban) is not restored, because the snapshot holds only names, so an asset
+   * released from a completed case comes back with its status but without its location.
+   * Items, evidence and activities are removed explicitly because they are Restrict, not Cascade.
    */
   async remove(id: string, actor: Actor) {
     if (actor.role !== 'ADMIN') throw new ForbiddenException('Chỉ Admin được xóa hồ sơ thanh lý/hủy bỏ')
     const disposal = await this.record(id)
-    if (disposal.status === DisposalStatus.COMPLETED)
-      throw new ConflictException(
-        'Hồ sơ đã hoàn tất là bằng chứng thanh lý của tài sản nên không xóa được; tài sản đang ở trạng thái Đã thanh lý',
-      )
-    const held: DisposalStatus[] = [DisposalStatus.SUBMITTED, DisposalStatus.APPROVED, DisposalStatus.IN_EXECUTION]
-    if (held.includes(disposal.status))
-      throw new ConflictException('Hồ sơ đang giữ tài sản; hãy hủy hồ sơ để trả tài sản về trạng thái cũ trước khi xóa')
     return this.prisma.$transaction(async tx => {
+      const released: Array<{ assetTag: string; from: string; to: string }> = []
+      for (const item of disposal.items) {
+        const snapshot = (item.assetSnapshot || {}) as Record<string, unknown>
+        const previous = String(snapshot.statusCode || 'READY')
+        if (item.asset.status.code === previous) continue
+        const status = await this.status(tx, previous)
+        await tx.asset.update({ where: { id: item.assetId }, data: { statusId: status.id } })
+        await tx.assetHistory.create({
+          data: {
+            assetId: item.assetId,
+            action: AssetHistoryAction.UPDATED,
+            description: `Xóa hồ sơ ${disposal.disposalNo}: trả trạng thái ${item.asset.status.code} → ${previous}`,
+            performedBy: actor.id,
+          },
+        })
+        released.push({ assetTag: item.asset.assetTag, from: item.asset.status.code, to: previous })
+      }
       await tx.auditLog.create({
         data: {
           userId: actor.id,
@@ -531,6 +543,7 @@ export class DisposalsService {
               sanitizationStatus: item.sanitizationStatus,
             })),
             evidence: disposal.evidence.map(entry => ({ type: entry.type, title: entry.title })),
+            releasedAssets: released,
           } as Prisma.InputJsonValue,
         },
       })

@@ -191,14 +191,15 @@ export function DisposalManagement({ demoMode, role }: { demoMode: boolean; role
     }
   }
   /**
-   * Deletes a disposal case. The API only allows the states where no asset depends on the case, so a
-   * held or completed case comes back as a refusal explaining what to do first rather than silently
-   * doing nothing.
+   * Deletes a disposal case in any state. A case that is holding or has already retired its assets
+   * releases them back to the status it found them in, so the warning says so rather than leaving
+   * the effect on the assets to be discovered afterwards.
    */
   const remove = async (record: DisposalCase) => {
+    const holdsAssets = !['DRAFT', 'REJECTED', 'CANCELLED'].includes(record.status)
     if (
       !window.confirm(
-        `Xóa hồ sơ ${record.disposalNo} - ${record.title}? Danh sách tài sản, bằng chứng và diễn biến sẽ bị xóa; nội dung được lưu trong nhật ký kiểm toán.`,
+        `Xóa hồ sơ ${record.disposalNo} - ${record.title}? Danh sách tài sản, bằng chứng và diễn biến sẽ bị xóa; nội dung được lưu trong nhật ký kiểm toán.${holdsAssets ? ' Tài sản trong hồ sơ được trả về trạng thái trước khi lập hồ sơ (kho và vị trí phải nhập lại).' : ''}`,
       )
     )
       return
@@ -783,7 +784,7 @@ function DisposalDetail({
               Hủy hồ sơ
             </button>
           )}
-          {role === 'Admin' && ['DRAFT', 'REJECTED', 'CANCELLED'].includes(record.status) && (
+          {role === 'Admin' && (
             <button className="btn danger" onClick={() => onDelete(record)}>
               <Trash2 size={15} />
               Xóa hồ sơ

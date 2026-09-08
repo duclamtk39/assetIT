@@ -61,34 +61,107 @@ const disposalRecord = (status: string) => ({
   policyReference: 'QT-TL-01',
   cancellationReason: null,
   rejectionReason: null,
-  items: [{ asset: { assetTag: 'TS-001' }, conditionAssessment: 'Cũ', sanitizationStatus: 'VERIFIED' }],
+  items: [
+    {
+      assetId: 'asset-1',
+      asset: { assetTag: 'TS-001', status: { code: 'READY' } },
+      conditionAssessment: 'Cũ',
+      sanitizationStatus: 'VERIFIED',
+      assetSnapshot: { statusCode: 'READY' },
+    },
+  ],
   evidence: [{ type: 'SALE_CONTRACT', title: 'Hợp đồng bán' }],
 })
 
-test('a completed disposal is not deletable because its assets are already retired by it', async () => {
-  const db = {
-    disposalCase: { findUnique: async () => disposalRecord('COMPLETED') },
-    $transaction: async () => assert.fail('must not reach the transaction'),
+const releaseHarness = (status: string, assetStatus: string) => {
+  const order: string[] = []
+  const released: any[] = []
+  let audited: any
+  const tx = {
+    assetStatus: { findUnique: async ({ where }: any) => ({ id: `status-${where.code}`, code: where.code }) },
+    asset: {
+      update: async ({ data }: any) => {
+        order.push('release')
+        released.push(data)
+        return {}
+      },
+    },
+    assetHistory: { create: async () => ({}) },
+    auditLog: {
+      create: async ({ data }: any) => {
+        order.push('audit')
+        audited = data
+        return {}
+      },
+    },
+    disposalEvidence: {
+      deleteMany: async () => {
+        order.push('evidence')
+        return { count: 1 }
+      },
+    },
+    disposalActivity: {
+      deleteMany: async () => {
+        order.push('activities')
+        return { count: 1 }
+      },
+    },
+    disposalItem: {
+      deleteMany: async () => {
+        order.push('items')
+        return { count: 1 }
+      },
+    },
+    disposalCase: {
+      delete: async () => {
+        order.push('case')
+        return {}
+      },
+    },
   }
-  await assert.rejects(
-    () => new DisposalsService(db as any).remove('case-1', { id: 'admin', role: 'ADMIN', departmentId: null }),
-    /Đã thanh lý/,
-  )
+  const record = {
+    ...disposalRecord(status),
+    items: [
+      {
+        assetId: 'asset-1',
+        asset: { assetTag: 'TS-001', status: { code: assetStatus } },
+        conditionAssessment: 'Cũ',
+        sanitizationStatus: 'VERIFIED',
+        assetSnapshot: { statusCode: 'READY' },
+      },
+    ],
+  }
+  const db = { disposalCase: { findUnique: async () => record }, $transaction: (work: any) => work(tx) }
+  return { db, order, released, audit: () => audited }
+}
+
+test('deleting a completed disposal brings its assets back out of the disposed state', async () => {
+  // Completion moved the assets to DISPOSED. Deleting the case without undoing that would leave them
+  // retired with nothing left saying why, and no screen able to act on them again.
+  const harness = releaseHarness('COMPLETED', 'DISPOSED')
+  const service = new DisposalsService(harness.db as any)
+  assert.deepEqual(await service.remove('case-1', { id: 'admin', role: 'ADMIN', departmentId: null }), {
+    success: true,
+  })
+  assert.deepEqual(harness.released, [{ statusId: 'status-READY' }])
+  assert.deepEqual(harness.order, ['release', 'audit', 'evidence', 'activities', 'items', 'case'])
+  assert.deepEqual(harness.audit().oldValues.releasedAssets, [{ assetTag: 'TS-001', from: 'DISPOSED', to: 'READY' }])
 })
 
-test('a disposal still holding assets must be cancelled before it can be deleted', async () => {
-  // Between submit and execution the assets sit in RESERVED for this case. Deleting it there would
-  // strand them held by a case that no longer exists, so the case has to release them first.
+test('deleting a disposal that is holding assets releases the reservation', async () => {
   for (const status of ['SUBMITTED', 'APPROVED', 'IN_EXECUTION']) {
-    const db = {
-      disposalCase: { findUnique: async () => disposalRecord(status) },
-      $transaction: async () => assert.fail('must not reach the transaction'),
-    }
-    await assert.rejects(
-      () => new DisposalsService(db as any).remove('case-1', { id: 'admin', role: 'ADMIN', departmentId: null }),
-      /hủy hồ sơ/,
-    )
+    const harness = releaseHarness(status, 'RESERVED')
+    const service = new DisposalsService(harness.db as any)
+    await service.remove('case-1', { id: 'admin', role: 'ADMIN', departmentId: null })
+    assert.deepEqual(harness.released, [{ statusId: 'status-READY' }], `trạng thái ${status}`)
   }
+})
+
+test('an asset already back in its original state is left alone', async () => {
+  const harness = releaseHarness('CANCELLED', 'READY')
+  const service = new DisposalsService(harness.db as any)
+  await service.remove('case-1', { id: 'admin', role: 'ADMIN', departmentId: null })
+  assert.deepEqual(harness.released, [])
 })
 
 test('a draft, rejected or cancelled disposal is deleted with its children and an audit snapshot', async () => {

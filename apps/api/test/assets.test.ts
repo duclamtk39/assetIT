@@ -54,6 +54,7 @@ test('soft delete archives and releases all active asset identifiers', async () 
     status: { code: 'READY' },
   }
   const tx = {
+    assetAssignment: { updateMany: async () => ({ count: 0 }) },
     assetHistory: { create: async () => ({}) },
     auditLog: {
       create: async ({ data }: any) => {
@@ -77,7 +78,15 @@ test('soft delete archives and releases all active asset identifiers', async () 
   assert.deepEqual(await service.remove(asset.id, { id: 'admin', role: 'ADMIN', departmentId: null }), {
     success: true,
   })
-  assert.deepEqual(oldValues, { assetTag: 'TS-001', barcode: 'BC-001', serialNumber: 'SN-001', systemUuid: 'UUID-001' })
+  assert.deepEqual(oldValues, {
+    assetTag: 'TS-001',
+    barcode: 'BC-001',
+    serialNumber: 'SN-001',
+    systemUuid: 'UUID-001',
+    statusCode: 'READY',
+    custodian: null,
+    cancelledAssignments: 0,
+  })
   assert.equal(updated.archivedAssetTag, 'TS-001')
   assert.equal(updated.archivedBarcode, 'BC-001')
   assert.equal(updated.archivedSerialNumber, 'SN-001')
@@ -92,7 +101,8 @@ test('soft delete archives and releases all active asset identifiers', async () 
 test('an asset returned to the warehouse can be removed once its assignments are closed', async () => {
   // The guard used to count every assignment the asset had ever had, so a laptop that was handed
   // out once and properly returned could never be taken off the register again — the screen just
-  // answered "hãy thanh lý thay vì xóa" for a device sitting unassigned in the warehouse.
+  // answered "hãy thanh lý thay vì xóa" for a device sitting unassigned in the warehouse. Checked
+  // as IT, because that is the role the guard still applies to.
   let assignmentFilter: any
   const asset = {
     id: 'asset-1',
@@ -105,6 +115,7 @@ test('an asset returned to the warehouse can be removed once its assignments are
     status: { code: 'READY' },
   }
   const tx = {
+    assetAssignment: { updateMany: async () => ({ count: 0 }) },
     assetHistory: { create: async () => ({}) },
     auditLog: { create: async () => ({}) },
     asset: { update: async () => ({}) },
@@ -120,12 +131,12 @@ test('an asset returned to the warehouse can be removed once its assignments are
     $transaction: (work: any) => work(tx),
   }
   const service = new AssetsService(db as any)
-  const result = await service.remove('asset-1', { id: 'admin', role: 'ADMIN', departmentId: null })
+  const result = await service.remove('asset-1', { id: 'it', role: 'IT', departmentId: null })
   assert.deepEqual(result, { success: true })
   assert.equal(assignmentFilter.status, 'OPEN')
 })
 
-test('an asset still out on an open assignment is refused', async () => {
+test('IT still may not remove an asset that is out on an open assignment', async () => {
   const asset = {
     id: 'asset-1',
     assetTag: 'TS-2026-001',
@@ -139,5 +150,114 @@ test('an asset still out on an open assignment is refused', async () => {
     $transaction: async () => assert.fail('must not reach the transaction'),
   }
   const service = new AssetsService(db as any)
-  await assert.rejects(() => service.remove('asset-1', { id: 'admin', role: 'ADMIN', departmentId: null }), /thu hồi/)
+  await assert.rejects(() => service.remove('asset-1', { id: 'it', role: 'IT', departmentId: null }), /thu hồi/)
+})
+
+test('an administrator may remove an asset in any state, settling what it was still holding', async () => {
+  // Correcting test and mistaken data is the administrator's to do, so no state refuses. What must
+  // not survive is a live assignment pointing at a record that has gone, so it is cancelled here and
+  // the count is recorded in the audit entry.
+  let cancelled: any, patched: any, audited: any
+  const asset = {
+    id: 'asset-1',
+    assetTag: 'TS-2026-001',
+    barcode: 'BC-1',
+    serialNumber: 'SN-1',
+    systemUuid: null,
+    departmentId: null,
+    currentCustodianId: 'person-1',
+    currentCustodian: { fullName: 'Vũ Tuấn Anh' },
+    status: { code: 'IN_USE' },
+  }
+  const tx = {
+    assetAssignment: {
+      updateMany: async (args: any) => {
+        cancelled = args
+        return { count: 1 }
+      },
+    },
+    assetHistory: { create: async () => ({}) },
+    auditLog: {
+      create: async ({ data }: any) => {
+        audited = data
+        return {}
+      },
+    },
+    asset: {
+      update: async ({ data }: any) => {
+        patched = data
+        return {}
+      },
+    },
+  }
+  const db = {
+    asset: { findFirst: async () => asset },
+    assetAssignment: { count: async () => assert.fail('an administrator is not gated on this') },
+    $transaction: (work: any) => work(tx),
+  }
+  const service = new AssetsService(db as any)
+  assert.deepEqual(await service.remove('asset-1', { id: 'admin', role: 'ADMIN', departmentId: null }), {
+    success: true,
+  })
+  assert.equal(cancelled.where.status, 'OPEN')
+  assert.equal(cancelled.data.status, 'CANCELLED')
+  assert.equal(patched.currentCustodianId, null)
+  assert.equal(audited.oldValues.statusCode, 'IN_USE')
+  assert.equal(audited.oldValues.cancelledAssignments, 1)
+})
+
+test('an administrator may correct a wrong status, and the change is written to the history', async () => {
+  let updated: any, history: any, audited: any
+  const current = {
+    id: 'asset-1',
+    assetTag: 'TS-001',
+    name: 'Laptop',
+    serialNumber: 'SN-1',
+    statusId: 'old',
+    departmentId: null,
+    status: { code: 'DISPOSED' },
+  }
+  const tx = {
+    asset: {
+      update: async ({ data }: any) => {
+        updated = data
+        return { id: 'asset-1' }
+      },
+    },
+    assetHistory: {
+      create: async ({ data }: any) => {
+        history = data
+        return {}
+      },
+    },
+    auditLog: {
+      create: async ({ data }: any) => {
+        audited = data
+        return {}
+      },
+    },
+  }
+  const db = {
+    asset: { findFirst: async () => current },
+    assetStatus: { findUnique: async ({ where }: any) => ({ id: 'new', code: where.code }) },
+    $transaction: (work: any) => work(tx),
+  }
+  const service = new AssetsService(db as any)
+  await service.update('asset-1', { statusCode: 'ready' } as any, { id: 'admin', role: 'ADMIN', departmentId: null })
+  assert.equal(updated.statusId, 'new')
+  assert.equal(updated.statusCode, undefined)
+  assert.match(history.description, /DISPOSED → READY/)
+  assert.equal(audited.action, 'ASSET_STATUS_CORRECTED')
+})
+
+test('only an administrator may set a status directly', async () => {
+  const db = {
+    asset: { findFirst: async () => ({ id: 'asset-1', departmentId: null, status: { code: 'READY' } }) },
+    assetStatus: { findUnique: async () => assert.fail('the role is checked before the lookup') },
+  }
+  const service = new AssetsService(db as any)
+  await assert.rejects(
+    () => service.update('asset-1', { statusCode: 'DISPOSED' } as any, { id: 'it', role: 'IT', departmentId: null }),
+    /Chỉ Admin/,
+  )
 })

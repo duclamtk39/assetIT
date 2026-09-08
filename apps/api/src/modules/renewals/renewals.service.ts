@@ -465,10 +465,11 @@ export class RenewalsService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Deletes a licence, certificate or domain together with its revoked allocations, renewal history
-   * and alerts. An allocation that is still active blocks this: someone is holding that seat, and
-   * removing the entitlement underneath them would drop the record of who has what. Entitlements
-   * synced from Microsoft are refused too, because the next sync would simply recreate them.
+   * Deletes a licence, certificate or domain together with every allocation, its renewal history and
+   * its alerts. Seats that are still allocated do not block it - the audit log records who held what
+   * at the moment of deletion, which is what the allocation rows were there to say. A record that
+   * came from a provider sync can be deleted too; the next sync will simply bring it back, which is
+   * the provider's answer rather than an error here.
    */
   async remove(id: string, actor: Actor) {
     if (actor.role !== 'ADMIN') throw new ForbiddenException('Chỉ Admin được xóa license/chứng thư/domain')
@@ -480,13 +481,6 @@ export class RenewalsService implements OnModuleInit, OnModuleDestroy {
       },
     })
     if (!item) throw new NotFoundException('Không tìm thấy license/chứng thư/domain')
-    const active = item.assignments.filter(assignment => assignment.status === 'ACTIVE')
-    if (active.length)
-      throw new ConflictException(
-        `Còn ${active.length} lượt cấp phát đang hiệu lực; hãy thu hồi hết trước khi xóa ${item.code}`,
-      )
-    if (item.externalProvider)
-      throw new ConflictException('Bản ghi đồng bộ từ nhà cung cấp không xóa thủ công được; hãy bỏ đồng bộ trước')
     return this.db.$transaction(async tx => {
       await tx.auditLog.create({
         data: {
@@ -508,9 +502,10 @@ export class RenewalsService implements OnModuleInit, OnModuleDestroy {
               newExpiryDate: renewal.newExpiryDate.toISOString().slice(0, 10),
               amount: renewal.amount?.toString() || null,
             })),
-            revokedAssignments: item.assignments.map(assignment => ({
+            assignments: item.assignments.map(assignment => ({
               person: assignment.person?.fullName || null,
               quantity: assignment.quantity,
+              status: assignment.status,
               revokedAt: assignment.revokedAt?.toISOString() || null,
             })),
           } as Prisma.InputJsonValue,

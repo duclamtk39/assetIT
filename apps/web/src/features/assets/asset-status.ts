@@ -1,17 +1,20 @@
 import type { Asset, AssetStatus } from '../../types'
 
-// The states an asset record can actually hold. The asset form reads its options from here so the
-// field can always display the record it was opened on; a shorter hand-written list left assets in
-// the states it omitted showing whichever option happened to come first.
-export const assetRecordStatuses: AssetStatus[] = [
-  'Sẵn sàng',
-  'Đang sử dụng',
-  'Đã giữ chỗ',
-  'Đã thu hồi',
-  'Bảo trì',
-  'Hỏng',
-  'Đã thanh lý',
-]
+// The states an asset record can actually hold, paired with the code the API stores. The asset form
+// reads its options from here so the field can always display the record it was opened on, and an
+// administrator correcting a status sends the code back through the same map. The API's own mapping
+// is lossy in one direction — ON_LOAN also reads as "Đang sử dụng", LOST also as "Hỏng" — so each
+// label points at the one code that is canonical for it.
+export const assetStatusCodes: Record<AssetStatus, string> = {
+  'Sẵn sàng': 'READY',
+  'Đang sử dụng': 'IN_USE',
+  'Đã giữ chỗ': 'RESERVED',
+  'Đã thu hồi': 'RETURNED',
+  'Bảo trì': 'MAINTENANCE',
+  Hỏng: 'BROKEN',
+  'Đã thanh lý': 'DISPOSED',
+}
+export const assetRecordStatuses = Object.keys(assetStatusCodes) as AssetStatus[]
 
 // Every state the asset mapper can produce, plus the loan-derived ones. Filters read from this
 // list rather than from whichever states happen to be present, so an option never disappears

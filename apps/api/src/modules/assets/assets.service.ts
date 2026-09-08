@@ -223,23 +223,40 @@ export class AssetsService {
     }
   }
 
+  /**
+   * Resolves the status an administrator asked for. Status normally moves through lifecycle commands
+   * only; this is the correction path for a record that is simply wrong, so it is restricted to
+   * administrators and the change is recorded as its own history and audit entry rather than being
+   * folded into the metadata update.
+   */
+  private async resolveStatus(statusCode: string, actor: Actor) {
+    if (actor.role !== 'ADMIN') throw new ForbiddenException('Chỉ Admin được điều chỉnh trạng thái tài sản trực tiếp')
+    const status = await this.db.assetStatus.findUnique({ where: { code: statusCode.trim().toUpperCase() } })
+    if (!status) throw new BadRequestException(`Trạng thái ${statusCode} không tồn tại trong hệ thống`)
+    return status
+  }
+
   async update(id: string, body: UpdateAssetDto, actor: Actor) {
-    const current = await this.get(id, actor),
-      normalized = {
-        ...body,
-        assetTag: body.assetTag?.trim(),
-        name: body.name?.trim(),
-        barcode: body.barcode?.trim(),
-        serialNumber: body.serialNumber?.trim() || undefined,
-        systemUuid: body.systemUuid?.trim() || undefined,
-        purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : undefined,
-        cpu: body.cpu?.trim(),
-        ram: body.ram?.trim(),
-        storage: body.storage?.trim(),
-        operatingSystem: body.operatingSystem?.trim(),
-        ipAddress: body.ipAddress?.trim(),
-        macAddress: body.macAddress?.trim(),
-      }
+    const current = await this.get(id, actor)
+    const { statusCode, ...fields } = body
+    const status = statusCode ? await this.resolveStatus(statusCode, actor) : undefined
+    const changesStatus = Boolean(status && status.id !== current.statusId)
+    const normalized = {
+      ...fields,
+      ...(status ? { statusId: status.id } : {}),
+      assetTag: body.assetTag?.trim(),
+      name: body.name?.trim(),
+      barcode: body.barcode?.trim(),
+      serialNumber: body.serialNumber?.trim() || undefined,
+      systemUuid: body.systemUuid?.trim() || undefined,
+      purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : undefined,
+      cpu: body.cpu?.trim(),
+      ram: body.ram?.trim(),
+      storage: body.storage?.trim(),
+      operatingSystem: body.operatingSystem?.trim(),
+      ipAddress: body.ipAddress?.trim(),
+      macAddress: body.macAddress?.trim(),
+    }
     try {
       return await this.db.$transaction(async tx => {
         const asset = await tx.asset.update({ where: { id }, data: normalized, include })
@@ -247,20 +264,23 @@ export class AssetsService {
           data: {
             assetId: id,
             action: AssetHistoryAction.UPDATED,
-            description: 'Cập nhật thông tin tài sản',
+            description: changesStatus
+              ? `Điều chỉnh trạng thái ${current.status.code} → ${status!.code}`
+              : 'Cập nhật thông tin tài sản',
             performedBy: actor.id,
           },
         })
         await tx.auditLog.create({
           data: {
             userId: actor.id,
-            action: 'ASSET_METADATA_UPDATED',
+            action: changesStatus ? 'ASSET_STATUS_CORRECTED' : 'ASSET_METADATA_UPDATED',
             entityType: 'Asset',
             entityId: id,
             oldValues: {
               assetTag: current.assetTag,
               name: current.name,
               serialNumber: current.serialNumber,
+              statusCode: current.status.code,
             } as Prisma.InputJsonValue,
             newValues: body as Prisma.InputJsonValue,
           },
@@ -277,17 +297,24 @@ export class AssetsService {
     const asset = await this.get(id, actor)
     if (!['ADMIN', 'IT'].includes(actor.role))
       throw new ForbiddenException('Chỉ Admin hoặc IT được ngừng theo dõi tài sản')
-    if (asset.status.code !== 'READY' || asset.currentCustodianId)
-      throw new BadRequestException('Chỉ tài sản Sẵn sàng, chưa cấp phát mới được ngừng theo dõi')
-    // Only an assignment that is still running blocks this. Closed and cancelled ones are history,
-    // and the soft delete keeps the row, so those records go on pointing at a live asset and stay
-    // readable in reports. Counting every assignment ever made meant an asset that had been handed
-    // out once and properly returned to the warehouse could never be removed again.
-    if (await this.db.assetAssignment.count({ where: { assetId: id, status: AssetAssignmentStatus.OPEN } }))
-      throw new BadRequestException('Tài sản đang có phiếu cấp phát mở; hãy thu hồi trước khi ngừng theo dõi')
+    // IT keeps the narrow path: only a record that is idle can be taken off the register. An
+    // administrator may remove any record, because correcting test and mistaken data is theirs to do.
+    // Either way the delete is a soft delete, so closed assignments go on pointing at a live row and
+    // stay readable in reports; only an assignment still running has to be settled, below, so nobody
+    // is left holding a record that has gone.
+    if (actor.role !== 'ADMIN') {
+      if (asset.status.code !== 'READY' || asset.currentCustodianId)
+        throw new BadRequestException('Chỉ tài sản Sẵn sàng, chưa cấp phát mới được ngừng theo dõi')
+      if (await this.db.assetAssignment.count({ where: { assetId: id, status: AssetAssignmentStatus.OPEN } }))
+        throw new BadRequestException('Tài sản đang có phiếu cấp phát mở; hãy thu hồi trước khi ngừng theo dõi')
+    }
     return this.db.$transaction(async tx => {
       const deletedAt = new Date(),
         tombstone = `DELETED-${id}`
+      const openAssignments = await tx.assetAssignment.updateMany({
+        where: { assetId: id, status: AssetAssignmentStatus.OPEN },
+        data: { status: AssetAssignmentStatus.CANCELLED, closedAt: deletedAt },
+      })
       await tx.assetHistory.create({
         data: {
           assetId: id,
@@ -307,6 +334,9 @@ export class AssetsService {
             barcode: asset.barcode,
             serialNumber: asset.serialNumber,
             systemUuid: asset.systemUuid,
+            statusCode: asset.status.code,
+            custodian: asset.currentCustodian?.fullName || null,
+            cancelledAssignments: openAssignments.count,
           } as Prisma.InputJsonValue,
           newValues: { deletedAt: deletedAt.toISOString() } as Prisma.InputJsonValue,
         },
@@ -322,6 +352,8 @@ export class AssetsService {
           barcode: tombstone,
           serialNumber: null,
           systemUuid: null,
+          assignedUserId: null,
+          currentCustodianId: null,
           deletedAt,
         },
       })

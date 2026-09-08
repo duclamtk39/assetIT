@@ -99,18 +99,45 @@ const incidentRecord = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-test('an incident the risk register still cites is not deleted as a side effect', async () => {
-  // RiskIncident is declared Restrict precisely so the traceability between a risk and the event
-  // that evidenced it is broken deliberately, in the register, rather than silently here.
+test('an incident the risk register cites is deleted, and the citation is named in the audit entry', async () => {
+  // RiskIncident is declared Restrict, so the links have to be cleared before the incident can go.
+  // The risks that pointed at it are recorded, so the register's lost citation is still traceable.
+  const order: string[] = []
+  let audited: any
+  const tx = {
+    auditLog: {
+      create: async ({ data }: any) => {
+        order.push('audit')
+        audited = data
+        return {}
+      },
+    },
+    riskIncident: {
+      deleteMany: async () => {
+        order.push('links')
+        return { count: 1 }
+      },
+    },
+    incident: {
+      delete: async () => {
+        order.push('incident')
+        return {}
+      },
+    },
+  }
   const db = {
     incident: {
       findUnique: async () =>
         incidentRecord({ riskLinks: [{ risk: { riskNo: 'RR-004', title: 'Gián đoạn dịch vụ' } }] }),
     },
-    $transaction: async () => assert.fail('must not reach the transaction'),
+    $transaction: (work: any) => work(tx),
   }
   const service = new IncidentsService(db as any)
-  await assert.rejects(() => service.remove('inc-1', { id: 'admin', role: 'ADMIN', departmentId: null }), /RR-004/)
+  assert.deepEqual(await service.remove('inc-1', { id: 'admin', role: 'ADMIN', departmentId: null }), {
+    success: true,
+  })
+  assert.deepEqual(order, ['audit', 'links', 'incident'])
+  assert.deepEqual(audited.oldValues.riskLinks, [{ riskNo: 'RR-004', title: 'Gián đoạn dịch vụ' }])
 })
 
 test('deleting an incident keeps its timeline in the audit log', async () => {
@@ -122,6 +149,7 @@ test('deleting an incident keeps its timeline in the audit log', async () => {
         return {}
       },
     },
+    riskIncident: { deleteMany: async () => ({ count: 0 }) },
     incident: { delete: async () => ({}) },
   }
   const db = { incident: { findUnique: async () => incidentRecord() }, $transaction: (work: any) => work(tx) }

@@ -58,7 +58,21 @@ const entitlement = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-test('a licence still allocated to somebody cannot be deleted out from under them', async () => {
+test('a licence is deleted even while seats are still allocated', async () => {
+  // The register belongs to the administrator. What the allocation rows were there to say - who held
+  // what - is written into the audit entry, so the deletion records it rather than losing it.
+  let audited: any
+  const tx = {
+    auditLog: {
+      create: async ({ data }: any) => {
+        audited = data
+        return {}
+      },
+    },
+    digitalRenewal: { deleteMany: async () => ({ count: 0 }) },
+    digitalAssignment: { deleteMany: async () => ({ count: 1 }) },
+    digitalEntitlement: { delete: async () => ({}) },
+  }
   const db = {
     digitalEntitlement: {
       findUnique: async () =>
@@ -66,19 +80,27 @@ test('a licence still allocated to somebody cannot be deleted out from under the
           assignments: [{ status: 'ACTIVE', quantity: 2, person: { fullName: 'Nguyễn Đức Lâm' }, revokedAt: null }],
         }),
     },
-    $transaction: async () => assert.fail('must not reach the transaction'),
+    $transaction: (work: any) => work(tx),
   }
   const service = new RenewalsService(db as any)
-  await assert.rejects(() => service.remove('ent-1', { id: 'admin', role: 'ADMIN' } as any), /thu hồi/)
+  assert.deepEqual(await service.remove('ent-1', { id: 'admin', role: 'ADMIN' } as any), { success: true })
+  assert.equal(audited.oldValues.assignments[0].status, 'ACTIVE')
+  assert.equal(audited.oldValues.assignments[0].person, 'Nguyễn Đức Lâm')
 })
 
-test('a licence owned by a provider sync is refused rather than deleted and resurrected', async () => {
+test('a provider-synced licence can be cleared out too', async () => {
+  const tx = {
+    auditLog: { create: async () => ({}) },
+    digitalRenewal: { deleteMany: async () => ({ count: 0 }) },
+    digitalAssignment: { deleteMany: async () => ({ count: 0 }) },
+    digitalEntitlement: { delete: async () => ({}) },
+  }
   const db = {
     digitalEntitlement: { findUnique: async () => entitlement({ externalProvider: 'MICROSOFT' }) },
-    $transaction: async () => assert.fail('must not reach the transaction'),
+    $transaction: (work: any) => work(tx),
   }
   const service = new RenewalsService(db as any)
-  await assert.rejects(() => service.remove('ent-1', { id: 'admin', role: 'ADMIN' } as any), /đồng bộ/)
+  assert.deepEqual(await service.remove('ent-1', { id: 'admin', role: 'ADMIN' } as any), { success: true })
 })
 
 test('deleting a licence records its renewal history and clears its children first', async () => {
@@ -141,7 +163,7 @@ test('deleting a licence records its renewal history and clears its children fir
   assert.equal(audited.action, 'ENTITLEMENT_DELETED')
   assert.equal(audited.oldValues.code, 'LIC-001')
   assert.equal(audited.oldValues.renewals[0].newExpiryDate, '2026-12-31')
-  assert.equal(audited.oldValues.revokedAssignments[0].person, 'Vũ Tuấn Anh')
+  assert.equal(audited.oldValues.assignments[0].person, 'Vũ Tuấn Anh')
 })
 
 test('only an administrator can delete a licence', async () => {

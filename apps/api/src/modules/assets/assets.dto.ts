@@ -59,5 +59,9 @@ export class CreateAssetDto {
   @IsOptional() @IsString() @MaxLength(5000) notes?: string
 }
 
-// Ownership, status and placement can only change through lifecycle commands.
-export class UpdateAssetDto extends PartialType(OmitType(CreateAssetDto, ['warehouseId', 'locationId'] as const)) {}
+// Ownership and placement can only change through lifecycle commands. Status is the exception: an
+// administrator may set it directly to correct a record, which is checked in the service and written
+// to the asset history and the audit log like any other lifecycle event.
+export class UpdateAssetDto extends PartialType(OmitType(CreateAssetDto, ['warehouseId', 'locationId'] as const)) {
+  @IsOptional() @IsString() @MaxLength(40) statusCode?: string
+}
