@@ -23,6 +23,7 @@ import { RenewalsModule } from './modules/renewals/renewals.module'
 import { RisksModule } from './modules/risks/risks.module'
 import { ComplianceModule } from './modules/compliance/compliance.module'
 import { DisposalsModule } from './modules/disposals/disposals.module'
+import { NetmonModule } from './modules/netmon/netmon.module'
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { DisposalsModule } from './modules/disposals/disposals.module'
     RisksModule,
     ComplianceModule,
     DisposalsModule,
+    NetmonModule,
   ],
   controllers: [HealthController],
 })

@@ -333,6 +333,7 @@ model Department {
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
   complianceDocuments    ComplianceDocument[] @relation("ComplianceDocumentDepartment")
+  networkSubnets         NetworkSubnet[]
 
   @@index([managerPersonId])
   @@map("departments")
@@ -410,6 +411,10 @@ model User {
   complianceDocumentsApproved ComplianceDocument[]     @relation("ComplianceDocumentApprover")
   complianceDocumentsCreated  ComplianceDocument[]     @relation("ComplianceDocumentCreator")
   complianceFilesUploaded     ComplianceDocumentFile[] @relation("ComplianceFileUploader")
+  networkSubnetsCreated       NetworkSubnet[]          @relation("NetworkSubnetCreator")
+  networkDevicesLinked        NetworkDevice[]          @relation("NetworkDeviceLinker")
+  networkScansTriggered       NetworkScan[]            @relation("NetworkScanTrigger")
+  networkAlertsAcknowledged   NetworkAlert[]           @relation("NetworkAlertAcknowledger")
 
   @@unique([authSource, externalId])
   @@map("users")
@@ -536,6 +541,7 @@ model Location {
   incidents              Incident[]
   inventoryExpectedItems InventoryItem[]    @relation("InventoryExpectedLocation")
   inventoryObservedItems InventoryItem[]    @relation("InventoryObservedLocation")
+  networkSubnets         NetworkSubnet[]
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
@@ -682,6 +688,7 @@ model Asset {
   resolvedDiscoveries  DiscoveryInboxItem[] @relation("DiscoveryResolvedAsset")
   digitalAssignments   DigitalAssignment[]
   riskLinks            RiskAsset[]
+  networkDevices       NetworkDevice[]      @relation("NetworkDeviceAsset")
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 
@@ -1025,6 +1032,7 @@ model Incident {
   activities                IncidentActivity[]
   assignments               IncidentAssignment[]
   riskLinks                 RiskIncident[]
+  networkAlerts             NetworkAlert[]       @relation("NetworkAlertIncident")
   createdAt                 DateTime             @default(now())
   updatedAt                 DateTime             @updatedAt
 
@@ -1786,4 +1794,173 @@ model ComplianceDocumentControl {
   @@id([documentId, controlCode])
   @@index([controlCode])
   @@map("compliance_document_controls")
+}
+
+// ---------------------------------------------------------------------------
+// Network monitoring
+//
+// A subnet is declared by an administrator; nothing is probed until one exists and is enabled. A
+// scan walks the range and records what answered as a NetworkDevice, which an administrator then
+// links to an asset - the register is never edited by the scanner on its own. Monitoring writes an
+// event row only when a device changes between up and down, and an hourly sample for the charts, so
+// the tables stay bounded however often the poller runs.
+// ---------------------------------------------------------------------------
+
+enum NetworkProbeMethod {
+  ICMP
+  TCP_PORT
+  BOTH
+}
+
+enum NetworkDeviceStatus {
+  UNKNOWN
+  UP
+  DOWN
+  PAUSED
+}
+
+enum NetworkScanStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum NetworkAlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model NetworkSubnet {
+  id                   String             @id @default(uuid()) @db.Uuid
+  name                 String             @db.VarChar(150)
+  cidr                 String             @unique @db.VarChar(43)
+  vlanId               Int?
+  description          String?            @db.VarChar(500)
+  locationId           String?            @db.Uuid
+  departmentId         String?            @db.Uuid
+  enabled              Boolean            @default(true)
+  probeMethod          NetworkProbeMethod @default(BOTH)
+  tcpPorts             Int[]              @default([445, 3389, 80, 443, 22, 554, 9100])
+  scanIntervalMinutes  Int                @default(360)
+  checkIntervalSeconds Int                @default(120)
+  failureThreshold     Int                @default(3)
+  lastScanAt           DateTime?
+  createdBy            String             @db.Uuid
+  location             Location?          @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  department           Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  creator              User               @relation("NetworkSubnetCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  devices              NetworkDevice[]
+  scans                NetworkScan[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([enabled, lastScanAt])
+  @@map("network_subnets")
+}
+
+model NetworkDevice {
+  id                  String              @id @default(uuid()) @db.Uuid
+  subnetId            String              @db.Uuid
+  ipAddress           String              @db.VarChar(45)
+  macAddress          String?             @db.VarChar(17)
+  hostname            String?             @db.VarChar(255)
+  vendor              String?             @db.VarChar(120)
+  label               String?             @db.VarChar(200)
+  note                String?             @db.VarChar(1000)
+  assetId             String?             @db.Uuid
+  monitored           Boolean             @default(true)
+  status              NetworkDeviceStatus @default(UNKNOWN)
+  openPorts           Int[]               @default([])
+  responseTimeMs      Int?
+  consecutiveFailures Int                 @default(0)
+  firstSeenAt         DateTime            @default(now())
+  lastSeenAt          DateTime?
+  lastCheckedAt       DateTime?
+  linkedBy            String?             @db.Uuid
+  subnet              NetworkSubnet       @relation(fields: [subnetId], references: [id], onDelete: Cascade)
+  asset               Asset?              @relation("NetworkDeviceAsset", fields: [assetId], references: [id], onDelete: SetNull)
+  linker              User?               @relation("NetworkDeviceLinker", fields: [linkedBy], references: [id], onDelete: SetNull)
+  events              NetworkEvent[]
+  samples             NetworkSample[]
+  alerts              NetworkAlert[]
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@unique([subnetId, ipAddress])
+  @@index([status, monitored])
+  @@index([macAddress])
+  @@index([assetId])
+  @@map("network_devices")
+}
+
+/// One row per up/down transition, so the timeline is complete without storing every poll.
+model NetworkEvent {
+  id             String              @id @default(uuid()) @db.Uuid
+  deviceId       String              @db.Uuid
+  fromStatus     NetworkDeviceStatus
+  toStatus       NetworkDeviceStatus
+  responseTimeMs Int?
+  detail         String?             @db.VarChar(500)
+  occurredAt     DateTime            @default(now())
+  device         NetworkDevice       @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, occurredAt])
+  @@index([occurredAt])
+  @@map("network_events")
+}
+
+/// Hourly rollup: what the charts read, and what uptime is calculated from.
+model NetworkSample {
+  id            String        @id @default(uuid()) @db.Uuid
+  deviceId      String        @db.Uuid
+  bucketStart   DateTime
+  checks        Int           @default(0)
+  successes     Int           @default(0)
+  avgResponseMs Int?
+  maxResponseMs Int?
+  device        NetworkDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([deviceId, bucketStart])
+  @@index([bucketStart])
+  @@map("network_samples")
+}
+
+model NetworkScan {
+  id            String            @id @default(uuid()) @db.Uuid
+  subnetId      String            @db.Uuid
+  status        NetworkScanStatus @default(RUNNING)
+  startedAt     DateTime          @default(now())
+  finishedAt    DateTime?
+  hostsProbed   Int               @default(0)
+  hostsAnswered Int               @default(0)
+  devicesAdded  Int               @default(0)
+  error         String?           @db.VarChar(1000)
+  triggeredBy   String?           @db.Uuid
+  subnet        NetworkSubnet     @relation(fields: [subnetId], references: [id], onDelete: Cascade)
+  trigger       User?             @relation("NetworkScanTrigger", fields: [triggeredBy], references: [id], onDelete: SetNull)
+
+  @@index([subnetId, startedAt])
+  @@map("network_scans")
+}
+
+model NetworkAlert {
+  id             String             @id @default(uuid()) @db.Uuid
+  deviceId       String             @db.Uuid
+  status         NetworkAlertStatus @default(OPEN)
+  downSince      DateTime
+  resolvedAt     DateTime?
+  acknowledgedAt DateTime?
+  acknowledgedBy String?            @db.Uuid
+  note           String?            @db.VarChar(1000)
+  incidentId     String?            @db.Uuid
+  device         NetworkDevice      @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  acknowledger   User?              @relation("NetworkAlertAcknowledger", fields: [acknowledgedBy], references: [id], onDelete: SetNull)
+  incident       Incident?          @relation("NetworkAlertIncident", fields: [incidentId], references: [id], onDelete: SetNull)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([status, downSince])
+  @@index([deviceId, status])
+  @@map("network_alerts")
 }

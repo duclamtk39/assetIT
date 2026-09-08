@@ -9,6 +9,7 @@ import {
   ArrowUpRight,
   BarChart3,
   Bell,
+  BellRing,
   Box,
   Building2,
   CalendarDays,
@@ -28,11 +29,13 @@ import {
   Menu,
   Monitor,
   MoreHorizontal,
+  Network,
   PackageCheck,
   Pencil,
   Plus,
   Printer,
   QrCode,
+  Router,
   Search,
   Server,
   Settings,
@@ -114,6 +117,10 @@ import { ControlLibrary } from './features/compliance/ControlLibrary'
 import { DocumentLibrary } from './features/compliance/DocumentLibrary'
 import { DisposalManagement } from './features/disposals/DisposalManagement'
 import { InventoryManagement } from './features/inventory/InventoryManagement'
+import { NetworkMap } from './features/netmon/NetworkMap'
+import { NetworkDevices } from './features/netmon/NetworkDevices'
+import { NetworkAlerts } from './features/netmon/NetworkAlerts'
+import { NetworkSubnets } from './features/netmon/NetworkSubnets'
 import {
   IntakeExcelValidationError,
   normalizeIntakeLookup,
@@ -770,6 +777,14 @@ const navSections: Array<{ title: string; items: Array<{ label: string; icon: ty
     ],
   },
   {
+    title: 'GIÁM SÁT MẠNG',
+    items: [
+      { label: 'Sơ đồ mạng', icon: Network },
+      { label: 'Thiết bị mạng', icon: Router },
+      { label: 'Cảnh báo mạng', icon: BellRing },
+    ],
+  },
+  {
     title: 'TUÂN THỦ ISO',
     items: [
       { label: 'Khung tiêu chuẩn & SoA', icon: ShieldCheck },
@@ -787,7 +802,7 @@ const navSections: Array<{ title: string; items: Array<{ label: string; icon: ty
 ]
 
 /** Pages that live inside the settings area, so the sidebar entry highlights for all of them. */
-const settingsPages = ['Cấu hình hệ thống', 'Tùy chỉnh thương hiệu', 'Cấu hình email', 'Khám phá & Agent']
+const settingsPages = ['Cấu hình hệ thống', 'Tùy chỉnh thương hiệu', 'Cấu hình email', 'Khám phá & Agent', 'Dải mạng']
 
 const statusClass: Record<AssetStatus, string> = {
   'Đang sử dụng': 'green',
@@ -5242,9 +5257,9 @@ function AdminSettings({
   discoveryWarehouses: ApiLookup[]
   onAssetCreated: () => Promise<void>
 }) {
-  const [section, setSection] = useState<'catalog' | 'directory' | 'regional' | 'branding' | 'email' | 'discovery'>(
-    role === 'Admin' ? 'catalog' : 'discovery',
-  )
+  const [section, setSection] = useState<
+    'catalog' | 'directory' | 'regional' | 'branding' | 'email' | 'discovery' | 'subnets'
+  >(role === 'Admin' ? 'catalog' : 'discovery')
   const [localBranding, setLocalBranding] = useState<BrandingSettings>(branding)
   const [localEmail, setLocalEmail] = useState<EmailSettings>(email)
   useEffect(() => setLocalBranding(branding), [branding])
@@ -5284,6 +5299,13 @@ function AdminSettings({
       icon: Wifi,
       admin: false,
     },
+    {
+      id: 'subnets' as const,
+      label: 'Dải mạng',
+      desc: 'Phạm vi được phép dò tìm',
+      icon: Network,
+      admin: false,
+    },
   ].filter(item => role === 'Admin' || !item.admin)
   return (
     <div className="settings-hub">
@@ -5321,6 +5343,8 @@ function AdminSettings({
           <RegionalConfiguration settings={regional} onSave={onSaveRegional} />
         ) : section === 'branding' ? (
           <BrandingConfiguration settings={localBranding} onSave={saveBranding} />
+        ) : section === 'subnets' ? (
+          <NetworkSubnets role={role} />
         ) : section === 'discovery' ? (
           <DiscoveryCenter
             role={role}
@@ -7923,6 +7947,9 @@ export default function App() {
     )
   else if (page === 'Cấp phát & Thu hồi') content = operations
   else if (page === 'Kiểm kê') content = <InventoryManagement assets={scopedAssets} role={currentUser.role} />
+  else if (page === 'Sơ đồ mạng') content = <NetworkMap role={currentUser.role} />
+  else if (page === 'Thiết bị mạng') content = <NetworkDevices role={currentUser.role} />
+  else if (page === 'Cảnh báo mạng') content = <NetworkAlerts role={currentUser.role} />
   else if (page === 'Lịch sử / Audit') content = <TransactionHistory transactions={scopedTransactions} />
   else if (page === 'Nhập kho')
     content = (

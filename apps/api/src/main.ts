@@ -23,9 +23,23 @@ function configureRuntimeSecrets() {
   if (!process.env.METRICS_TOKEN && process.env.METRICS_TOKEN_FILE)
     process.env.METRICS_TOKEN = readFileSync(process.env.METRICS_TOKEN_FILE, 'utf8').trim()
 }
+/**
+ * The poller role boots the same modules with no HTTP server at all. It exists so network probing
+ * runs in its own process: a subnet of dead addresses is a long queue of timers, and Node would
+ * otherwise make request handling wait behind them. Nothing here listens, so the container has no
+ * inbound surface even on the internal network.
+ */
+async function bootstrapPoller() {
+  const { Logger } = await import('@nestjs/common')
+  const context = await NestFactory.createApplicationContext(AppModule, { bufferLogs: false })
+  context.enableShutdownHooks()
+  new Logger('Bootstrap').log(`AssetFlow poller started (${process.env.APP_VERSION || 'development'})`)
+}
+
 async function bootstrap() {
   configureDatabaseUrlFromSecret()
   configureRuntimeSecrets()
+  if (process.env.APP_ROLE === 'poller') return bootstrapPoller()
   const origins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
     .split(',')
     .map(value => value.trim())

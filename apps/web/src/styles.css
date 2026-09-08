@@ -15817,3 +15817,348 @@ textarea,
   display: flex;
   gap: 6px;
 }
+
+/* ---------------------------------------------------------------------------
+   Network monitoring
+   Status colour is the whole language of this screen, so it is defined once here
+   and every dot, pill and row reads from the same four tones.
+   --------------------------------------------------------------------------- */
+.netmon-page {
+  --net-up: #1f9254;
+  --net-down: #c0392b;
+  --net-unknown: #8a94a6;
+  --net-paused: #b8860b;
+}
+.netmon-kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.netmon-kpis article {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: #fff;
+  border: 1px solid var(--border, #dfe5ec);
+  padding: 13px 15px;
+}
+.netmon-kpis article > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #eef3f9;
+  color: #2861ad;
+  flex: none;
+}
+.netmon-kpis article.up > span {
+  background: #e8f5ed;
+  color: var(--net-up);
+}
+.netmon-kpis article.down > span,
+.netmon-kpis article.alert > span {
+  background: #fdecea;
+  color: var(--net-down);
+}
+.netmon-kpis article small {
+  display: block;
+  font-size: var(--type-caption, 12px);
+  color: #6b7686;
+}
+.netmon-kpis article b {
+  font-size: 20px;
+  font-weight: 600;
+}
+.netmon-toolbar {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.netmon-toolbar select,
+.netmon-search {
+  height: 36px;
+  border: 1px solid #c9d4e2;
+  background: #fff;
+  padding: 0 11px;
+  font-size: var(--type-body, 13px);
+}
+.netmon-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 260px;
+  color: #6b7686;
+}
+.netmon-search input {
+  border: 0;
+  outline: 0;
+  flex: 1;
+  font-size: var(--type-body, 13px);
+}
+.netmon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 9px;
+  padding: 13px;
+}
+.netmon-node {
+  position: relative;
+  text-align: left;
+  background: #fff;
+  border: 1px solid #dfe5ec;
+  border-left: 3px solid var(--net-unknown);
+  padding: 10px 12px 10px 14px;
+  cursor: pointer;
+  display: block;
+}
+.netmon-node:hover {
+  border-color: #2861ad;
+  box-shadow: 0 1px 6px rgba(40, 97, 173, 0.14);
+}
+.netmon-node.up {
+  border-left-color: var(--net-up);
+}
+.netmon-node.down {
+  border-left-color: var(--net-down);
+  background: #fffafa;
+}
+.netmon-node.paused {
+  border-left-color: var(--net-paused);
+}
+.netmon-node b {
+  display: block;
+  font-size: var(--type-body, 13px);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.netmon-node small {
+  display: block;
+  font-size: var(--type-caption, 12px);
+  color: #6b7686;
+}
+.netmon-node-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.netmon-node-down {
+  color: var(--net-down) !important;
+  font-weight: 500;
+}
+.netmon-node-dot {
+  position: absolute;
+  top: 11px;
+  right: 11px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--net-unknown);
+}
+.netmon-node.up .netmon-node-dot {
+  background: var(--net-up);
+}
+.netmon-node.down .netmon-node-dot {
+  background: var(--net-down);
+}
+.netmon-node.paused .netmon-node-dot {
+  background: var(--net-paused);
+}
+.netmon-status {
+  display: inline-block;
+  padding: 2px 9px;
+  font-size: var(--type-caption, 12px);
+  font-weight: 500;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.netmon-status.up {
+  color: var(--net-up);
+  border-color: #b7e0c7;
+  background: #f0f9f4;
+}
+.netmon-status.down {
+  color: var(--net-down);
+  border-color: #efbfba;
+  background: #fdf1f0;
+}
+.netmon-status.unknown {
+  color: var(--net-unknown);
+  border-color: #d8dee7;
+  background: #f6f8fa;
+}
+.netmon-status.paused {
+  color: var(--net-paused);
+  border-color: #e6d29a;
+  background: #fdf8ec;
+}
+.netmon-events {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+.netmon-events li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 15px;
+  border-bottom: 1px solid #eef1f5;
+}
+.netmon-events li:last-child {
+  border-bottom: 0;
+}
+.netmon-events li .netmon-node-dot {
+  position: static;
+  flex: none;
+}
+.netmon-events li.up .netmon-node-dot {
+  background: var(--net-up);
+}
+.netmon-events li.down .netmon-node-dot {
+  background: var(--net-down);
+}
+.netmon-events li > div {
+  flex: 1;
+  min-width: 0;
+}
+.netmon-events li b {
+  display: block;
+  font-size: var(--type-body, 13px);
+  font-weight: 600;
+}
+.netmon-events li small {
+  color: #6b7686;
+  font-size: var(--type-caption, 12px);
+}
+.netmon-events li time {
+  color: #6b7686;
+  font-size: var(--type-caption, 12px);
+  white-space: nowrap;
+}
+.netmon-row {
+  cursor: pointer;
+}
+.netmon-row:hover {
+  background: #f6f9fd;
+}
+.netmon-cell-stack {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+}
+.netmon-cell-stack small {
+  color: #6b7686;
+  font-size: var(--type-caption, 12px);
+}
+.netmon-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 36, 0.42);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 60;
+}
+.netmon-drawer {
+  width: min(560px, 100%);
+  background: #f7f9fc;
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
+.netmon-drawer > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 17px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e3e8ef;
+}
+.netmon-drawer > header h2 {
+  margin: 7px 0 2px;
+  font-size: 17px;
+}
+.netmon-drawer > header p {
+  margin: 0;
+  color: #6b7686;
+  font-size: var(--type-body, 13px);
+}
+.netmon-facts,
+.netmon-drawer-section {
+  background: #fff;
+  border: 1px solid #e3e8ef;
+  margin: 13px 15px;
+  padding: 14px 16px;
+}
+.netmon-drawer-section h3 {
+  margin: 0 0 10px;
+  font-size: var(--type-body, 13px);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7686;
+}
+.netmon-facts dl,
+.netmon-asset {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+}
+.netmon-facts dt,
+.netmon-asset dt {
+  font-size: var(--type-caption, 12px);
+  color: #6b7686;
+}
+.netmon-facts dd,
+.netmon-asset dd {
+  margin: 1px 0 0;
+  font-size: var(--type-body, 13px);
+  font-weight: 500;
+  word-break: break-word;
+}
+.netmon-hint {
+  color: #6b7686;
+  font-size: var(--type-body, 13px);
+  margin: 0 0 10px;
+}
+.netmon-link-form {
+  display: grid;
+  gap: 9px;
+}
+.netmon-link-form select {
+  height: 36px;
+  border: 1px solid #c9d4e2;
+  padding: 0 10px;
+  font-size: var(--type-body, 13px);
+}
+.netmon-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--type-body, 13px);
+}
+.netmon-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.netmon-subnets .netmon-subnet-form {
+  padding: 15px;
+  border-bottom: 1px solid #eef1f5;
+}
+.netmon-subnets .netmon-hint {
+  padding: 0 15px 14px;
+}
+@media (max-width: 1180px) {
+  .netmon-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .netmon-facts dl,
+  .netmon-asset {
+    grid-template-columns: 1fr;
+  }
+}
