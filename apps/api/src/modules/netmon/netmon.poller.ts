@@ -168,22 +168,19 @@ export class NetmonPoller implements OnModuleInit, OnModuleDestroy {
           ...(outcome.reachable ? { lastSeenAt: checkedAt, openPorts: outcome.openPorts } : {}),
         },
       })
-      await tx.networkSample.upsert({
-        where: { deviceId_bucketStart: { deviceId: device.id, bucketStart: bucket } },
-        create: {
-          deviceId: device.id,
-          bucketStart: bucket,
-          checks: 1,
-          successes: outcome.reachable ? 1 : 0,
-          avgResponseMs: outcome.responseTimeMs ?? null,
-          maxResponseMs: outcome.responseTimeMs ?? null,
-        },
-        update: {
-          checks: { increment: 1 },
-          successes: { increment: outcome.reachable ? 1 : 0 },
-          ...(outcome.responseTimeMs === undefined ? {} : { maxResponseMs: { set: outcome.responseTimeMs } }),
-        },
-      })
+      // Raw upsert because neither aggregate can be expressed through the client: a mean has to be
+      // kept as a sum and divided at read time, and a maximum needs GREATEST. The first version set
+      // maxResponseMs on every write, so it held the latest reading rather than the largest, and
+      // never touched the average after the row was created - both charted the wrong number.
+      const responseMs = outcome.responseTimeMs ?? null
+      await tx.$executeRaw`
+        INSERT INTO network_samples ("id", "deviceId", "bucketStart", "checks", "successes", "sumResponseMs", "maxResponseMs")
+        VALUES (gen_random_uuid(), ${device.id}::uuid, ${bucket}, 1, ${outcome.reachable ? 1 : 0}, ${responseMs ?? 0}, ${responseMs})
+        ON CONFLICT ("deviceId", "bucketStart") DO UPDATE SET
+          "checks" = network_samples."checks" + 1,
+          "successes" = network_samples."successes" + ${outcome.reachable ? 1 : 0},
+          "sumResponseMs" = network_samples."sumResponseMs" + ${responseMs ?? 0},
+          "maxResponseMs" = GREATEST(network_samples."maxResponseMs", ${responseMs})`
       if (resolution.changed)
         await tx.networkEvent.create({
           data: {

@@ -111,7 +111,7 @@ import { ControlLibrary } from './features/compliance/ControlLibrary'
 import { DocumentLibrary } from './features/compliance/DocumentLibrary'
 import { DisposalManagement } from './features/disposals/DisposalManagement'
 import { InventoryManagement } from './features/inventory/InventoryManagement'
-import { NetworkMap } from './features/netmon/NetworkMap'
+import { NetworkDashboard } from './features/netmon/NetworkDashboard'
 import { NetworkDevices } from './features/netmon/NetworkDevices'
 import { NetworkAlerts } from './features/netmon/NetworkAlerts'
 import { NetworkSubnets } from './features/netmon/NetworkSubnets'
@@ -7896,7 +7896,7 @@ export default function App() {
     )
   else if (page === 'Cấp phát & Thu hồi') content = operations
   else if (page === 'Kiểm kê') content = <InventoryManagement assets={scopedAssets} role={currentUser.role} />
-  else if (page === 'Sơ đồ mạng') content = <NetworkMap role={currentUser.role} />
+  else if (page === 'Sơ đồ mạng') content = <NetworkDashboard role={currentUser.role} />
   else if (page === 'Thiết bị mạng') content = <NetworkDevices role={currentUser.role} />
   else if (page === 'Cảnh báo mạng') content = <NetworkAlerts role={currentUser.role} />
   else if (page === 'Lịch sử / Audit') content = <TransactionHistory transactions={scopedTransactions} />

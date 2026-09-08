@@ -16162,3 +16162,484 @@ textarea,
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Infrastructure dashboard -------------------------------------------- */
+.netmon-dash-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #fff;
+  border: 1px solid var(--border, #dfe5ec);
+  border-left: 4px solid #2861ad;
+  padding: 15px 18px;
+  margin-bottom: 14px;
+}
+.netmon-dash-head > div:first-child {
+  flex: 1;
+}
+.netmon-dash-head h1 {
+  margin: 0;
+  font-size: 21px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.netmon-dash-head p {
+  margin: 3px 0 0;
+  color: #6b7686;
+  font-size: var(--type-body, 13px);
+}
+.netmon-dash-clock {
+  text-align: right;
+  line-height: 1.3;
+}
+.netmon-dash-clock span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7686;
+  font-size: var(--type-caption, 12px);
+}
+.netmon-dash-clock b {
+  display: block;
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+.netmon-dash-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) 1.35fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.netmon-dash-kpis article {
+  display: flex;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid var(--border, #dfe5ec);
+  padding: 14px 15px;
+}
+.netmon-dash-kpis article > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+}
+.netmon-dash-kpis .blue > span {
+  background: #eaf1fa;
+  color: #2861ad;
+}
+.netmon-dash-kpis .green > span {
+  background: #e8f5ed;
+  color: var(--net-up, #1f9254);
+}
+.netmon-dash-kpis .amber > span {
+  background: #fdf6e6;
+  color: #b8860b;
+}
+.netmon-dash-kpis .red > span {
+  background: #fdecea;
+  color: var(--net-down, #c0392b);
+}
+.netmon-dash-kpis article small {
+  display: block;
+  color: #6b7686;
+  font-size: var(--type-caption, 12px);
+}
+.netmon-dash-kpis article b {
+  display: block;
+  font-size: 27px;
+  line-height: 1.15;
+  font-weight: 600;
+}
+.netmon-dash-kpis article em {
+  font-style: normal;
+  color: #8a94a6;
+  font-size: var(--type-caption, 12px);
+}
+.netmon-health {
+  align-items: center;
+}
+.netmon-health svg {
+  width: 96px;
+  height: 96px;
+  flex: none;
+  transform: rotate(-90deg);
+}
+.netmon-ring-track {
+  fill: none;
+  stroke: #eef1f5;
+  stroke-width: 12;
+}
+.netmon-ring-value {
+  fill: none;
+  stroke-width: 12;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s ease;
+}
+.netmon-ring-value.good {
+  stroke: var(--net-up, #1f9254);
+}
+.netmon-ring-value.warn {
+  stroke: #b8860b;
+}
+.netmon-ring-value.bad {
+  stroke: var(--net-down, #c0392b);
+}
+.netmon-ring-label {
+  fill: #16202e;
+  font-size: 25px;
+  font-weight: 600;
+  transform: rotate(90deg);
+  transform-origin: 60px 60px;
+}
+.netmon-health ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+.netmon-health li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--type-caption, 12px);
+  color: #6b7686;
+  padding: 1px 0;
+}
+.netmon-health li b {
+  display: inline;
+  margin-left: auto;
+  font-size: var(--type-body, 13px);
+  color: #16202e;
+}
+.netmon-health li i,
+.netmon-type-card li i,
+.netmon-chart-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+}
+.netmon-health li.up i,
+.netmon-type-card li.up i {
+  background: var(--net-up, #1f9254);
+}
+.netmon-health li.warn i,
+.netmon-type-card li.warn i {
+  background: #b8860b;
+}
+.netmon-health li.down i,
+.netmon-type-card li.down i {
+  background: var(--net-down, #c0392b);
+}
+.netmon-health li.total i {
+  background: #8a94a6;
+}
+.netmon-dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.netmon-topology-panel {
+  grid-column: span 2;
+}
+.netmon-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  padding: 13px;
+}
+.netmon-type-card {
+  display: flex;
+  gap: 10px;
+  border: 1px solid #e7ecf3;
+  padding: 10px 11px;
+}
+.netmon-type-card > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: #eef3f9;
+  color: #2861ad;
+  flex: none;
+}
+.netmon-type-card small {
+  display: block;
+  color: #6b7686;
+  font-size: var(--type-caption, 12px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.netmon-type-card b {
+  display: block;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.netmon-type-card ul {
+  display: flex;
+  gap: 9px;
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+}
+.netmon-type-card li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--type-caption, 12px);
+  color: #6b7686;
+}
+.netmon-chart {
+  display: flex;
+  gap: 8px;
+  padding: 14px 15px 0;
+}
+.netmon-chart svg {
+  flex: 1;
+  height: 150px;
+  overflow: visible;
+}
+.netmon-grid-line {
+  stroke: #eef1f5;
+  stroke-width: 1;
+}
+.netmon-line {
+  fill: none;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+}
+.netmon-line.avg {
+  stroke: #2861ad;
+}
+.netmon-line.max {
+  stroke: #9fc0e6;
+  stroke-dasharray: 4 3;
+}
+.netmon-chart-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 150px;
+  font-size: 11px;
+  color: #8a94a6;
+  text-align: right;
+  flex: none;
+}
+.netmon-chart-hours {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 15px 0;
+  font-size: 11px;
+  color: #8a94a6;
+}
+.netmon-chart-legend {
+  display: flex;
+  gap: 16px;
+  padding: 8px 15px 0;
+  font-size: var(--type-caption, 12px);
+  color: #6b7686;
+  flex-wrap: wrap;
+}
+.netmon-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.netmon-chart-legend .avg i {
+  background: #2861ad;
+}
+.netmon-chart-legend .max i {
+  background: #9fc0e6;
+}
+.netmon-chart-legend b {
+  color: #16202e;
+}
+.netmon-note {
+  margin: 10px 15px 14px;
+  padding: 8px 10px;
+  background: #f6f8fb;
+  border-left: 3px solid #c9d4e2;
+  color: #6b7686;
+  font-size: var(--type-caption, 12px);
+  line-height: 1.5;
+}
+.netmon-alert-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+.netmon-alert-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 15px;
+  border-bottom: 1px solid #eef1f5;
+}
+.netmon-alert-list li:last-child {
+  border-bottom: 0;
+}
+.netmon-alert-list > li > div {
+  flex: 1;
+  min-width: 0;
+}
+.netmon-alert-list b {
+  display: block;
+  font-size: var(--type-body, 13px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.netmon-alert-list small {
+  color: #6b7686;
+  font-size: var(--type-caption, 12px);
+}
+.netmon-alert-list em {
+  font-style: normal;
+  font-size: var(--type-caption, 12px);
+  color: #6b7686;
+  white-space: nowrap;
+}
+.netmon-sev {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 3px 7px;
+  color: #fff;
+  flex: none;
+}
+.netmon-sev.critical {
+  background: #c0392b;
+}
+.netmon-sev.high {
+  background: #d98008;
+}
+.netmon-sev.normal {
+  background: #7b8794;
+}
+.netmon-site-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.netmon-num-warn {
+  color: #b8860b;
+  font-weight: 600;
+}
+.netmon-num-down {
+  color: var(--net-down, #c0392b);
+  font-weight: 600;
+}
+.netmon-site-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--type-caption, 12px);
+}
+.netmon-site-status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--net-up, #1f9254);
+}
+.netmon-site-status.warning::before {
+  background: #b8860b;
+}
+.netmon-site-status.critical::before {
+  background: var(--net-down, #c0392b);
+}
+.netmon-topology {
+  padding: 16px;
+}
+.netmon-topo-root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #c9d4e2;
+  background: #f6f9fd;
+  padding: 8px 14px;
+  width: max-content;
+  margin: 0 auto;
+}
+.netmon-topo-subnets {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding-top: 14px;
+  border-top: 1px solid #dfe5ec;
+  margin-top: 14px;
+}
+.netmon-topo-subnet {
+  min-width: 220px;
+}
+.netmon-topo-node {
+  text-align: center;
+  border: 1px solid #c9d4e2;
+  border-top: 3px solid var(--net-up, #1f9254);
+  background: #fff;
+  padding: 9px 12px;
+  margin-bottom: 12px;
+}
+.netmon-topo-node.warn {
+  border-top-color: #b8860b;
+}
+.netmon-topo-node.down {
+  border-top-color: var(--net-down, #c0392b);
+}
+.netmon-topo-node b,
+.netmon-topo-leaf b {
+  display: block;
+  font-size: var(--type-body, 13px);
+}
+.netmon-topo-node small,
+.netmon-topo-leaf small {
+  display: block;
+  color: #6b7686;
+  font-size: var(--type-caption, 12px);
+}
+.netmon-topo-leaves {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+  gap: 8px;
+}
+.netmon-topo-leaf {
+  text-align: center;
+  border: 1px solid #e7ecf3;
+  border-left: 3px solid var(--net-up, #1f9254);
+  padding: 8px;
+}
+.netmon-topo-leaf.warn {
+  border-left-color: #b8860b;
+}
+.netmon-topo-leaf.down {
+  border-left-color: var(--net-down, #c0392b);
+}
+@media (max-width: 1400px) {
+  .netmon-dash-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .netmon-dash-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 900px) {
+  .netmon-dash-kpis,
+  .netmon-dash-grid {
+    grid-template-columns: 1fr;
+  }
+  .netmon-topology-panel {
+    grid-column: span 1;
+  }
+  .netmon-dash-head {
+    flex-wrap: wrap;
+  }
+}

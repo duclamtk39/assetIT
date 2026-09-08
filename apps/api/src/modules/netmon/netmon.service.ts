@@ -17,6 +17,18 @@ import {
   UpdateSubnetDto,
 } from './netmon.dto'
 import {
+  byCategory,
+  bySite,
+  healthPercent,
+  rankAlerts,
+  responseSeries,
+  siteStatus,
+  statusTotals,
+  topology,
+  weeklyTrend,
+  type DashboardDevice,
+} from './dashboard'
+import {
   hostAddresses,
   matchAsset,
   MAX_SCAN_HOSTS,
@@ -465,6 +477,84 @@ export class NetmonService {
         note: body.note?.trim() || alert.note,
       },
     })
+  }
+
+  /**
+   * Everything the infrastructure dashboard shows, in one query round. It deliberately returns no
+   * bandwidth figures: reading traffic counters needs SNMP against the switches, which nothing here
+   * collects, and a made-up Mbps line would be indistinguishable from a measured one.
+   */
+  async dashboard(actor: Actor) {
+    this.read(actor)
+    const now = new Date()
+    const since24h = new Date(now.getTime() - 24 * 3600_000)
+    const since7d = new Date(now.getTime() - 7 * 86400_000)
+    const [devices, subnets, alerts, samples, events, recentEvents] = await Promise.all([
+      this.db.networkDevice.findMany({
+        include: {
+          subnet: { select: { id: true, name: true, locationId: true } },
+          asset: {
+            select: {
+              assetTag: true,
+              name: true,
+              category: { select: { name: true } },
+              location: { select: { id: true, name: true } },
+              department: { select: { id: true, name: true } },
+              currentCustodian: { select: { department: { select: { id: true, name: true } } } },
+            },
+          },
+        },
+      }),
+      this.db.networkSubnet.findMany({ orderBy: { name: 'asc' } }),
+      this.db.networkAlert.findMany({
+        where: { status: { in: ['OPEN', 'ACKNOWLEDGED'] } },
+        include: {
+          device: {
+            include: {
+              subnet: { select: { id: true, name: true, locationId: true } },
+              asset: {
+                select: {
+                  assetTag: true,
+                  name: true,
+                  category: { select: { name: true } },
+                  location: { select: { id: true, name: true } },
+                  department: { select: { id: true, name: true } },
+                  currentCustodian: { select: { department: { select: { id: true, name: true } } } },
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.db.networkSample.findMany({ where: { bucketStart: { gte: since24h } } }),
+      this.db.networkEvent.findMany({
+        where: { occurredAt: { gte: since7d } },
+        select: { toStatus: true, occurredAt: true },
+      }),
+      this.db.networkEvent.findMany({
+        include: {
+          device: { select: { ipAddress: true, label: true, asset: { select: { assetTag: true, name: true } } } },
+        },
+        orderBy: { occurredAt: 'desc' },
+        take: 12,
+      }),
+    ])
+    const shaped = devices as unknown as DashboardDevice[]
+    const sites = bySite(shaped).map(site => ({ ...site, status: siteStatus(site) }))
+    return {
+      generatedAt: now.toISOString(),
+      totals: { ...statusTotals(shaped), openAlerts: alerts.length, subnets: subnets.length },
+      healthPercent: healthPercent(shaped),
+      trend: weeklyTrend(shaped, events, now),
+      categories: byCategory(shaped),
+      sites,
+      alerts: rankAlerts(alerts as any, now),
+      responseSeries: responseSeries(samples, 24, now),
+      topology: topology(shaped, subnets),
+      recentEvents,
+      // Stated rather than implied, so the screen can say why the traffic panel is not there.
+      capabilities: { bandwidth: false, topologyDiscovery: false },
+    }
   }
 
   /**

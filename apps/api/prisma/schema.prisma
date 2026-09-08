@@ -1917,7 +1917,9 @@ model NetworkSample {
   bucketStart   DateTime
   checks        Int           @default(0)
   successes     Int           @default(0)
-  avgResponseMs Int?
+  /// Sum, not an average: the mean is sumResponseMs/successes at read time. Storing the average
+  /// directly cannot be updated atomically, and the first attempt did not update it at all.
+  sumResponseMs Int           @default(0)
   maxResponseMs Int?
   device        NetworkDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
 

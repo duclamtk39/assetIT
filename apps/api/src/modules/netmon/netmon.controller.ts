@@ -19,6 +19,9 @@ type AuthRequest = Request & { authUser: { id: string; role: string; departmentI
 export class NetmonController {
   constructor(private readonly netmon: NetmonService) {}
 
+  @Get('dashboard') dashboard(@Req() req: AuthRequest) {
+    return this.netmon.dashboard(req.authUser)
+  }
   @Get('overview') overview(@Req() req: AuthRequest) {
     return this.netmon.overview(req.authUser)
   }
