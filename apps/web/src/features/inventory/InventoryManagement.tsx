@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, FileSpreadsheet, LockKeyhole, Plus, ScanLine } from 'lucide-react'
+import { CheckCircle2, FileSpreadsheet, LockKeyhole, Plus, ScanLine, Trash2 } from 'lucide-react'
 import type { Asset } from '../../types'
 import { env } from '../../config/env'
 import { api } from '../../services/api-client'
@@ -51,7 +51,7 @@ const demoSession = (assets: Asset[], results: Record<number, InventoryResultCod
   })),
 })
 
-export function InventoryManagement({ assets }: { assets: Asset[] }) {
+export function InventoryManagement({ assets, role }: { assets: Asset[]; role: string }) {
   const [sessions, setSessions] = useState<InventorySessionListItem[]>([]),
     [selectedId, setSelectedId] = useState(''),
     [detail, setDetail] = useState<InventoryDetail>(),
@@ -150,6 +150,26 @@ export function InventoryManagement({ assets }: { assets: Asset[] }) {
       setMessage('Đã chốt đợt kiểm kê. Các tài sản chưa kiểm được ghi nhận là Thiếu.')
     })
   }
+  const removeSession = () => {
+    if (!detail) return
+    const closed = detail.status === 'CLOSED'
+    if (
+      !window.confirm(
+        `Xóa hẳn đợt ${detail.inventoryNo}?${closed ? ' Đây là đợt đã chốt, dùng làm bằng chứng kiểm kê.' : ''} Toàn bộ ${counts.total} dòng kiểm kê sẽ bị xóa; nội dung được lưu lại trong nhật ký kiểm toán và không khôi phục lại đợt được.`,
+      )
+    )
+      return
+    void run('delete', async () => {
+      await api.delete(`/inventories/${detail.id}`)
+      // Reselect from the freshly fetched list rather than through loadSessions, whose fallback
+      // would read the selectedId captured by this render and land back on the deleted session.
+      const response = await api.get<{ data: InventorySessionListItem[] }>('/inventories')
+      setSessions(response.data)
+      setDetail(undefined)
+      setSelectedId(response.data[0]?.id || '')
+      setMessage(`Đã xóa đợt ${detail.inventoryNo}. Nội dung đợt được giữ trong nhật ký kiểm toán.`)
+    })
+  }
   const exportReport = () => {
     if (!report || !report.items.length) return
     void run('export', async () => {
@@ -194,6 +214,12 @@ export function InventoryManagement({ assets }: { assets: Asset[] }) {
             <button className="btn secondary" onClick={close} disabled={Boolean(working)}>
               <LockKeyhole size={16} />
               Chốt đợt
+            </button>
+          )}
+          {!env.demoMode && detail && role === 'Admin' && (
+            <button className="btn danger" onClick={removeSession} disabled={Boolean(working)}>
+              <Trash2 size={16} />
+              {working === 'delete' ? 'Đang xóa…' : 'Xóa đợt'}
             </button>
           )}
           <button

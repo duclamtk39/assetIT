@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { Asset } from '../src/types'
 import {
+  assetRecordStatuses,
   daysUntilDue,
   isDueSoon,
   isInStock,
@@ -86,4 +87,20 @@ test('the status filter offers every state the mapper can produce', () => {
   mapped.forEach(status => assert.ok(operationalStatusOptions.includes(status), `thiếu trạng thái ${status}`))
   assert.equal(operationalStatusOptions[0], 'Tất cả trạng thái')
   assert.equal(new Set(operationalStatusOptions).size, operationalStatusOptions.length)
+})
+
+test('the asset form offers every state a record can actually hold', () => {
+  // The form used to list four of the seven. A disabled select whose value is absent from its
+  // options falls back to the first one, so an asset that was reserved, recovered or disposed of
+  // opened showing "Đang sử dụng" — the field reported a state the record was not in.
+  const mapped = ['Sẵn sàng', 'Đang sử dụng', 'Bảo trì', 'Hỏng', 'Đã giữ chỗ', 'Đã thu hồi', 'Đã thanh lý']
+  mapped.forEach(status => assert.ok(assetRecordStatuses.includes(status as never), `thiếu trạng thái ${status}`))
+  assert.equal(assetRecordStatuses.length, mapped.length)
+  assert.equal(new Set(assetRecordStatuses).size, assetRecordStatuses.length)
+})
+
+test('every state the form offers is also filterable in the register', () => {
+  assetRecordStatuses.forEach(status =>
+    assert.ok(operationalStatusOptions.includes(status), `bộ lọc thiếu trạng thái ${status}`),
+  )
 })

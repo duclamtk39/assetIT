@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Req } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Req } from '@nestjs/common'
 import { ApiTags } from '@nestjs/swagger'
 import type { Request } from 'express'
 import { CreateInventoryDto, ScanInventoryDto } from './inventory.dto'
@@ -31,5 +31,8 @@ export class InventoryController {
   }
   @Post(':id/cancel') cancel(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthRequest) {
     return this.inventory.cancel(id, req.authUser)
+  }
+  @Delete(':id') remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthRequest) {
+    return this.inventory.remove(id, req.authUser)
   }
 }

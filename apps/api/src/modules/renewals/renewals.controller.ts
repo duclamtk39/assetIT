@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseEnumPipe,
@@ -107,5 +108,8 @@ export class RenewalsController {
     @Req() req: AuthRequest,
   ) {
     return this.service.renew(id, body, req.authUser)
+  }
+  @Delete(':id') remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthRequest) {
+    return this.service.remove(id, req.authUser)
   }
 }

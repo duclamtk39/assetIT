@@ -14,6 +14,7 @@ import {
   Printer,
   Search,
   ShieldAlert,
+  Trash2,
   UserRound,
   Wrench,
   X,
@@ -469,10 +470,12 @@ export function IncidentManagement({
   assets,
   demoMode,
   currentUserName,
+  role,
 }: {
   assets: Asset[]
   demoMode: boolean
   currentUserName: string
+  role: string
 }) {
   const [incidents, setIncidents] = useState<Incident[]>(demoMode ? demoIncidents : []),
     [summary, setSummary] = useState<Summary>(demoMode ? buildDemoPeriodSummary(demoIncidents, 'month') : emptySummary),
@@ -677,6 +680,25 @@ export function IncidentManagement({
     }
     await api.post(`/incidents/${id}/activities`, { type: 'NOTE', note })
     await refreshSelected(id)
+  }
+  /**
+   * Deletes a maintenance or incident record. The API refuses while the risk register still links to
+   * it, so the confirmation only covers the timeline going with the record; the audit log keeps it.
+   */
+  const removeIncident = async (incident: Incident) => {
+    if (
+      !window.confirm(
+        `Xóa hồ sơ ${incident.incidentNo} - ${incident.title}? Toàn bộ diễn biến xử lý sẽ bị xóa; nội dung được lưu trong nhật ký kiểm toán.`,
+      )
+    )
+      return
+    try {
+      await api.delete(`/incidents/${incident.id}`)
+      setSelected(undefined)
+      await load()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Không thể xóa hồ sơ sự cố')
+    }
   }
   const resetDrilldown = () => {
     setView('all')
@@ -1066,10 +1088,12 @@ export function IncidentManagement({
         <IncidentDetail
           incident={selected}
           users={users}
+          role={role}
           onClose={() => setSelected(undefined)}
           onSave={updateIncident}
           onStatus={changeStatus}
           onNote={addNote}
+          onDelete={removeIncident}
         />
       )}
     </main>
@@ -1330,17 +1354,21 @@ function IncidentCreateModal({
 function IncidentDetail({
   incident,
   users,
+  role,
   onClose,
   onSave,
   onStatus,
   onNote,
+  onDelete,
 }: {
   incident: Incident
   users: Lookup[]
+  role: string
   onClose: () => void
   onSave: (id: string, body: any) => Promise<void>
   onStatus: (id: string, status: Status, note: string) => Promise<void>
   onNote: (id: string, note: string) => Promise<void>
+  onDelete: (incident: Incident) => void
 }) {
   const [form, setForm] = useState<any>({
       assignedToId: incident.assignedToId || incident.assignee?.id || '',
@@ -1449,6 +1477,12 @@ function IncidentDetail({
             <Printer size={15} />
             In báo cáo A4
           </button>
+          {role === 'Admin' && (
+            <button className="btn danger" onClick={() => onDelete(incident)}>
+              <Trash2 size={15} />
+              Xóa hồ sơ
+            </button>
+          )}
         </div>
         <div className="incident-detail-body">
           <section className="incident-facts">

@@ -273,4 +273,50 @@ export class InventoryService {
       return cancelled
     })
   }
+
+  /**
+   * Removes a stock count outright. A closed count is the evidence behind Annex A.5.9, so it is not
+   * simply dropped: the whole session, including every counted line and its result, is copied into
+   * the audit log first. The record survives where it cannot be edited, and the deletion itself is
+   * attributable. Inventory items are removed by the cascade on the session.
+   */
+  async remove(id: string, actor: Actor) {
+    if (actor.role !== 'ADMIN') throw new ForbiddenException('Chỉ Admin được xóa đợt kiểm kê')
+    const session = await this.db.inventorySession.findUnique({
+      where: { id },
+      include: {
+        items: { include: { asset: { select: { assetTag: true, name: true } } } },
+        creator: { select: { fullName: true } },
+      },
+    })
+    if (!session) throw new NotFoundException('Không tìm thấy đợt kiểm kê')
+    return this.db.$transaction(async tx => {
+      await tx.auditLog.create({
+        data: {
+          userId: actor.id,
+          action: 'INVENTORY_DELETED',
+          entityType: 'InventorySession',
+          entityId: id,
+          oldValues: {
+            inventoryNo: session.inventoryNo,
+            name: session.name,
+            status: session.status,
+            startedAt: session.startedAt.toISOString(),
+            closedAt: session.closedAt?.toISOString() || null,
+            createdBy: session.creator.fullName,
+            summary: this.summary(session.items),
+            items: session.items.map(item => ({
+              assetTag: item.asset.assetTag,
+              assetName: item.asset.name,
+              result: item.result,
+              scannedAt: item.scannedAt?.toISOString() || null,
+              note: item.note,
+            })),
+          } as Prisma.InputJsonValue,
+        },
+      })
+      await tx.inventorySession.delete({ where: { id } })
+      return { success: true }
+    })
+  }
 }

@@ -14,6 +14,7 @@ import {
   Search,
   Settings2,
   ShieldCheck,
+  Trash2,
   UserMinus,
   UserPlus,
   X,
@@ -325,6 +326,26 @@ export function RenewalManagement({ demoMode, role }: { demoMode: boolean; role:
     }
     try {
       setSelected(await api.get<Entitlement>(`/renewals/${item.id}`))
+    } catch (reason) {
+      setError(errorText(reason))
+    }
+  }
+  /**
+   * Removes an entitlement outright. The API refuses while any seat is still allocated and while the
+   * record is owned by a provider sync, so the confirmation only has to cover what is actually lost:
+   * the renewal history and the revoked allocations, which the audit log keeps a copy of.
+   */
+  const remove = async (item: Entitlement) => {
+    if (
+      !window.confirm(
+        `Xóa ${item.code} - ${item.name}? Lịch sử gia hạn và các lượt cấp phát đã thu hồi sẽ bị xóa theo; nội dung được lưu trong nhật ký kiểm toán.`,
+      )
+    )
+      return
+    try {
+      await api.delete(`/renewals/${item.id}`)
+      setSelected(undefined)
+      await load()
     } catch (reason) {
       setError(errorText(reason))
     }
@@ -646,10 +667,12 @@ export function RenewalManagement({ demoMode, role }: { demoMode: boolean; role:
       {selected && (
         <Detail
           item={selected}
+          role={role}
           onClose={() => setSelected(undefined)}
           onAssign={() => setAssigning(true)}
           onRenew={() => setRenewing(true)}
           onRevoke={revoke}
+          onDelete={remove}
         />
       )}{' '}
       {assigning && selected && (
@@ -864,16 +887,20 @@ function CreateDialog({ onClose, onSave }: { onClose: () => void; onSave: (body:
 }
 function Detail({
   item,
+  role,
   onClose,
   onAssign,
   onRenew,
   onRevoke,
+  onDelete,
 }: {
   item: Entitlement
+  role: string
   onClose: () => void
   onAssign: () => void
   onRenew: () => void
   onRevoke: (id: string) => void
+  onDelete: (item: Entitlement) => void
 }) {
   const Icon = kinds[item.type].icon,
     active = item.assignments?.filter(x => x.status === 'ACTIVE') || []
@@ -895,6 +922,11 @@ function Detail({
         {item.type === 'LICENSE' && !item.externalProvider && (
           <button onClick={onAssign}>
             <UserPlus size={15} /> Cấp license
+          </button>
+        )}
+        {role === 'Admin' && !item.externalProvider && (
+          <button className="danger" onClick={() => onDelete(item)}>
+            <Trash2 size={15} /> Xóa
           </button>
         )}
       </div>

@@ -8,6 +8,7 @@ import {
   incidentStatusRequiresAssignee,
   isEligibleIncidentOperator,
 } from '../src/modules/incidents/incidents.rules'
+import { IncidentsService } from '../src/modules/incidents/incidents.service'
 
 test('incident priority is calculated from impact and urgency', () => {
   assert.equal(incidentPriority('CRITICAL', 'HIGH'), 'P1')
@@ -78,5 +79,67 @@ test('incident resolution and closure require evidence in workflow order', () =>
       lessonsLearned: 'Theo dõi cảnh báo',
     }),
     [],
+  )
+})
+
+const incidentRecord = (overrides: Record<string, unknown> = {}) => ({
+  id: 'inc-1',
+  incidentNo: 'SC-001',
+  title: 'Mất kết nối máy chủ ERP',
+  category: 'AVAILABILITY',
+  status: 'CLOSED',
+  priority: 'P2',
+  asset: { assetTag: 'TS-001' },
+  detectedAt: new Date('2026-09-01T00:00:00Z'),
+  resolvedAt: new Date('2026-09-01T04:00:00Z'),
+  resolution: 'Khởi động lại dịch vụ',
+  rootCause: 'Hết dung lượng ổ đĩa',
+  activities: [{ type: 'NOTE', note: 'Đã khoanh vùng', createdAt: new Date('2026-09-01T01:00:00Z') }],
+  riskLinks: [],
+  ...overrides,
+})
+
+test('an incident the risk register still cites is not deleted as a side effect', async () => {
+  // RiskIncident is declared Restrict precisely so the traceability between a risk and the event
+  // that evidenced it is broken deliberately, in the register, rather than silently here.
+  const db = {
+    incident: {
+      findUnique: async () =>
+        incidentRecord({ riskLinks: [{ risk: { riskNo: 'RR-004', title: 'Gián đoạn dịch vụ' } }] }),
+    },
+    $transaction: async () => assert.fail('must not reach the transaction'),
+  }
+  const service = new IncidentsService(db as any)
+  await assert.rejects(() => service.remove('inc-1', { id: 'admin', role: 'ADMIN', departmentId: null }), /RR-004/)
+})
+
+test('deleting an incident keeps its timeline in the audit log', async () => {
+  let audited: any
+  const tx = {
+    auditLog: {
+      create: async ({ data }: any) => {
+        audited = data
+        return {}
+      },
+    },
+    incident: { delete: async () => ({}) },
+  }
+  const db = { incident: { findUnique: async () => incidentRecord() }, $transaction: (work: any) => work(tx) }
+  const service = new IncidentsService(db as any)
+  assert.deepEqual(await service.remove('inc-1', { id: 'admin', role: 'ADMIN', departmentId: null }), {
+    success: true,
+  })
+  assert.equal(audited.action, 'INCIDENT_DELETED')
+  assert.equal(audited.oldValues.incidentNo, 'SC-001')
+  assert.equal(audited.oldValues.assetTag, 'TS-001')
+  assert.equal(audited.oldValues.rootCause, 'Hết dung lượng ổ đĩa')
+  assert.equal(audited.oldValues.activities.length, 1)
+})
+
+test('only an administrator can delete an incident', async () => {
+  const db = { incident: { findUnique: async () => assert.fail('role is checked first') } }
+  await assert.rejects(
+    () => new IncidentsService(db as any).remove('inc-1', { id: 'it', role: 'IT', departmentId: null }),
+    /Chỉ Admin/,
   )
 })

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common'
 import { ApiTags } from '@nestjs/swagger'
 import type { Request } from 'express'
 import {
@@ -84,5 +84,8 @@ export class DisposalsController {
     @Req() req: AuthRequest,
   ) {
     return this.disposals.cancel(id, body, req.authUser)
+  }
+  @Delete(':id') remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthRequest) {
+    return this.disposals.remove(id, req.authUser)
   }
 }

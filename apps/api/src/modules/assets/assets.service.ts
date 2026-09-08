@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
-import { AssetHistoryAction, Prisma } from '@prisma/client'
+import { AssetAssignmentStatus, AssetHistoryAction, Prisma } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
 import { CreateAssetDto, ListAssetsQuery, UpdateAssetDto } from './assets.dto'
 
@@ -279,8 +279,12 @@ export class AssetsService {
       throw new ForbiddenException('Chỉ Admin hoặc IT được ngừng theo dõi tài sản')
     if (asset.status.code !== 'READY' || asset.currentCustodianId)
       throw new BadRequestException('Chỉ tài sản Sẵn sàng, chưa cấp phát mới được ngừng theo dõi')
-    if (await this.db.assetAssignment.count({ where: { assetId: id } }))
-      throw new BadRequestException('Tài sản đã có lịch sử nghiệp vụ; hãy thanh lý thay vì xóa')
+    // Only an assignment that is still running blocks this. Closed and cancelled ones are history,
+    // and the soft delete keeps the row, so those records go on pointing at a live asset and stay
+    // readable in reports. Counting every assignment ever made meant an asset that had been handed
+    // out once and properly returned to the warehouse could never be removed again.
+    if (await this.db.assetAssignment.count({ where: { assetId: id, status: AssetAssignmentStatus.OPEN } }))
+      throw new BadRequestException('Tài sản đang có phiếu cấp phát mở; hãy thu hồi trước khi ngừng theo dõi')
     return this.db.$transaction(async tx => {
       const deletedAt = new Date(),
         tombstone = `DELETED-${id}`

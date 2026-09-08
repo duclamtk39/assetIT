@@ -124,6 +124,7 @@ import {
 import { createIntakeTemplateSheets, intakeTemplateFileName } from './features/intake/intake-template'
 import { historyToTransaction } from './features/handover/history-transaction'
 import {
+  assetRecordStatuses,
   isInStock,
   isOverdue,
   matchesOperationalStatus,
@@ -6260,7 +6261,7 @@ function AssetModal({
           <label>
             Trạng thái{' '}
             <select disabled={editing} value={form.status} onChange={e => update('status', e.target.value)}>
-              {['Đang sử dụng', 'Sẵn sàng', 'Bảo trì', 'Hỏng'].map(s => (
+              {assetRecordStatuses.map(s => (
                 <option key={s}>{s}</option>
               ))}
             </select>
@@ -7904,7 +7905,7 @@ export default function App() {
       />
     )
   else if (page === 'Cấp phát & Thu hồi') content = operations
-  else if (page === 'Kiểm kê') content = <InventoryManagement assets={scopedAssets} />
+  else if (page === 'Kiểm kê') content = <InventoryManagement assets={scopedAssets} role={currentUser.role} />
   else if (page === 'Lịch sử / Audit') content = <TransactionHistory transactions={scopedTransactions} />
   else if (page === 'Nhập kho')
     content = (
@@ -7946,7 +7947,14 @@ export default function App() {
   else if (page === 'License & Gia hạn' && ['Admin', 'IT'].includes(currentUser.role))
     content = <RenewalManagement demoMode={env.demoMode} role={currentUser.role} />
   else if (page === 'Bảo trì & Sự cố' && ['Admin', 'IT'].includes(currentUser.role))
-    content = <IncidentManagement assets={scopedAssets} demoMode={env.demoMode} currentUserName={currentUser.name} />
+    content = (
+      <IncidentManagement
+        assets={scopedAssets}
+        demoMode={env.demoMode}
+        currentUserName={currentUser.name}
+        role={currentUser.role}
+      />
+    )
   else if (page === 'Thanh lý & Hủy bỏ' && ['Admin', 'IT'].includes(currentUser.role))
     content = <DisposalManagement demoMode={env.demoMode} role={currentUser.role} />
   else if (page === 'Đánh giá rủi ro CNTT' && ['Admin', 'IT'].includes(currentUser.role))

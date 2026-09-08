@@ -489,4 +489,56 @@ export class DisposalsService {
     if (handoverTypes.includes(type) && !set.has(DisposalEvidenceType.HANDOVER_MINUTES))
       throw new BadRequestException('Hình thức này phải có biên bản bàn giao')
   }
+
+  /**
+   * Deletes a disposal case. Only the states where no asset depends on the case are removable:
+   * a draft never touched the assets, and reject and cancel both put them back. Between submit and
+   * execution the assets sit in RESERVED for this case, so the case must be cancelled first or they
+   * would be stranded held by a case that no longer exists. A completed case is refused outright —
+   * its assets are already DISPOSED, and deleting it would leave them retired with nothing saying
+   * why, how they were sanitized, or who approved it. Items, evidence and activities are removed
+   * explicitly because they are declared Restrict, not Cascade.
+   */
+  async remove(id: string, actor: Actor) {
+    if (actor.role !== 'ADMIN') throw new ForbiddenException('Chỉ Admin được xóa hồ sơ thanh lý/hủy bỏ')
+    const disposal = await this.record(id)
+    if (disposal.status === DisposalStatus.COMPLETED)
+      throw new ConflictException(
+        'Hồ sơ đã hoàn tất là bằng chứng thanh lý của tài sản nên không xóa được; tài sản đang ở trạng thái Đã thanh lý',
+      )
+    const held: DisposalStatus[] = [DisposalStatus.SUBMITTED, DisposalStatus.APPROVED, DisposalStatus.IN_EXECUTION]
+    if (held.includes(disposal.status))
+      throw new ConflictException('Hồ sơ đang giữ tài sản; hãy hủy hồ sơ để trả tài sản về trạng thái cũ trước khi xóa')
+    return this.prisma.$transaction(async tx => {
+      await tx.auditLog.create({
+        data: {
+          userId: actor.id,
+          action: 'DISPOSAL_DELETED',
+          entityType: 'DisposalCase',
+          entityId: id,
+          oldValues: {
+            disposalNo: disposal.disposalNo,
+            title: disposal.title,
+            type: disposal.type,
+            status: disposal.status,
+            reason: disposal.reason,
+            policyReference: disposal.policyReference,
+            cancellationReason: disposal.cancellationReason,
+            rejectionReason: disposal.rejectionReason,
+            assets: disposal.items.map(item => ({
+              assetTag: item.asset.assetTag,
+              conditionAssessment: item.conditionAssessment,
+              sanitizationStatus: item.sanitizationStatus,
+            })),
+            evidence: disposal.evidence.map(entry => ({ type: entry.type, title: entry.title })),
+          } as Prisma.InputJsonValue,
+        },
+      })
+      await tx.disposalEvidence.deleteMany({ where: { disposalId: id } })
+      await tx.disposalActivity.deleteMany({ where: { disposalId: id } })
+      await tx.disposalItem.deleteMany({ where: { disposalId: id } })
+      await tx.disposalCase.delete({ where: { id } })
+      return { success: true }
+    })
+  }
 }

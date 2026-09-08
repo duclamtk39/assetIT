@@ -190,6 +190,26 @@ export function DisposalManagement({ demoMode, role }: { demoMode: boolean; role
       setError(message(reason))
     }
   }
+  /**
+   * Deletes a disposal case. The API only allows the states where no asset depends on the case, so a
+   * held or completed case comes back as a refusal explaining what to do first rather than silently
+   * doing nothing.
+   */
+  const remove = async (record: DisposalCase) => {
+    if (
+      !window.confirm(
+        `Xóa hồ sơ ${record.disposalNo} - ${record.title}? Danh sách tài sản, bằng chứng và diễn biến sẽ bị xóa; nội dung được lưu trong nhật ký kiểm toán.`,
+      )
+    )
+      return
+    try {
+      await api.delete(`/disposals/${record.id}`)
+      setSelected(undefined)
+      await load()
+    } catch (reason) {
+      setError(message(reason))
+    }
+  }
   const action = async (path: string, body?: unknown) => {
     if (!selected) return
     try {
@@ -384,6 +404,7 @@ export function DisposalManagement({ demoMode, role }: { demoMode: boolean; role
           onClose={() => setSelected(undefined)}
           onAction={action}
           onPrompt={askAction}
+          onDelete={remove}
           reload={async () => {
             if (!selected) return
             setSelected(await api.get<DisposalCase>(`/disposals/${selected.id}`))
@@ -565,6 +586,7 @@ function DisposalDetail({
   onClose,
   onAction,
   onPrompt,
+  onDelete,
   reload,
   setError,
 }: {
@@ -573,6 +595,7 @@ function DisposalDetail({
   onClose: () => void
   onAction: (path: string, body?: unknown) => Promise<void>
   onPrompt: (path: string, text: string) => void
+  onDelete: (record: DisposalCase) => void
   reload: () => Promise<void>
   setError: (value: string) => void
 }) {
@@ -758,6 +781,12 @@ function DisposalDetail({
           {!['COMPLETED', 'CANCELLED', 'REJECTED'].includes(record.status) && (
             <button className="btn secondary" onClick={() => onPrompt('cancel', 'Lý do hủy hồ sơ:')}>
               Hủy hồ sơ
+            </button>
+          )}
+          {role === 'Admin' && ['DRAFT', 'REJECTED', 'CANCELLED'].includes(record.status) && (
+            <button className="btn danger" onClick={() => onDelete(record)}>
+              <Trash2 size={15} />
+              Xóa hồ sơ
             </button>
           )}
         </footer>

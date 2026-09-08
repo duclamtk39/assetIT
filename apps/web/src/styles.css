@@ -14596,6 +14596,16 @@ pre,
   color: #fff;
   border-color: #2861ad;
 }
+.renewal-page button.danger,
+.renewal-dialog button.danger {
+  background: #fff;
+  color: #b4232e;
+  border-color: #e8b7bb;
+}
+.renewal-page button.danger:hover,
+.renewal-dialog button.danger:hover {
+  background: #fff1f2;
+}
 .renewal-heading > button,
 .renewal-dialog button,
 .renewal-detail-head button {

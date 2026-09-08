@@ -70,3 +70,68 @@ test('closing an inventory marks pending items missing and writes immutable asse
   assert.equal(historyRows.length, 2)
   assert.ok(historyRows.every(row => row.action === 'INVENTORIED'))
 })
+
+test('deleting a stock count copies the whole count into the audit log first', async () => {
+  // A closed count is the evidence behind Annex A.5.9. Deleting it is allowed, but the session and
+  // every counted line have to survive somewhere they cannot be edited, so the audit row is written
+  // inside the same transaction as the delete.
+  const order: string[] = []
+  let audited: any
+  const session = {
+    id: 'session-1',
+    inventoryNo: 'KK-001',
+    name: 'Kiểm kê quý 3',
+    status: 'CLOSED',
+    startedAt: new Date('2026-09-01T00:00:00Z'),
+    closedAt: new Date('2026-09-02T00:00:00Z'),
+    creator: { fullName: 'Quản trị viên' },
+    items: [
+      {
+        result: 'MATCHED',
+        scannedAt: new Date('2026-09-01T02:00:00Z'),
+        note: null,
+        asset: { assetTag: 'TS-001', name: 'Laptop' },
+      },
+      { result: 'MISSING', scannedAt: null, note: 'Không tìm thấy', asset: { assetTag: 'TS-002', name: 'PC' } },
+    ],
+  }
+  const tx = {
+    auditLog: {
+      create: async ({ data }: any) => {
+        order.push('audit')
+        audited = data
+        return {}
+      },
+    },
+    inventorySession: {
+      delete: async () => {
+        order.push('delete')
+        return {}
+      },
+    },
+  }
+  const db = {
+    inventorySession: { findUnique: async () => session },
+    $transaction: (work: any) => work(tx),
+  }
+  const service = new InventoryService(db as any)
+  assert.deepEqual(await service.remove('session-1', { id: 'admin', role: 'ADMIN', departmentId: null }), {
+    success: true,
+  })
+  assert.deepEqual(order, ['audit', 'delete'])
+  assert.equal(audited.action, 'INVENTORY_DELETED')
+  assert.equal(audited.oldValues.inventoryNo, 'KK-001')
+  assert.deepEqual(audited.oldValues.summary, { MATCHED: 1, MISSING: 1 })
+  assert.equal(audited.oldValues.items.length, 2)
+  assert.equal(audited.oldValues.items[1].note, 'Không tìm thấy')
+})
+
+test('only an administrator can delete a stock count', async () => {
+  const db = {
+    inventorySession: {
+      findUnique: async () => assert.fail('must not read the session before the role is checked'),
+    },
+  }
+  const service = new InventoryService(db as any)
+  await assert.rejects(() => service.remove('session-1', { id: 'it', role: 'IT', departmentId: null }), /Chỉ Admin/)
+})

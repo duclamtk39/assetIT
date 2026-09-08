@@ -88,3 +88,56 @@ test('soft delete archives and releases all active asset identifiers', async () 
   assert.equal(updated.systemUuid, null)
   assert.ok(updated.deletedAt instanceof Date)
 })
+
+test('an asset returned to the warehouse can be removed once its assignments are closed', async () => {
+  // The guard used to count every assignment the asset had ever had, so a laptop that was handed
+  // out once and properly returned could never be taken off the register again — the screen just
+  // answered "hãy thanh lý thay vì xóa" for a device sitting unassigned in the warehouse.
+  let assignmentFilter: any
+  const asset = {
+    id: 'asset-1',
+    assetTag: 'TS-2026-001',
+    barcode: 'BC-1',
+    serialNumber: 'SN-1',
+    systemUuid: null,
+    departmentId: null,
+    currentCustodianId: null,
+    status: { code: 'READY' },
+  }
+  const tx = {
+    assetHistory: { create: async () => ({}) },
+    auditLog: { create: async () => ({}) },
+    asset: { update: async () => ({}) },
+  }
+  const db = {
+    asset: { findFirst: async () => asset },
+    assetAssignment: {
+      count: async (args: any) => {
+        assignmentFilter = args.where
+        return 0
+      },
+    },
+    $transaction: (work: any) => work(tx),
+  }
+  const service = new AssetsService(db as any)
+  const result = await service.remove('asset-1', { id: 'admin', role: 'ADMIN', departmentId: null })
+  assert.deepEqual(result, { success: true })
+  assert.equal(assignmentFilter.status, 'OPEN')
+})
+
+test('an asset still out on an open assignment is refused', async () => {
+  const asset = {
+    id: 'asset-1',
+    assetTag: 'TS-2026-001',
+    departmentId: null,
+    currentCustodianId: null,
+    status: { code: 'READY' },
+  }
+  const db = {
+    asset: { findFirst: async () => asset },
+    assetAssignment: { count: async () => 1 },
+    $transaction: async () => assert.fail('must not reach the transaction'),
+  }
+  const service = new AssetsService(db as any)
+  await assert.rejects(() => service.remove('asset-1', { id: 'admin', role: 'ADMIN', departmentId: null }), /thu hồi/)
+})
