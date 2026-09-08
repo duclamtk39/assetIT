@@ -147,7 +147,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        component: [web, api]
+        component: [web, api, netmon]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3

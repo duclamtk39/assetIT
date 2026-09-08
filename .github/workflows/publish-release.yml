@@ -72,6 +72,8 @@ jobs:
             image: frontend
           - component: api
             image: backend
+          - component: netmon
+            image: netmon
     steps:
       - uses: actions/checkout@v4
         with:

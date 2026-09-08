@@ -1,6 +1,22 @@
 # AssetFlow production stack
 
-Cấu hình này chạy Caddy, Web, API và PostgreSQL trên mạng Docker tách biệt. Chỉ Caddy mở cổng 80/443. API dùng tài khoản database runtime không có quyền DDL; container `migrate` dùng tài khoản owner riêng và thoát sau khi migration thành công. Tài khoản bootstrap PostgreSQL chỉ dùng để khởi tạo/khôi phục và không được cấp cho API.
+Cấu hình này chạy Caddy, Web, API, Netmon và PostgreSQL trên mạng Docker tách biệt. Chỉ Caddy mở cổng 80/443. API dùng tài khoản database runtime không có quyền DDL; container `migrate` dùng tài khoản owner riêng và thoát sau khi migration thành công. Tài khoản bootstrap PostgreSQL chỉ dùng để khởi tạo/khôi phục và không được cấp cho API.
+
+## Các image
+
+| Service  | Image                 | Vai trò |
+| -------- | --------------------- | ------- |
+| `web`    | `assetflow-frontend`  | Nginx phục vụ SPA và proxy `/api` sang API |
+| `api`    | `assetflow-backend`   | HTTP API, nghiệp vụ tài sản |
+| `migrate`| `assetflow-backend`   | Chạy Prisma migration rồi thoát |
+| `netmon` | `assetflow-netmon`    | Giám sát mạng: quét dải, ping/TCP, sinh cảnh báo |
+
+`netmon` là image riêng chứ không phải backend bật cờ. Nó không mở cổng nào, không nạp các module nghiệp vụ, và chỉ khởi động `PollerModule` (database + netmon). Nó **không** chạy migration — schema do container `migrate` sở hữu, hai container cùng migrate là cách một lần deploy tự phá dữ liệu.
+
+Netmon chỉ dò những dải mạng mà Admin đã khai trong **Cài đặt → Dải mạng** và đang bật; không khai dải nào thì nó không gửi gói tin nào ra mạng. ICMP dùng socket datagram không đặc quyền nên container giữ nguyên `cap_drop: ALL` và `read_only: true`. Vì không có cổng để healthcheck, liveness đọc tuổi file nhịp tim `/tmp/netmon.heartbeat` mà vòng lặp ghi sau mỗi lượt chạy xong.
+
+Nếu cần đọc được địa chỉ MAC của thiết bị, container phải nằm cùng lớp mạng 2 với thiết bị đó; qua bridge NAT của Docker thì bảng ARP không có bản ghi và hệ thống khớp tài sản theo IP.
+
 
 ## Cài mới
 

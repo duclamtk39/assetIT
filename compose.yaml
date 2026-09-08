@@ -73,17 +73,14 @@ services:
     tmpfs: ["/tmp:size=16m,noexec,nosuid"]
     logging: *default-logging
 
-  # Local twin of the production poller. Same image, no HTTP server, probes only what a subnet
-  # declared in Settings authorises.
-  poller:
-    image: ${ASSETFLOW_REGISTRY:-ghcr.io/duclamtk39}/assetflow-backend:${ASSETFLOW_VERSION:-edge}
+  # Local twin of the production network monitor. Its own image, no HTTP server, probes only what a
+  # subnet declared in Settings authorises.
+  netmon:
+    image: ${ASSETFLOW_REGISTRY:-ghcr.io/duclamtk39}/assetflow-netmon:${ASSETFLOW_VERSION:-edge}
     pull_policy: always
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      RUN_DATABASE_MIGRATIONS: "false"
-      APP_ROLE: poller
-      NETMON_POLLER: "true"
       TZ: ${TZ:-Asia/Ho_Chi_Minh}
       DATABASE_HOST: postgres
       DATABASE_PORT: "5432"
@@ -93,8 +90,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      disable: true
     networks: [edge, data]
     security_opt: ["no-new-privileges:true"]
     cap_drop: ["ALL"]

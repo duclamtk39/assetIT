@@ -6,12 +6,12 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
 
-  poller:
-    image: assetflow-backend:dev
+  netmon:
+    image: assetflow-netmon:dev
     pull_policy: build
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: apps/netmon/Dockerfile
 
   web:
     image: assetflow-frontend:dev

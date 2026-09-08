@@ -1,3 +1,4 @@
+import { writeFile } from 'node:fs/promises'
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
 import { NetworkDeviceStatus } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
@@ -20,6 +21,12 @@ import { mapWithConcurrency, probeHost } from './probe'
 
 const CHECK_CONCURRENCY = Number(process.env.NETMON_CHECK_CONCURRENCY || 24)
 const TICK_MS = Number(process.env.NETMON_TICK_MS || 30_000)
+/**
+ * The container serves no port, so liveness is a file it touches at the end of every completed tick.
+ * The healthcheck reads its age: a poller wedged on a hung probe stops touching it and is restarted,
+ * where a port-based check would have had nothing to ask.
+ */
+const HEARTBEAT_PATH = process.env.NETMON_HEARTBEAT_PATH || '/tmp/netmon.heartbeat'
 
 @Injectable()
 export class NetmonPoller implements OnModuleInit, OnModuleDestroy {
@@ -61,6 +68,15 @@ export class NetmonPoller implements OnModuleInit, OnModuleDestroy {
       this.log.error(`Poller tick failed: ${String((error as Error)?.message || error)}`)
     } finally {
       this.busy = false
+      await this.heartbeat()
+    }
+  }
+
+  private async heartbeat() {
+    try {
+      await writeFile(HEARTBEAT_PATH, new Date().toISOString())
+    } catch {
+      // A read-only or missing path must not take the loop down; the healthcheck will notice.
     }
   }
 

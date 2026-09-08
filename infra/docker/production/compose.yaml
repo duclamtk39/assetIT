@@ -96,38 +96,29 @@ services:
     tmpfs: ["/tmp:size=64m,noexec,nosuid"]
     logging: *default-logging
 
-  # Probing is mostly waiting on timeouts, and Node still has to service every resolved timer, so it
-  # runs beside the API rather than inside it: a subnet full of dead addresses cannot then delay a
-  # request. Same image, same hardening - ICMP here uses an unprivileged datagram socket, which is why
-  # no capability is added and cap_drop stays ALL.
-  poller:
-    image: ${REGISTRY_PREFIX:-ghcr.io/yourname}/assetflow-backend:${ASSETFLOW_VERSION}
+  # The network monitor is its own image, not the backend with a flag: it serves no port, loads only
+  # the database and the netmon providers, and probes the LAN on a loop. Running it beside the API
+  # rather than inside it also keeps a subnet full of dead addresses from delaying a request, since
+  # probing is mostly waiting and Node still services every resolved timer. ICMP here uses an
+  # unprivileged datagram socket, which is why no capability is added and cap_drop stays ALL.
+  netmon:
+    image: ${REGISTRY_PREFIX:-ghcr.io/yourname}/assetflow-netmon:${ASSETFLOW_VERSION}
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      RUN_DATABASE_MIGRATIONS: "false"
-      APP_ROLE: poller
-      NETMON_POLLER: "true"
-      PORT: "8081"
       TZ: ${TZ:-Asia/Ho_Chi_Minh}
       DATABASE_HOST: db
       DATABASE_PORT: "5432"
       DATABASE_NAME: ${POSTGRES_DB}
       DATABASE_USER: ${POSTGRES_RUNTIME_USER:-assetflow_runtime}
       DATABASE_PASSWORD_FILE: /run/secrets/postgres_runtime_password
-      DATA_ENCRYPTION_KEY_FILE: /run/secrets/data_encryption_key
-      ENABLE_SWAGGER: "false"
       NETMON_SCAN_CONCURRENCY: ${NETMON_SCAN_CONCURRENCY:-32}
       NETMON_CHECK_CONCURRENCY: ${NETMON_CHECK_CONCURRENCY:-24}
     secrets:
       - postgres_runtime_password
-      - data_encryption_key
     depends_on:
       migrate:
         condition: service_completed_successfully
-    # The image's healthcheck probes an HTTP endpoint; this role does not serve one.
-    healthcheck:
-      disable: true
     # edge is what reaches the office LAN; data is what reaches the database.
     networks: [edge, data]
     security_opt: ["no-new-privileges:true"]
