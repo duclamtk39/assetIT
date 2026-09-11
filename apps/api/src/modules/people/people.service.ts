@@ -143,4 +143,64 @@ export class PeopleService {
       this.conflict(error)
     }
   }
+
+  /**
+   * Removes a profile outright. Only one with nothing pointing at it can go: an asset handover, an
+   * inventory line and a licence allocation all name the person, and those foreign keys are Restrict
+   * precisely because deleting the row would leave records describing a handover to nobody. When a
+   * profile is referenced the reply says what holds it, so the answer is Vô hiệu hóa rather than a
+   * dead end - deactivating keeps the history readable and takes the person out of every picker.
+   */
+  async remove(id: string, actor: Actor) {
+    if (actor.role !== 'ADMIN') throw new ForbiddenException('Chỉ Admin được xóa hồ sơ người nhận tài sản')
+    const person = await this.db.person.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            currentAssets: true,
+            assignments: true,
+            inventoryExpectedItems: true,
+            inventoryObservedItems: true,
+            digitalAssignments: true,
+            managedDepartments: true,
+          },
+        },
+      },
+    })
+    if (!person) throw new NotFoundException('Không tìm thấy người nhận tài sản')
+    const held: string[] = []
+    const counts = person._count
+    if (counts.currentAssets) held.push(`${counts.currentAssets} tài sản đang giữ`)
+    if (counts.assignments) held.push(`${counts.assignments} phiếu cấp phát`)
+    if (counts.inventoryExpectedItems + counts.inventoryObservedItems)
+      held.push(`${counts.inventoryExpectedItems + counts.inventoryObservedItems} dòng kiểm kê`)
+    if (counts.digitalAssignments) held.push(`${counts.digitalAssignments} lượt cấp license`)
+    if (counts.managedDepartments) held.push(`${counts.managedDepartments} phòng ban đang phụ trách`)
+    if (held.length)
+      throw new ConflictException(
+        `Hồ sơ đang gắn với ${held.join(', ')}; xóa sẽ làm mất lịch sử đó. Hãy dùng Vô hiệu hóa để giữ lịch sử.`,
+      )
+    return this.db.$transaction(async tx => {
+      await tx.auditLog.create({
+        data: {
+          userId: actor.id,
+          action: 'PERSON_DELETED',
+          entityType: 'Person',
+          entityId: id,
+          oldValues: {
+            employeeCode: person.employeeCode,
+            fullName: person.fullName,
+            email: person.email,
+            jobTitle: person.jobTitle,
+            departmentId: person.departmentId,
+            source: person.source,
+            status: person.status,
+          } as Prisma.InputJsonValue,
+        },
+      })
+      await tx.person.delete({ where: { id } })
+      return { success: true }
+    })
+  }
 }

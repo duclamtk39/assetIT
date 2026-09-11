@@ -694,6 +694,12 @@ const fromApiAsset = (item: any): Asset => ({
   assignedTo: item.currentCustodian?.fullName || item.assignedUser?.fullName || 'Chưa gán',
   purchaseDate: String(item.purchaseDate || new Date().toISOString()).slice(0, 10),
   purchaseCost: Number(item.purchaseCost || 0),
+  // The photo lives on the documents volume, so the record carries a URL the browser fetches with
+  // the session cookie. The stored filename is a fresh uuid on every upload, which is what makes the
+  // URL change and stops a replaced picture being served from cache.
+  imageDataUrl: item.imagePath
+    ? `${env.apiBaseUrl}/assets/${item.id}/image?v=${encodeURIComponent(String(item.imagePath).split('/').pop() || '')}`
+    : undefined,
   status:
     item.status?.code === 'READY'
       ? 'Sẵn sàng'
@@ -4430,10 +4436,17 @@ function PeopleManagement({ catalogDepartments }: { catalogDepartments: Departme
   const [people, setPeople] = useState<AssetPerson[]>([]),
     [departments, setDepartments] = useState<ReferenceDepartment[]>([])
   const [showForm, setShowForm] = useState(false),
+    // The same form adds and edits. Holding the record being edited rather than a boolean is what
+    // lets the fields default to it, and the key below remounts the form when the target changes.
+    [editingPerson, setEditingPerson] = useState<AssetPerson>(),
     [loading, setLoading] = useState(true),
     [working, setWorking] = useState(false),
     [message, setMessage] = useState(''),
     [search, setSearch] = useState('')
+  const closeForm = () => {
+    setShowForm(false)
+    setEditingPerson(undefined)
+  }
   const load = async () => {
     setLoading(true)
     if (env.demoMode) {
@@ -4494,23 +4507,58 @@ function PeopleManagement({ catalogDepartments }: { catalogDepartments: Departme
           saveDemoRecords(demoPeopleKey, next)
           return next
         })
-      } else
-        await api.post('/admin/people', {
+      } else {
+        const payload = {
           employeeCode: String(data.get('employeeCode')),
           fullName: String(data.get('fullName')),
           email: String(data.get('email') || ''),
           phone: String(data.get('phone') || ''),
           jobTitle: String(data.get('jobTitle') || ''),
           departmentId,
-        })
+        }
+        if (editingPerson) await api.patch(`/admin/people/${editingPerson.id}`, payload)
+        else await api.post('/admin/people', payload)
+      }
       form.reset()
-      setShowForm(false)
+      closeForm()
       if (!env.demoMode) await load()
     } catch (error: any) {
       setMessage(error?.message || 'Không thể thêm người nhận tài sản.')
     } finally {
       setWorking(false)
     }
+  }
+  /**
+   * Deletes a profile. The API refuses one that an assignment, an inventory line or a licence still
+   * names, and says which - so the message is passed through rather than replaced with a generic
+   * failure, because it is the message that tells the reader to deactivate instead.
+   */
+  const remove = async (person: AssetPerson) => {
+    if (
+      !window.confirm(
+        `Xóa hẳn hồ sơ ${person.fullName} (${person.employeeCode})? Chỉ xóa được hồ sơ chưa phát sinh nghiệp vụ nào.`,
+      )
+    )
+      return
+    setMessage('')
+    try {
+      if (env.demoMode) {
+        setPeople(items => {
+          const next = items.filter(item => item.id !== person.id)
+          saveDemoRecords(demoPeopleKey, next)
+          return next
+        })
+        return
+      }
+      await api.delete(`/admin/people/${person.id}`)
+      await load()
+    } catch (error: any) {
+      setMessage(error?.message || 'Không thể xóa hồ sơ này.')
+    }
+  }
+  const startEdit = (person: AssetPerson) => {
+    setEditingPerson(person)
+    setShowForm(true)
   }
   const deactivate = async (person: AssetPerson) => {
     if (!window.confirm(`Ngừng sử dụng hồ sơ ${person.fullName}?`)) return
@@ -4538,45 +4586,63 @@ function PeopleManagement({ catalogDepartments }: { catalogDepartments: Departme
             Nhân viên và đối tượng có thể được cấp phát hoặc cho mượn tài sản; không bắt buộc có tài khoản đăng nhập.
           </p>
         </div>
-        <button className="btn primary" onClick={() => setShowForm(value => !value)}>
+        <button
+          className="btn primary"
+          onClick={() => {
+            setEditingPerson(undefined)
+            setShowForm(value => !value || Boolean(editingPerson))
+          }}
+        >
           <UserPlus size={17} />
           Thêm nhân sự
         </button>
       </section>
       {message && <div className="directory-message info">{message}</div>}
       {showForm && (
-        <form className="card manual-user-form" onSubmit={submit}>
+        <form className="card manual-user-form" onSubmit={submit} key={editingPerson?.id || 'new-person'}>
           <div className="settings-head">
             <div>
-              <h2>Thêm người nhận tài sản</h2>
+              <h2>{editingPerson ? `Sửa hồ sơ ${editingPerson.fullName}` : 'Thêm người nhận tài sản'}</h2>
               <p>Hồ sơ này chỉ dùng cho nghiệp vụ cấp phát, không tạo quyền đăng nhập.</p>
             </div>
-            <button type="button" className="more-action" onClick={() => setShowForm(false)}>
+            <button type="button" className="more-action" onClick={closeForm}>
               <X size={17} />
             </button>
           </div>
           <div className="directory-fields">
             <label>
-              Họ và tên *<input name="fullName" required minLength={2} maxLength={150} />
+              Họ và tên *
+              <input name="fullName" required minLength={2} maxLength={150} defaultValue={editingPerson?.fullName} />
             </label>
             <label>
-              Mã nhân viên *<input name="employeeCode" required pattern="[A-Za-z0-9._-]{2,50}" />
+              Mã nhân viên *
+              <input
+                name="employeeCode"
+                required
+                pattern="[A-Za-z0-9._-]{2,50}"
+                defaultValue={editingPerson?.employeeCode}
+              />
             </label>
             <label>
               Email
-              <input name="email" type="email" maxLength={255} />
+              <input name="email" type="email" maxLength={255} defaultValue={editingPerson?.email || ''} />
             </label>
             <label>
               Số điện thoại
-              <input name="phone" maxLength={30} />
+              <input name="phone" maxLength={30} defaultValue={editingPerson?.phone || ''} />
             </label>
             <label>
               Chức danh
-              <input name="jobTitle" maxLength={150} />
+              <input name="jobTitle" maxLength={150} defaultValue={editingPerson?.jobTitle || ''} />
             </label>
             <label>
               Phòng ban *
-              <select name="departmentId" required defaultValue="" disabled={loading || !departments.length}>
+              <select
+                name="departmentId"
+                required
+                defaultValue={editingPerson?.departmentId || ''}
+                disabled={loading || !departments.length}
+              >
                 <option value="" disabled>
                   {loading
                     ? 'Đang tải phòng ban...'
@@ -4593,12 +4659,12 @@ function PeopleManagement({ catalogDepartments }: { catalogDepartments: Departme
             </label>
           </div>
           <div className="modal-actions">
-            <button type="button" className="btn secondary" onClick={() => setShowForm(false)}>
+            <button type="button" className="btn secondary" onClick={closeForm}>
               Hủy
             </button>
             <button className="btn primary" disabled={working || loading || !departments.length}>
               <Check size={17} />
-              {working ? 'Đang lưu...' : 'Lưu nhân sự'}
+              {working ? 'Đang lưu...' : editingPerson ? 'Lưu thay đổi' : 'Lưu nhân sự'}
             </button>
           </div>
         </form>
@@ -4658,10 +4724,22 @@ function PeopleManagement({ catalogDepartments }: { catalogDepartments: Departme
                     )}
                   </td>
                   <td>
-                    {person.source === 'LOCAL' && person.status === 'ACTIVE' ? (
-                      <button className="btn secondary" onClick={() => deactivate(person)}>
-                        Vô hiệu hóa
-                      </button>
+                    {person.source === 'LOCAL' ? (
+                      <div className="person-actions">
+                        <button className="btn secondary" onClick={() => startEdit(person)}>
+                          <Pencil size={14} />
+                          Sửa
+                        </button>
+                        {person.status === 'ACTIVE' && (
+                          <button className="btn secondary" onClick={() => deactivate(person)}>
+                            Vô hiệu hóa
+                          </button>
+                        )}
+                        <button className="btn danger" onClick={() => remove(person)}>
+                          <Trash2 size={14} />
+                          Xóa
+                        </button>
+                      </div>
                     ) : (
                       <span className="muted">Directory quản lý</span>
                     )}
@@ -6097,7 +6175,7 @@ function AssetModal({
   siteOptions: string[]
   role: string
   onClose: () => void
-  onSave: (a: Asset) => void | Promise<void>
+  onSave: (a: Asset, image?: { file?: File; remove?: boolean }) => void | Promise<void>
 }) {
   const categoryCatalog = useAssetCategoryCatalog()
   const editing = asset !== undefined && asset !== null
@@ -6116,6 +6194,11 @@ function AssetModal({
     icon: 'laptop',
   }
   const [form, setForm] = useState<Asset>(asset || blank)
+  // The preview is a data URL for instant feedback, but the file itself has to survive the submit:
+  // the picture is stored on the server, and reading it back into state was the reason a changed
+  // photo silently reverted on the next load.
+  const [imageFile, setImageFile] = useState<File>()
+  const [removeImage, setRemoveImage] = useState(false)
   const canEditStatus = !editing || role === 'Admin'
   const update = (key: keyof Asset, value: string | number) =>
     setForm(f => ({ ...f, [key]: value, ...(key === 'category' ? { icon: assetIconForCategory(String(value)) } : {}) }))
@@ -6125,13 +6208,20 @@ function AssetModal({
       alert('Vui lòng chọn đúng file ảnh.')
       return
     }
-    if (file.size > 1_500_000) {
-      alert('Ảnh tài sản tối đa 1,5 MB.')
+    if (file.size > 3_000_000) {
+      alert('Ảnh tài sản tối đa 3 MB.')
       return
     }
+    setImageFile(file)
+    setRemoveImage(false)
     const reader = new FileReader()
     reader.onload = () => update('imageDataUrl', String(reader.result))
     reader.readAsDataURL(file)
+  }
+  const dropImage = () => {
+    setImageFile(undefined)
+    setRemoveImage(true)
+    update('imageDataUrl', '')
   }
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -6154,13 +6244,16 @@ function AssetModal({
             assignmentType: asset.assignmentType,
           }
         : {}
-    await onSave({
-      ...form,
-      ...protectedState,
-      name: form.name.trim(),
-      code: form.code.trim(),
-      serial: form.serial.trim(),
-    })
+    await onSave(
+      {
+        ...form,
+        ...protectedState,
+        name: form.name.trim(),
+        code: form.code.trim(),
+        serial: form.serial.trim(),
+      },
+      { file: imageFile, remove: removeImage },
+    )
   }
   const technical: Array<[keyof Asset, string, string]> = [
     ['manufacturer', 'Hãng sản xuất', 'Apple, Dell, Lenovo...'],
@@ -6202,7 +6295,7 @@ function AssetModal({
                   <input hidden type="file" accept="image/*" onChange={e => uploadImage(e.target.files?.[0])} />
                 </label>
                 {form.imageDataUrl && (
-                  <button type="button" className="text-link" onClick={() => update('imageDataUrl', '')}>
+                  <button type="button" className="text-link" onClick={dropImage}>
                     Xóa ảnh
                   </button>
                 )}
@@ -7394,7 +7487,12 @@ export default function App() {
     if (!env.demoMode)
       void api.put('/settings', { key: 'regional', value }).catch(error => alert(apiErrorMessage(error)))
   }
-  const save = async (asset: Asset) => {
+  /**
+   * Saves the record, then the photo. The picture is a separate multipart call because it lives on
+   * the documents volume, not in a column - the form used to keep it as a data URL in client state,
+   * which is why a changed photo looked saved and was gone on the next load.
+   */
+  const save = async (asset: Asset, image?: { file?: File; remove?: boolean }) => {
     const secured = currentUser?.role === 'HCNS' ? { ...asset, department: 'Hành chính' } : asset
     if (env.demoMode) {
       if (assets.some(a => a.id !== secured.id && a.code.toLowerCase() === secured.code.trim().toLowerCase())) {
@@ -7444,6 +7542,7 @@ export default function App() {
         ipAddress: secured.ipAddress || undefined,
         macAddress: secured.macAddress || undefined,
       }
+      let assetId = secured.apiId
       if (secured.apiId)
         await api.patch(`/assets/${secured.apiId}`, {
           ...common,
@@ -7460,8 +7559,11 @@ export default function App() {
         )
         if (!warehouse)
           throw new Error('Hãy chọn một kho đã cấu hình. Tài sản nhập mới bắt buộc phải được ghi nhận vào kho.')
-        await api.post('/assets', { ...common, warehouseId: warehouse.id })
+        const created = await api.post<{ id: string }>('/assets', { ...common, warehouseId: warehouse.id })
+        assetId = created?.id
       }
+      if (assetId && image?.file) await api.upload(`/assets/${assetId}/image`, image.file)
+      else if (assetId && image?.remove) await api.delete(`/assets/${assetId}/image`)
       await refreshServerData()
       setModal(undefined)
     } catch (error) {

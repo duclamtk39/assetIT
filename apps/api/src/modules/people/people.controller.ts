@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common'
 import { ApiTags } from '@nestjs/swagger'
 import type { Request } from 'express'
 import { CreatePersonDto, ListPeopleDto, UpdatePersonDto } from './people.dto'
@@ -29,5 +29,9 @@ export class PeopleAdminController {
   @Patch(':id') update(@Param('id') id: string, @Body() body: UpdatePersonDto, @Req() req: AuthRequest) {
     this.people.assertManager(req.authUser)
     return this.people.update(id, body, req.authUser)
+  }
+  @Delete(':id') remove(@Param('id') id: string, @Req() req: AuthRequest) {
+    this.people.assertManager(req.authUser)
+    return this.people.remove(id, req.authUser)
   }
 }

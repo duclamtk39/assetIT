@@ -668,6 +668,9 @@ model Asset {
   operatingSystem      String?              @db.VarChar(200)
   ipAddress            String?              @db.VarChar(64)
   macAddress           String?              @db.VarChar(64)
+  /// Relative path on the documents volume. The photo itself is never held in a column: a register of
+  /// a few hundred assets would then carry hundreds of megabytes into every unguarded SELECT.
+  imagePath            String?              @db.VarChar(500)
   notes                String?
   archivedAssetTag     String?              @db.VarChar(100)
   archivedBarcode      String?              @db.VarChar(150)

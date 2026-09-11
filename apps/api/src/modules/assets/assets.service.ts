@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common'
 import { AssetAssignmentStatus, AssetHistoryAction, Prisma } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
+import { AssetImageStorage, type IncomingImage } from './asset-image.storage'
 import { CreateAssetDto, ListAssetsQuery, UpdateAssetDto } from './assets.dto'
 
 type Actor = { id: string; role: string; departmentId: string | null }
@@ -25,7 +26,10 @@ const include = {
 
 @Injectable()
 export class AssetsService {
-  constructor(private readonly db: PrismaService) {}
+  constructor(
+    private readonly db: PrismaService,
+    private readonly images: AssetImageStorage,
+  ) {}
   private assertOperator(actor: Actor) {
     if (!['ADMIN', 'IT', 'HCNS'].includes(actor.role))
       throw new ForbiddenException('Tài khoản không có quyền quản lý tài sản')
@@ -291,6 +295,56 @@ export class AssetsService {
       if (error?.code === 'P2002') throw new ConflictException('Mã tài sản, barcode hoặc serial đã tồn tại')
       throw error
     }
+  }
+
+  /**
+   * Replaces an asset's photograph. The previous file is removed after the row is updated, not
+   * before: if the write fails the asset keeps the picture it had rather than losing both.
+   */
+  async setImage(id: string, file: IncomingImage, actor: Actor) {
+    const asset = await this.get(id, actor)
+    if (!['ADMIN', 'IT', 'HCNS'].includes(actor.role))
+      throw new ForbiddenException('Tài khoản không có quyền đổi ảnh tài sản')
+    const stored = await this.images.save(file)
+    const previous = asset.imagePath
+    try {
+      await this.db.$transaction(async tx => {
+        await tx.asset.update({ where: { id }, data: { imagePath: stored.storagePath } })
+        await tx.auditLog.create({
+          data: {
+            userId: actor.id,
+            action: 'ASSET_IMAGE_UPDATED',
+            entityType: 'Asset',
+            entityId: id,
+            oldValues: { imagePath: previous } as Prisma.InputJsonValue,
+            newValues: { imagePath: stored.storagePath, fileSize: stored.fileSize } as Prisma.InputJsonValue,
+          },
+        })
+      })
+    } catch (error) {
+      // The row did not take the new file, so the new file has no business staying on the volume.
+      await this.images.remove(stored.storagePath)
+      throw error
+    }
+    if (previous && previous !== stored.storagePath) await this.images.remove(previous)
+    return { imagePath: stored.storagePath }
+  }
+
+  async clearImage(id: string, actor: Actor) {
+    const asset = await this.get(id, actor)
+    if (!['ADMIN', 'IT', 'HCNS'].includes(actor.role))
+      throw new ForbiddenException('Tài khoản không có quyền đổi ảnh tài sản')
+    if (!asset.imagePath) return { imagePath: null }
+    await this.db.asset.update({ where: { id }, data: { imagePath: null } })
+    await this.images.remove(asset.imagePath)
+    return { imagePath: null }
+  }
+
+  /** Streams the stored photo. Scope is checked through get(), so a foreign asset is not readable. */
+  async imageFor(id: string, actor: Actor) {
+    const asset = await this.get(id, actor)
+    if (!asset.imagePath) throw new NotFoundException('Tài sản chưa có ảnh')
+    return { stream: this.images.stream(asset.imagePath), mimeType: this.images.mimeFor(asset.imagePath) }
   }
 
   async remove(id: string, actor: Actor) {

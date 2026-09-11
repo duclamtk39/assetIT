@@ -16643,3 +16643,15 @@ textarea,
     flex-wrap: wrap;
   }
 }
+
+.person-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.person-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
