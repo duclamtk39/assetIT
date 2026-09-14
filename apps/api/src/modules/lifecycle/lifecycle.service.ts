@@ -24,6 +24,17 @@ import {
 } from './lifecycle.rules'
 
 type Actor = { id: string; role: string; departmentId: string | null }
+/**
+ * The history line is read by people, so the outcome goes in as Vietnamese. It used to interpolate
+ * the enum itself, which put "kết quả BROKEN" in front of every reader of the timeline.
+ */
+export const returnOutcomeLabels: Record<string, string> = {
+  READY: 'Sẵn sàng',
+  MAINTENANCE: 'Cần bảo trì',
+  BROKEN: 'Hỏng',
+}
+export const returnOutcomeLabel = (outcome: string) => returnOutcomeLabels[outcome] || outcome
+
 const lifecycleInclude = {
   status: true,
   currentCustodian: true,
@@ -233,7 +244,7 @@ export class LifecycleService {
               toLocationId: locationId,
               referenceType: 'AssetReturn',
               referenceId: returned.id,
-              description: `Thu hồi từ ${assignment.assignedTo.fullName}; kết quả ${body.outcome}`,
+              description: `Thu hồi từ ${assignment.assignedTo.fullName}; kết quả ${returnOutcomeLabel(body.outcome)}`,
               performedBy: actor.id,
             },
           })

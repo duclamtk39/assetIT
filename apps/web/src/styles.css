@@ -16661,17 +16661,20 @@ textarea,
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
   gap: 16px;
-  align-items: start;
+  /* Stretch, so the two columns end on the same line instead of the record stopping short of the
+     panel beside it. The record grows as a column and its attachments settle at the foot. */
+  align-items: stretch;
 }
 /* The card used to be capped at 820px, which is what left the right half of the page empty. */
 .asset-detail-layout > .asset-detail {
+  display: flex;
+  flex-direction: column;
   width: auto;
   min-width: 0;
   /* It also carried a full-viewport min-height, which only moved the empty space to the bottom. */
   min-height: 0;
 }
-.asset-facts dd.not-set,
-.asset-spec-list dd.not-set {
+.asset-facts dd.not-set {
   color: #98a2b3;
   font-weight: 400;
   font-style: italic;
@@ -16690,7 +16693,7 @@ textarea,
   display: grid;
   place-items: center;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
   border: 0;
   padding: 14px;
   background: #f4f6f9;
@@ -16699,8 +16702,10 @@ textarea,
 /* Contain, not cover: a photographed device must show whole, so a cropped corner never hides
    the model label or a damaged edge someone is trying to check. */
 .asset-photo img {
-  max-width: 100%;
-  max-height: 100%;
+  position: absolute;
+  inset: 12px;
+  width: calc(100% - 24px);
+  height: calc(100% - 24px);
   object-fit: contain;
   display: block;
 }
@@ -16804,43 +16809,31 @@ textarea,
   padding: 2px 8px;
   white-space: nowrap;
 }
-.asset-aside-facts,
-.asset-spec-list {
+.asset-aside-facts {
   margin: 12px 0 0;
 }
-.asset-aside-facts > div,
-.asset-spec-list > div {
+.asset-aside-facts > div {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   padding: 8px 0;
   border-bottom: 1px solid #f0f2f5;
 }
-.asset-aside-facts > div:last-child,
-.asset-spec-list > div:last-child {
+.asset-aside-facts > div:last-child {
   border-bottom: 0;
 }
-.asset-aside-facts dt,
-.asset-spec-list dt {
+.asset-aside-facts dt {
   font-size: 12px;
   color: #667085;
   flex: none;
 }
-.asset-aside-facts dd,
-.asset-spec-list dd {
+.asset-aside-facts dd {
   margin: 0;
   font-size: 13px;
   font-weight: 500;
   color: #1d2939;
   text-align: right;
   word-break: break-word;
-}
-.asset-spec-list dd {
-  font-variant-numeric: tabular-nums;
-}
-.asset-spec-edit {
-  margin-top: 8px;
-  font-size: 12px;
 }
 .asset-photo-lightbox {
   position: fixed;
@@ -16885,6 +16878,936 @@ textarea,
     order: -1;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    align-items: start;
+  }
+}
+
+.asset-detail-layout > .asset-detail > .detail-attachments {
+  margin-top: auto;
+}
+
+.asset-recent ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.asset-recent li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid #f0f2f5;
+}
+.asset-recent li:last-child {
+  border-bottom: 0;
+}
+.asset-recent li b {
+  display: block;
+  font-size: 13px;
+}
+.asset-recent li p {
+  margin: 1px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #475467;
+}
+.asset-recent li small {
+  text-align: right;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #667085;
+}
+.asset-recent-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2861ad;
+}
+.asset-recent-dot.purple {
+  background: #5e49d6;
+}
+.asset-recent-dot.orange {
+  background: #d98008;
+}
+.asset-recent-dot.green {
+  background: #1f9254;
+}
+.asset-recent-empty {
+  margin: 0;
+  font-size: 12px;
+  color: #98a2b3;
+}
+@media (max-width: 1180px) {
+  .asset-detail-layout {
+    align-items: start;
+  }
+}
+
+/* Whichever column is taller, the other meets it: the record stretches as a column, and here the
+   panel's last card takes up any remaining height so its border lands on the same line. */
+.asset-detail-aside > section:last-child {
+  flex: 1;
+}
+
+/* Heading row for the technical sheet, spanning both fact columns above the two halves of it. */
+.asset-specs-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: -18px;
+  padding-top: 4px;
+  border-top: 1px solid #eef1f5;
+}
+.asset-specs-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+.asset-specs-head .text-link {
+  font-size: 12px;
+  margin-top: 14px;
+}
+.asset-specs-column dl {
+  margin-top: 0;
+}
+.asset-facts dd {
+  font-variant-numeric: tabular-nums;
+}
+.asset-recent h3 .text-link {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* --- Asset detail typography -------------------------------------------------------------
+   Measured before this block: fact labels and values rendered at 10px, labels in #91919D
+   (about 3.1:1 against white, below the 4.5:1 small text needs), the attachments title at 17px
+   over section titles at 13px, and the right panel at 12-13px beside a left column at 10px.
+   Everything below reads from the shared type tokens so both columns sit on one scale, and each
+   value sits beside its label instead of at the far edge of a 570px column. */
+/* Size stays with the contract (caption); only the contrast is raised from #91919D. */
+.asset-detail-page .detail-header p {
+  color: #475467;
+}
+/* One heading size for every section on the page, and it is the project's own section-title token:
+   the typography contract already pins "Hồ sơ đính kèm" there with !important, so the other
+   headings come up to meet it rather than this page overriding the contract. */
+.asset-detail-page .asset-facts section h3,
+.asset-detail-page .asset-specs-head h3,
+.asset-detail-page .detail-attachments h3,
+.asset-detail-page .asset-aside-card h3 {
+  font-size: var(--type-section-title);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #172231;
+}
+.asset-detail-page .asset-facts dl,
+.asset-detail-page .asset-aside-facts {
+  margin: 8px 0 0;
+}
+.asset-detail-page .asset-facts dl > div,
+.asset-detail-page .asset-aside-facts > div {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eef1f5;
+  font-size: var(--type-body);
+}
+.asset-detail-page .asset-aside-facts > div {
+  grid-template-columns: 128px minmax(0, 1fr);
+}
+.asset-detail-page .asset-facts dl > div:last-child,
+.asset-detail-page .asset-aside-facts > div:last-child {
+  border-bottom: 0;
+}
+.asset-detail-page .asset-facts dt,
+.asset-detail-page .asset-aside-facts dt {
+  font-size: var(--type-label);
+  font-weight: 400;
+  color: #475467;
+}
+.asset-detail-page .asset-facts dd,
+.asset-detail-page .asset-aside-facts dd {
+  margin: 0;
+  font-size: var(--type-body);
+  font-weight: 500;
+  color: #172231;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.asset-detail-page .asset-facts dd.not-set {
+  font-size: var(--type-label);
+  font-weight: 400;
+  font-style: italic;
+  /* #98A2B3 was about 2.6:1 on white. Missing data still has to be readable - it is exactly what a
+     reviewer is scanning for - so italic marks it as absent and the colour stays above 4.5:1. */
+  color: #667085;
+}
+.asset-detail-page .asset-spec-count {
+  font-size: var(--type-caption);
+}
+.asset-detail-page .asset-specs-head .text-link,
+.asset-detail-page .asset-recent h3 .text-link {
+  font-size: var(--type-label);
+}
+.asset-detail-page .attachment-row b,
+.asset-detail-page .detail-attachments > div > span {
+  font-size: var(--type-body);
+}
+.asset-detail-page .attachment-row small,
+.asset-detail-page .detail-attachments em,
+.asset-detail-page .detail-attachments > div > b {
+  font-size: var(--type-label);
+}
+.asset-detail-page .asset-owner b {
+  font-size: 15px;
+}
+.asset-detail-page .asset-owner small {
+  font-size: var(--type-label);
+  color: #475467;
+}
+.asset-detail-page .asset-recent li b {
+  font-size: var(--type-body);
+}
+.asset-detail-page .asset-recent li p {
+  font-size: var(--type-label);
+  color: #475467;
+}
+.asset-detail-page .asset-recent li small {
+  font-size: var(--type-caption);
+  color: #667085;
+}
+.asset-detail-page .asset-recent-empty,
+.asset-detail-page .asset-photo.empty b {
+  font-size: var(--type-label);
+}
+
+/* --- Full-page audit follow-up ------------------------------------------------------------
+   The first typography pass only measured the information tab. A scan of every text node in every
+   state then found the history timeline at 9-11px and several shared components below 4.5:1. The
+   colours below are the same hues darkened until they clear 4.5:1 against their own background,
+   computed rather than picked by eye. */
+
+/* Status pills are shared, so they are fixed at the source: a pill must not read differently on
+   the register than on the detail page. Only the text darkens; the tint and size are unchanged. */
+.status.green {
+  color: #207954;
+}
+.status.blue {
+  color: #2f6fb4;
+}
+.status.amber {
+  color: #995f28;
+}
+.status.red {
+  color: #c43744;
+}
+
+.asset-detail-page .detail-tabs button {
+  color: #73737f;
+}
+.asset-detail-page .detail-tabs span {
+  color: #696975;
+}
+.asset-detail-page .detail-attachments .attachment-row span small {
+  color: #697684;
+}
+.asset-detail-page .asset-owner-type {
+  font-size: var(--type-caption);
+}
+
+/* History timeline: the base rules had it at 7-9px before a later block lifted it to 9-11px. */
+.asset-detail-page .detail-history b {
+  font-size: var(--type-body);
+  font-weight: 600;
+  color: #172231;
+}
+.asset-detail-page .detail-history p {
+  font-size: var(--type-label);
+  color: #344054;
+}
+.asset-detail-page .detail-history small {
+  font-size: var(--type-caption);
+  color: #667085;
+}
+.asset-detail-page .detail-history em {
+  font-size: var(--type-label);
+  font-style: normal;
+  color: #344054;
+}
+
+/* White initials on the shared purple avatar dropped to 3.3:1 at the gradient's light corner. The
+   light stop is pulled toward the dark one until the worst point of the gradient clears 4.5:1. */
+.asset-detail-page .asset-owner:not(.stock) .avatar {
+  background: linear-gradient(145deg, rgb(118, 97, 222), rgb(91, 68, 212));
+  color: #fff;
+}
+
+/* --- Asset detail page (layout v3) ----------------------------------------------------------
+   Header with identity chips and tabs, a KPI strip, general and purchase panels side by side, the
+   technical sheet and notes; on the right the photo, QR code, placement, people and quick actions.
+   Every size reads from the shared type tokens: 17px panel titles, 14px values, 13px labels. */
+.asv-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: var(--type-label);
+  color: #475467;
+}
+.asv-crumbs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: var(--type-label);
+  color: var(--enterprise-blue, #2861ad);
+  cursor: pointer;
+}
+.asv-crumbs span {
+  color: #172231;
+  font-weight: 500;
+}
+.asv-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 16px;
+  align-items: start;
+}
+.asv-main,
+.asv-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.asv .card {
+  box-shadow: none;
+}
+
+/* header */
+.asv-header {
+  padding: 20px 22px 0;
+}
+.asv-header-top {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+}
+.asv-thumb {
+  width: 132px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #f4f6f9;
+  color: #667085;
+  cursor: pointer;
+}
+.asv-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.asv-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.asv-title h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #172231;
+  letter-spacing: 0.01em;
+}
+.asv-heading > p {
+  margin: 4px 0 10px;
+  font-size: var(--type-body);
+  color: #475467;
+}
+.asv-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.asv-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid #e4e7ec;
+  border-radius: 6px;
+  background: #fff;
+  font-size: var(--type-label);
+  color: #344054;
+}
+.asv-chips li svg {
+  color: #667085;
+}
+.asv-actions {
+  display: flex;
+  gap: 8px;
+}
+.asv-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.asv-tabs {
+  display: flex;
+  gap: 2px;
+  margin-top: 18px;
+  overflow-x: auto;
+}
+.asv-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-size: var(--type-body);
+  font-weight: 500;
+  color: #475467;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.asv-tabs button:hover {
+  color: #172231;
+}
+.asv-tabs button.active {
+  color: var(--enterprise-blue, #2861ad);
+  border-bottom-color: var(--enterprise-blue, #2861ad);
+}
+.asv-tabs button span {
+  min-width: 20px;
+  padding: 0 7px;
+  border-radius: 10px;
+  background: #eef1f5;
+  font-size: var(--type-caption);
+  font-weight: 600;
+  line-height: 20px;
+  color: #475467;
+  text-align: center;
+}
+
+/* KPI strip */
+.asv-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.asv-kpis article {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  min-width: 0;
+}
+.asv-kpis article > div {
+  min-width: 0;
+}
+.asv-kpi-icon {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+}
+.asv-kpi-icon.blue {
+  background: #eaf1fa;
+  color: #2861ad;
+}
+.asv-kpi-icon.purple {
+  background: #f0edfc;
+  color: #5b44d4;
+}
+.asv-kpi-icon.green {
+  background: #e7f7ef;
+  color: #207954;
+}
+.asv-kpi-icon.amber {
+  background: #fff2e1;
+  color: #995f28;
+}
+.asv-kpis small {
+  display: block;
+  font-size: var(--type-label);
+  color: #475467;
+}
+.asv-kpis b {
+  display: block;
+  margin: 3px 0 2px;
+  font-size: var(--type-section-title);
+  font-weight: 600;
+  color: #172231;
+  overflow-wrap: anywhere;
+}
+.asv-kpis em {
+  display: block;
+  font-style: normal;
+  font-size: var(--type-label);
+  color: #475467;
+}
+.asv-kpis .text-link {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  max-width: 100%;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: var(--type-label);
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.asv-kpis .text-link svg {
+  flex: none;
+}
+.asv-kpis .text-link span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.asv-tone.good {
+  color: #207954 !important;
+}
+.asv-tone.warn {
+  color: #995f28 !important;
+}
+.asv-tone.bad {
+  color: #c43744 !important;
+}
+.asv-tone.muted {
+  color: #667085 !important;
+}
+
+/* panels */
+.asv-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+.asv-panel,
+.asv-card {
+  padding: 18px 20px;
+}
+.asv-panel h2,
+.asv-card h2 {
+  margin: 0 0 8px;
+  font-size: var(--type-section-title);
+  font-weight: 600;
+  color: #172231;
+}
+.asv-panel-head,
+.asv-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.asv-panel-head h2,
+.asv-card-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.asv-panel-head .text-link {
+  font-size: var(--type-label);
+}
+.asv-list {
+  margin: 0;
+}
+.asv-list > div {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  min-height: 42px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eef1f5;
+}
+.asv-list > div:last-child {
+  border-bottom: 0;
+}
+.asv-list dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--type-label);
+  color: #475467;
+}
+.asv-list dt svg {
+  color: #667085;
+}
+.asv-list dd {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--type-body);
+  font-weight: 500;
+  color: #172231;
+  overflow-wrap: anywhere;
+}
+.asv-list dd.not-set {
+  font-size: var(--type-label);
+  font-weight: 400;
+  font-style: italic;
+  color: #667085;
+}
+.asv-list.compact > div {
+  grid-template-columns: 112px minmax(0, 1fr);
+}
+.asv-two-lists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 32px;
+}
+.asv-copy {
+  width: 26px;
+  height: 26px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #667085;
+  cursor: pointer;
+}
+.asv-copy:hover {
+  background: #eef1f5;
+  color: #2861ad;
+}
+.asv-mono {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: var(--type-label);
+}
+.asv-badge {
+  padding: 2px 9px;
+  border-radius: 10px;
+  font-size: var(--type-caption);
+  font-weight: 600;
+  font-style: normal;
+}
+.asv-badge.good {
+  background: #e7f7ef;
+  color: #207954;
+}
+.asv-badge.warn {
+  background: #fff2e1;
+  color: #995f28;
+}
+.asv-badge.bad {
+  background: #ffecee;
+  color: #c43744;
+}
+.asv-badge.muted {
+  background: #f2f4f7;
+  color: #475467;
+}
+.asv-sub {
+  font-size: var(--type-caption);
+  font-weight: 400;
+  color: #667085;
+}
+.asv-notes textarea {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+  padding: 10px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  font: inherit;
+  font-size: var(--type-body);
+  color: #172231;
+  box-sizing: border-box;
+}
+.asv-notes textarea:focus {
+  outline: 2px solid #b9d0ee;
+  border-color: #2861ad;
+}
+.asv-notes-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+.asv-notes-foot small {
+  font-size: var(--type-caption);
+  color: #667085;
+}
+.asv-notes-foot .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.asv-empty {
+  margin: 8px 0;
+  font-size: var(--type-label);
+  color: #667085;
+}
+.asv-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.asv-table th {
+  padding: 10px 8px;
+  border-bottom: 1px solid #e4e7ec;
+  font-size: var(--type-label);
+  font-weight: 600;
+  color: #475467;
+  text-align: left;
+}
+.asv-table td {
+  padding: 11px 8px;
+  border-bottom: 1px solid #eef1f5;
+  font-size: var(--type-body);
+  color: #172231;
+  vertical-align: top;
+}
+.asv-related {
+  display: grid;
+  gap: 18px;
+}
+.asv-related h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #172231;
+}
+.asv-related ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.asv-related li {
+  padding: 9px 0;
+  border-bottom: 1px solid #eef1f5;
+}
+.asv-related li:last-child {
+  border-bottom: 0;
+}
+.asv-related li b {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: var(--type-body);
+  font-weight: 600;
+  color: #172231;
+}
+.asv-related li small {
+  font-size: var(--type-label);
+  color: #475467;
+}
+
+/* aside */
+.asv-card .asset-photo {
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+.asv-block {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.asv-qr {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.asv-qr img {
+  width: 104px;
+  height: 104px;
+  flex: none;
+  padding: 4px;
+  border: 1px solid #e4e7ec;
+  border-radius: 6px;
+  background: #fff;
+}
+.asv-qr b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: #172231;
+  overflow-wrap: anywhere;
+}
+.asv-qr small {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--type-label);
+  color: #475467;
+}
+.asv-qr-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.asv-qr-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.asv-people {
+  display: grid;
+  gap: 14px;
+}
+.asv-people > div > small {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--type-label);
+  color: #475467;
+}
+.asv-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.asv-person .avatar {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(145deg, rgb(118, 97, 222), rgb(91, 68, 212));
+  font-size: var(--type-label);
+  font-weight: 600;
+  color: #fff;
+}
+.asv-person .avatar.muted {
+  background: #eaf1fa;
+  color: #2861ad;
+}
+.asv-person b {
+  display: block;
+  font-size: var(--type-body);
+  font-weight: 600;
+  color: #172231;
+}
+.asv-person em {
+  display: block;
+  font-style: normal;
+  font-size: var(--type-label);
+  color: #475467;
+}
+.asv-quick {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.asv-quick button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: var(--type-label);
+  font-weight: 500;
+  color: #344054;
+  cursor: pointer;
+}
+.asv-quick button svg {
+  color: #2861ad;
+}
+.asv-quick button:hover:not(:disabled) {
+  border-color: #b9d0ee;
+  background: #f0f5fc;
+  color: #172231;
+}
+.asv-quick button.danger {
+  border-color: #f3d0d3;
+  background: #fff5f5;
+  color: #c43744;
+}
+.asv-quick button.danger svg {
+  color: #c43744;
+}
+.asv-quick button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.asv-main {
+  container: asv-main / inline-size;
+}
+@container asv-main (max-width: 900px) {
+  .asv-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .asv-two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .asv-header-top {
+    grid-template-columns: 110px minmax(0, 1fr);
+  }
+  .asv-thumb {
+    width: 110px;
+    height: 84px;
+  }
+  .asv-actions {
+    grid-column: 2;
+  }
+}
+@container asv-main (max-width: 620px) {
+  .asv-kpis,
+  .asv-two-lists {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .asv-list > div {
+    grid-template-columns: 120px minmax(0, 1fr);
+  }
+}
+@media (max-width: 1180px) {
+  .asv-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .asv-aside {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     align-items: start;
   }
 }

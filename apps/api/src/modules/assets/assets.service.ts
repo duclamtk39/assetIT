@@ -9,6 +9,7 @@ import { AssetAssignmentStatus, AssetHistoryAction, Prisma } from '@prisma/clien
 import { PrismaService } from '../../database/prisma.service'
 import { AssetImageStorage, type IncomingImage } from './asset-image.storage'
 import { makerIntent, resolveMaker } from './asset-maker'
+import { ageLabel, costOfOwnership, warrantyLabel, warrantyStatus } from './asset-overview'
 import { CreateAssetDto, ListAssetsQuery, UpdateAssetDto } from './assets.dto'
 
 type Actor = { id: string; role: string; departmentId: string | null }
@@ -147,6 +148,132 @@ export class AssetsService {
     ])
     return { total, assigned, available, due, attention }
   }
+
+  /**
+   * Everything the detail page shows beyond the register row, fetched only when a record is opened so
+   * the list of several hundred assets never carries it. Each block is read from its own module - the
+   * network monitor, licences, maintenance, incidents, risk register - which is what lets the page
+   * relate an asset to the rest of the system instead of repeating the row it came from.
+   */
+  async overview(id: string, actor: Actor) {
+    const asset = await this.get(id, actor)
+    const [record, maintenance, incidents, licences, network, agents, risks, historyCount] = await Promise.all([
+      this.db.asset.findUnique({
+        where: { id },
+        select: {
+          warrantyMonths: true,
+          warrantyExpiry: true,
+          purchaseDate: true,
+          purchaseCost: true,
+          notes: true,
+          systemUuid: true,
+          createdAt: true,
+          updatedAt: true,
+          department: {
+            select: {
+              name: true,
+              manager: { select: { fullName: true, jobTitle: true, email: true } },
+            },
+          },
+          currentCustodian: {
+            select: {
+              fullName: true,
+              jobTitle: true,
+              email: true,
+              employeeCode: true,
+              department: {
+                select: { name: true, manager: { select: { fullName: true, jobTitle: true, email: true } } },
+              },
+            },
+          },
+        },
+      }),
+      this.db.maintenanceRecord.findMany({
+        where: { assetId: id },
+        select: { id: true, maintenanceNo: true, status: true, issue: true, cost: true, openedAt: true, completedAt: true },
+        orderBy: { openedAt: 'desc' },
+      }),
+      this.db.incident.findMany({
+        where: { assetId: id },
+        select: { id: true, incidentNo: true, title: true, status: true, priority: true, reportedAt: true },
+        orderBy: { reportedAt: 'desc' },
+        take: 20,
+      }),
+      this.db.digitalAssignment.findMany({
+        where: { assetId: id, status: 'ACTIVE' },
+        select: {
+          quantity: true,
+          assignedAt: true,
+          entitlement: { select: { code: true, name: true, type: true, expiryDate: true } },
+        },
+      }),
+      this.db.networkDevice.findMany({
+        where: { assetId: id },
+        select: {
+          ipAddress: true,
+          macAddress: true,
+          hostname: true,
+          status: true,
+          responseTimeMs: true,
+          lastSeenAt: true,
+          subnet: { select: { name: true, cidr: true } },
+        },
+      }),
+      this.db.endpointAgent.findMany({
+        where: { linkedAssetId: id, revokedAt: null },
+        select: { hostname: true, osFamily: true, agentVersion: true, lastSeenAt: true },
+      }),
+      this.db.riskAsset.findMany({
+        where: { assetId: id },
+        select: { risk: { select: { riskNo: true, title: true, inherentLevel: true, residualLevel: true, status: true } } },
+      }),
+      this.db.assetHistory.count({ where: { assetId: id } }),
+    ])
+    const warranty = warrantyStatus(record || {})
+    const manager = record?.currentCustodian?.department?.manager || record?.department?.manager || null
+    return {
+      id: asset.id,
+      notes: record?.notes || null,
+      systemUuid: record?.systemUuid || null,
+      createdAt: record?.createdAt,
+      updatedAt: record?.updatedAt,
+      warrantyMonths: record?.warrantyMonths ?? null,
+      warranty: {
+        expiry: warranty.expiry ? warranty.expiry.toISOString().slice(0, 10) : null,
+        state: warranty.state,
+        daysLeft: warranty.daysLeft,
+        label: warrantyLabel(warranty.state, warranty.daysLeft),
+      },
+      age: ageLabel(record?.purchaseDate),
+      cost: costOfOwnership(
+        record?.purchaseCost ? Number(record.purchaseCost) : null,
+        maintenance.map(job => ({ status: job.status, cost: job.cost === null ? null : Number(job.cost) })),
+      ),
+      custodian: record?.currentCustodian
+        ? {
+            fullName: record.currentCustodian.fullName,
+            jobTitle: record.currentCustodian.jobTitle,
+            email: record.currentCustodian.email,
+            employeeCode: record.currentCustodian.employeeCode,
+            department: record.currentCustodian.department?.name || null,
+          }
+        : null,
+      manager,
+      hostname: network.find(device => device.hostname)?.hostname || agents.find(agent => agent.hostname)?.hostname || null,
+      network,
+      agents,
+      counts: {
+        history: historyCount,
+        maintenance: maintenance.length + incidents.length,
+        related: licences.length + network.length + risks.length,
+      },
+      maintenance: maintenance.map(job => ({ ...job, cost: job.cost === null ? null : Number(job.cost) })),
+      incidents,
+      licences,
+      risks: risks.map(link => link.risk),
+    }
+  }
+
   async history(id: string, actor: Actor) {
     await this.get(id, actor)
     return {

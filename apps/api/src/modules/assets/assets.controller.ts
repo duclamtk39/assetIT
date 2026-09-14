@@ -55,6 +55,9 @@ export class AssetsController {
     stream.on('error', () => res.destroy())
     stream.pipe(res)
   }
+  @Get(':id/overview') overview(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthRequest) {
+    return this.assets.overview(id, req.authUser)
+  }
   @Get(':id/history') history(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthRequest) {
     return this.assets.history(id, req.authUser)
   }

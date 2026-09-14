@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { Asset } from '../src/types'
-import { assetSpecs, dueLabel, hasCustodian, initials, specCompleteness } from '../src/features/assets/asset-detail'
+import {
+  assetSpecs,
+  dueLabel,
+  hasCustodian,
+  initials,
+  latestTransactions,
+  readableNote,
+  specCompleteness,
+  transactionTone,
+} from '../src/features/assets/asset-detail'
 
 const asset = (overrides: Partial<Asset> = {}): Asset =>
   ({
@@ -77,4 +86,46 @@ test('an asset with no due date is issued, not overdue', () => {
   assert.equal(dueLabel(''), 'Không giới hạn')
   assert.equal(dueLabel('không phải ngày'), 'Không giới hạn')
   assert.match(dueLabel('2026-12-31'), /2026/)
+})
+
+test('recent activity is the newest movements, whatever order history arrives in', () => {
+  // Showing the first three of an unsorted list would describe where the asset was a year ago as if
+  // that were its current state.
+  const tx = (id: number, date: string) => ({ id, date }) as any
+  const history = [
+    tx(1, '2026-01-05'),
+    tx(2, '2026-09-07T10:00:00Z'),
+    tx(3, '2026-03-01'),
+    tx(4, '2026-09-07T08:00:00Z'),
+  ]
+  assert.deepEqual(
+    latestTransactions(history, 3).map(t => t.id),
+    [2, 4, 3],
+  )
+  assert.equal(history[0].id, 1, 'không được làm đảo thứ tự mảng gốc')
+  assert.deepEqual(latestTransactions([], 3), [])
+  assert.deepEqual(latestTransactions(history, 0), [])
+})
+
+test('the overview and the timeline colour each movement the same way', () => {
+  assert.equal(transactionTone('Cấp phát'), 'purple')
+  assert.equal(transactionTone('Thu hồi'), 'orange')
+  assert.equal(transactionTone('Nhập kho'), 'green')
+  assert.equal(transactionTone('Điều chuyển'), 'blue')
+  assert.equal(transactionTone('Cho mượn'), 'blue', 'giữ đúng màu timeline đang dùng')
+})
+
+test('history written with a raw return outcome reads in Vietnamese', () => {
+  // Rows created before the API fix store "kết quả BROKEN" as text; translating on display is what
+  // fixes the history that already exists.
+  assert.equal(readableNote('Thu hồi từ Trần Đức Long; kết quả BROKEN'), 'Thu hồi từ Trần Đức Long; kết quả Hỏng')
+  assert.equal(readableNote('Thu hồi từ A; kết quả READY'), 'Thu hồi từ A; kết quả Sẵn sàng')
+  assert.equal(readableNote('Thu hồi từ A; kết quả MAINTENANCE'), 'Thu hồi từ A; kết quả Cần bảo trì')
+})
+
+test('only an outcome after "kết quả" is translated, free text is left alone', () => {
+  assert.equal(readableNote('Máy READY để giao'), 'Máy READY để giao')
+  assert.equal(readableNote('kết quả BROKENX'), 'kết quả BROKENX')
+  assert.equal(readableNote(''), '')
+  assert.equal(readableNote(undefined), undefined)
 })

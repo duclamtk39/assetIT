@@ -24,3 +24,21 @@ test('late feature modules consume the shared typography tokens', () => {
     )
   }
 })
+
+test('the asset detail page reads from the shared type scale, not from hard-coded small sizes', () => {
+  // Fact labels and values once rendered at 10px in #91919D, below the 4.5:1 contrast small text
+  // needs, and the page mixed 10, 12, 13 and 17px headings across its two columns. The detail page
+  // now takes every size from the tokens, so it cannot drift back to a private, smaller scale.
+  const block = stylesheet.slice(stylesheet.indexOf('Asset detail typography'))
+  assert.ok(block.length > 100, 'thiếu khối typography của trang chi tiết tài sản')
+  assert.match(block, /\.asset-facts dt[\s\S]*?font-size:\s*var\(--type-label\)/)
+  assert.match(block, /\.asset-facts dd[\s\S]*?font-size:\s*var\(--type-body\)/)
+  assert.match(block, /\.asset-aside-card h3[\s\S]*?font-size:\s*var\(--type-section-title\)/)
+  assert.doesNotMatch(block, /font-size:\s*(8|9|10|11)px/, 'không dùng cỡ chữ dưới 12px')
+  assert.doesNotMatch(block, /color:\s*#91919d/i, 'màu nhãn cũ không đạt tương phản')
+  // The history tab was missed by the first pass and sat at 9-11px; it must stay on the scale too.
+  const audit = stylesheet.slice(stylesheet.indexOf('Full-page audit follow-up'))
+  assert.match(audit, /\.detail-history small[\s\S]*?font-size:\s*var\(--type-caption\)/)
+  assert.match(audit, /\.detail-history em[\s\S]*?font-size:\s*var\(--type-label\)/)
+  assert.doesNotMatch(audit, /font-size:\s*(7|8|9|10|11)px/)
+})

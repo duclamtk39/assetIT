@@ -4,8 +4,13 @@ import QRCode from 'qrcode'
 import {
   AlertTriangle,
   Archive,
+  ArchiveX,
+  Armchair,
+  ArrowLeftRight,
   ArrowUpRight,
+  BadgeCheck,
   BarChart3,
+  Barcode,
   Bell,
   Box,
   Building2,
@@ -16,61 +21,63 @@ import {
   ChevronRight,
   CircleDollarSign,
   ClipboardCheck,
+  Clock3,
+  Cloud,
+  Copy,
+  Database,
   Download,
+  Eye,
+  EyeOff,
+  FileSpreadsheet,
   FileText,
   Filter,
+  HardDrive,
+  Headphones,
   HelpCircle,
+  History,
+  Image as ImageIcon,
+  Keyboard,
+  KeyRound,
+  Languages,
   Laptop,
+  LockKeyhole,
+  LogOut,
+  Mail,
   MapPin,
+  Maximize2,
   Menu,
   Monitor,
   MoreHorizontal,
+  Mouse,
   Network,
   PackageCheck,
+  Palette,
   Pencil,
+  PlugZap,
   Plus,
   Printer,
   QrCode,
+  RotateCcw,
+  Save,
+  ScanLine,
   Search,
+  Send,
   Server,
   Settings,
-  Smartphone,
-  Trash2,
-  Warehouse,
-  Wrench,
-  X,
-  Armchair,
-  Tablet,
+  ShieldAlert,
   ShieldCheck,
-  Cloud,
-  Database,
-  BadgeCheck,
-  LockKeyhole,
-  Barcode,
-  ScanLine,
-  History,
+  Smartphone,
+  Tablet,
+  Trash2,
+  Upload,
+  Usb,
   UserPlus,
   UserRound,
-  RotateCcw,
-  FileSpreadsheet,
-  Upload,
-  Mail,
-  Send,
-  LogOut,
-  Eye,
-  EyeOff,
-  Headphones,
-  Keyboard,
-  Mouse,
   Video,
-  PlugZap,
-  Usb,
-  HardDrive,
-  Palette,
-  Image as ImageIcon,
+  Warehouse,
   Wifi,
-  Languages,
-  Clock3,
+  Wrench,
+  X,
 } from 'lucide-react'
 import {
   categories,
@@ -97,7 +104,21 @@ import type {
 import { useAppRoute } from './hooks/useAppRoute'
 import { pageForPath } from './routing/routes'
 import { navSections } from './routing/navigation'
-import { assetSpecs, dueLabel, hasCustodian, initials, specCompleteness } from './features/assets/asset-detail'
+import {
+  assetSpecs,
+  dayLabel,
+  dueLabel,
+  hasCustodian,
+  incidentStatusLabels,
+  initials,
+  maintenanceStatusLabels,
+  networkStatusLabels,
+  readableNote,
+  riskLevelLabels,
+  transactionTone,
+  warrantyTone,
+  type AssetOverview,
+} from './features/assets/asset-detail'
 import { api, ApiError } from './services/api-client'
 import { readApiCollection, type ApiCollectionResponse } from './services/api-response'
 import { env } from './config/env'
@@ -6410,6 +6431,32 @@ function AssetModal({
   )
 }
 
+/**
+ * Copies to the clipboard, falling back to execCommand where the Clipboard API is missing. UAT is
+ * served over plain HTTP, which is not a secure context, so navigator.clipboard is undefined there
+ * and a copy button that relied on it alone would silently do nothing.
+ */
+async function copyText(value: string) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(value)
+      return true
+    }
+  } catch {
+    // fall through to the textarea route
+  }
+  const area = document.createElement('textarea')
+  area.value = value
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.opacity = '0'
+  document.body.appendChild(area)
+  area.select()
+  const ok = document.execCommand('copy')
+  document.body.removeChild(area)
+  return ok
+}
+
 function AssetDetail({
   asset,
   transactions,
@@ -6419,6 +6466,8 @@ function AssetDetail({
   onAssign,
   onBarcode,
   onEdit,
+  onNavigate,
+  onRefresh,
 }: {
   asset: Asset
   transactions: AssetTransaction[]
@@ -6428,249 +6477,742 @@ function AssetDetail({
   onAssign: () => void
   onBarcode: () => void
   onEdit: () => void
+  onNavigate: (page: string) => void
+  onRefresh: () => void | Promise<void>
 }) {
-  const [tab, setTab] = useState<'Thông tin' | 'Lịch sử'>('Thông tin')
-  // A stored photo can disappear from the volume while the record still points at it. The failure is
-  // keyed to the URL it happened on, so a new upload gets a fresh attempt instead of staying hidden.
+  type DetailTab = 'overview' | 'history' | 'maintenance' | 'related'
+  const [tab, setTab] = useState<DetailTab>('overview')
+  const [overview, setOverview] = useState<AssetOverview>()
   const [failedImage, setFailedImage] = useState<string>()
   const [zoomed, setZoomed] = useState(false)
+  const [qrUrl, setQrUrl] = useState('')
+  const [copied, setCopied] = useState('')
+  const [notes, setNotes] = useState('')
+  const [notesState, setNotesState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+
+  const loadOverview = async () => {
+    if (env.demoMode || !asset.apiId) return
+    try {
+      const data = await api.get<AssetOverview>(`/assets/${asset.apiId}/overview`)
+      setOverview(data)
+      setNotes(data.notes || '')
+    } catch {
+      // The page still renders from the register row; the context blocks simply stay empty.
+    }
+  }
+  useEffect(() => {
+    void loadOverview()
+  }, [asset.apiId])
+  useEffect(() => {
+    void QRCode.toDataURL(asset.code, { margin: 1, width: 240, errorCorrectionLevel: 'M' })
+      .then(setQrUrl)
+      .catch(() => setQrUrl(''))
+  }, [asset.code])
+
   const history = transactions.filter(t => t.assetId === asset.id)
   const handoverRecords = history.filter(t => ['Cấp phát', 'Cho mượn', 'Thu hồi', 'Điều chuyển'].includes(t.type))
   const specs = assetSpecs(asset)
-  const completeness = specCompleteness(specs)
   const showImage = Boolean(asset.imageDataUrl) && failedImage !== asset.imageDataUrl
   const custodian = hasCustodian(asset)
-  return (
-    <main className="page asset-detail-page">
-      <button className="back-link" onClick={onClose}>
-        <ChevronLeft size={16} />
-        Quay lại danh sách
+  const primaryNetwork = overview?.network[0]
+  const technical: Array<{ label: string; value?: string | null; tone?: string }> = [
+    ...specs.slice(0, 5),
+    { label: 'Hệ điều hành', value: asset.operatingSystem },
+    { label: 'Hostname', value: overview?.hostname },
+    { label: 'Địa chỉ IP', value: asset.ipAddress || primaryNetwork?.ipAddress },
+    { label: 'Địa chỉ MAC', value: asset.macAddress || primaryNetwork?.macAddress },
+    {
+      label: 'Trạng thái mạng',
+      value: primaryNetwork ? networkStatusLabels[primaryNetwork.status] : undefined,
+      tone: primaryNetwork?.status.toLowerCase(),
+    },
+  ]
+  const filledTechnical = technical.filter(row => row.value).length
+  const copy = async (key: string, value?: string | null) => {
+    if (!value) return
+    if (await copyText(value)) {
+      setCopied(key)
+      window.setTimeout(() => setCopied(current => (current === key ? '' : current)), 1600)
+    }
+  }
+  const saveNotes = async () => {
+    if (!asset.apiId) return
+    setNotesState('saving')
+    try {
+      await api.patch(`/assets/${asset.apiId}`, { notes: notes.trim() })
+      setNotesState('saved')
+      await loadOverview()
+      await onRefresh()
+    } catch {
+      setNotesState('error')
+    }
+  }
+  const downloadQr = () => {
+    if (!qrUrl) return
+    const link = document.createElement('a')
+    link.href = qrUrl
+    link.download = `QR-${asset.code}.png`
+    link.click()
+  }
+  const copyButton = (id: string, value?: string | null) =>
+    value ? (
+      <button type="button" className="asv-copy" onClick={() => void copy(id, value)} title="Sao chép">
+        {copied === id ? <Check size={13} /> : <Copy size={13} />}
       </button>
-      <div className="asset-detail-layout">
-        <section className="card asset-detail enterprise-detail">
-          <div className="detail-header">
-            <span className={`asset-icon ${showImage ? 'has-image' : ''}`}>
-              {showImage ? <img src={asset.imageDataUrl} alt={asset.name} /> : iconFor(asset.icon, 25)}
-            </span>
-            <div>
-              <div className="detail-title">
-                <h2>{asset.name}</h2>
-                <span className={`status ${statusClass[asset.status]}`}>
-                  <i />
-                  {asset.status}
-                </span>
+    ) : null
+
+  const tabs: Array<{ id: DetailTab; label: string; count?: number }> = [
+    { id: 'overview', label: 'Tổng quan' },
+    { id: 'history', label: 'Lịch sử', count: history.length },
+    { id: 'maintenance', label: 'Bảo trì & sự cố', count: overview?.counts.maintenance },
+    { id: 'related', label: 'Liên quan', count: overview?.counts.related },
+  ]
+  const chips = [
+    { key: 'category', icon: <Laptop size={14} />, label: asset.category },
+    { key: 'maker', icon: <Building2 size={14} />, label: asset.manufacturer },
+    { key: 'model', icon: <Monitor size={14} />, label: asset.model },
+    { key: 'serial', icon: <QrCode size={14} />, label: asset.serial },
+  ].filter(chip => chip.label)
+
+  return (
+    <main className="page asset-detail-page asv">
+      <nav className="asv-crumbs" aria-label="Điều hướng">
+        <button type="button" onClick={onClose}>
+          <ChevronLeft size={15} />
+          Sổ tài sản
+        </button>
+        <ChevronRight size={13} />
+        <span>{asset.code}</span>
+      </nav>
+
+      <div className="asv-layout">
+        <div className="asv-main">
+          <section className="card asv-header">
+            <div className="asv-header-top">
+              <button
+                type="button"
+                className={`asv-thumb ${showImage ? 'has-image' : ''}`}
+                onClick={() => (showImage ? setZoomed(true) : onEdit())}
+                title={showImage ? 'Phóng to ảnh' : 'Thêm ảnh'}
+              >
+                {showImage ? <img src={asset.imageDataUrl} alt={asset.name} /> : iconFor(asset.icon, 34)}
+              </button>
+              <div className="asv-heading">
+                <div className="asv-title">
+                  <h1>{asset.code}</h1>
+                  <span className={`status ${statusClass[asset.status]}`}>
+                    <i />
+                    {asset.status}
+                  </span>
+                </div>
+                <p>{asset.name}</p>
+                {chips.length > 0 && (
+                  <ul className="asv-chips">
+                    {chips.map(chip => (
+                      <li key={chip.key}>
+                        {chip.icon}
+                        {chip.label}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              <p>
-                {asset.code} · Serial / Service Tag: {asset.serial || 'Chưa cập nhật'}
-              </p>
+              <div className="asv-actions">
+                <button className="btn secondary" onClick={onEdit}>
+                  <Pencil size={15} />
+                  Sửa
+                </button>
+                <button className="btn primary" onClick={onAssign}>
+                  <UserPlus size={16} />
+                  Xử lý tài sản
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="detail-actions">
-            <button className="btn primary" onClick={onAssign}>
-              <UserPlus size={17} />
-              Xử lý tài sản
-            </button>
-            <button className="btn secondary" onClick={onBarcode}>
-              <QrCode size={17} />
-              In Barcode / QR
-            </button>
-            <button className="btn secondary" onClick={onEdit}>
-              <Pencil size={16} />
-              Chỉnh sửa
-            </button>
-          </div>
-          <div className="detail-tabs">
-            <button className={tab === 'Thông tin' ? 'active' : ''} onClick={() => setTab('Thông tin')}>
-              Thông tin tài sản
-            </button>
-            <button className={tab === 'Lịch sử' ? 'active' : ''} onClick={() => setTab('Lịch sử')}>
-              Lịch sử tài sản <span>{history.length}</span>
-            </button>
-          </div>
-          {tab === 'Thông tin' && (
-            <div className="detail-content asset-facts">
-              <section>
-                <h3>Định danh</h3>
-                <dl>
-                  <div>
-                    <dt>Mã tài sản</dt>
-                    <dd>{asset.code}</dd>
-                  </div>
-                  <div>
-                    <dt>Mã Barcode / QR</dt>
-                    <dd>{asset.barcode || asset.code}</dd>
-                  </div>
-                  <div>
-                    <dt>Serial / Service Tag</dt>
-                    <dd className={asset.serial ? '' : 'not-set'}>{asset.serial || 'Chưa cập nhật'}</dd>
-                  </div>
-                  <div>
-                    <dt>Nhóm tài sản</dt>
-                    <dd>{asset.category}</dd>
-                  </div>
-                </dl>
-              </section>
-              <section>
-                <h3>Mua sắm và tình trạng</h3>
-                <dl>
-                  <div>
-                    <dt>Ngày mua</dt>
-                    <dd>{new Date(asset.purchaseDate).toLocaleDateString('vi-VN')}</dd>
-                  </div>
-                  <div>
-                    <dt>Nguyên giá</dt>
-                    <dd>{money(asset.purchaseCost)}</dd>
-                  </div>
-                  <div>
-                    <dt>Trạng thái</dt>
-                    <dd>{asset.status}</dd>
-                  </div>
-                  <div>
-                    <dt>Tình trạng bàn giao</dt>
-                    <dd>{asset.condition || 'Tốt'}</dd>
-                  </div>
-                </dl>
-              </section>
+            <div className="asv-tabs" role="tablist">
+              {tabs.map(item => (
+                <button
+                  key={item.id}
+                  role="tab"
+                  aria-selected={tab === item.id}
+                  className={tab === item.id ? 'active' : ''}
+                  onClick={() => setTab(item.id)}
+                >
+                  {item.label}
+                  {item.count !== undefined && <span>{item.count}</span>}
+                </button>
+              ))}
             </div>
-          )}
-          {tab === 'Lịch sử' && (
-            <div className="detail-history">
-              {history.length ? (
-                history.map(t => (
-                  <div key={t.id}>
-                    <span
-                      className={`transaction-icon ${t.type === 'Cấp phát' ? 'purple' : t.type === 'Thu hồi' ? 'orange' : t.type === 'Nhập kho' ? 'green' : 'blue'}`}
-                    >
-                      <History size={16} />
-                    </span>
+          </section>
+
+          {tab === 'overview' && (
+            <>
+              <section className="asv-kpis">
+                <article className="card">
+                  <span className="asv-kpi-icon blue">
+                    <MapPin size={18} />
+                  </span>
+                  <div>
+                    <small>Vị trí hiện tại</small>
+                    <b>{asset.location || 'Chưa xác định'}</b>
+                    <em>{asset.warehouse ? `Kho: ${asset.warehouse}` : asset.department || '—'}</em>
+                    {primaryNetwork && (
+                      <button type="button" className="text-link" onClick={() => onNavigate('Thiết bị mạng')}>
+                        <Network size={13} />
+                        <span>Xem giám sát mạng</span>
+                      </button>
+                    )}
+                  </div>
+                </article>
+                <article className="card">
+                  <span className="asv-kpi-icon purple">
+                    <UserRound size={18} />
+                  </span>
+                  <div>
+                    <small>Người sử dụng</small>
+                    {custodian ? (
+                      <>
+                        <b>{asset.assignedTo}</b>
+                        <em>{overview?.custodian?.jobTitle || asset.department || '—'}</em>
+                        {(overview?.custodian?.email || asset.recipientEmail) && (
+                          <a
+                            className="text-link"
+                            href={`mailto:${overview?.custodian?.email || asset.recipientEmail}`}
+                          >
+                            <Mail size={13} />
+                            <span>{overview?.custodian?.email || asset.recipientEmail}</span>
+                          </a>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <b>Chưa gán</b>
+                        <em>Đang lưu kho, sẵn sàng cấp phát</em>
+                      </>
+                    )}
+                  </div>
+                </article>
+                <article className="card">
+                  <span className="asv-kpi-icon green">
+                    <CalendarDays size={18} />
+                  </span>
+                  <div>
+                    <small>Ngày mua</small>
+                    <b>{dayLabel(asset.purchaseDate)}</b>
+                    <em className={`asv-tone ${warrantyTone[overview?.warranty.state || 'UNKNOWN']}`}>
+                      {overview?.warranty.label || 'Chưa khai bảo hành'}
+                    </em>
+                  </div>
+                </article>
+                <article className="card">
+                  <span className="asv-kpi-icon amber">
+                    <CircleDollarSign size={18} />
+                  </span>
+                  <div>
+                    <small>Tổng chi phí sở hữu</small>
+                    <b>{money(overview?.cost.total ?? asset.purchaseCost)}</b>
+                    <em>
+                      {overview && overview.cost.maintenance > 0
+                        ? `Nguyên giá + ${money(overview.cost.maintenance)} bảo trì`
+                        : 'Chưa phát sinh chi phí bảo trì'}
+                    </em>
+                  </div>
+                </article>
+              </section>
+
+              <div className="asv-two">
+                <section className="card asv-panel">
+                  <h2>Thông tin chung</h2>
+                  <dl className="asv-list">
                     <div>
-                      <b>{t.type}</b>
-                      <p>
-                        {t.from} <ChevronRight size={11} /> {t.to}
-                      </p>
-                      <small>
-                        {new Date(t.date).toLocaleString('vi-VN')} · {t.performedBy}
-                        {t.condition ? ` · Tình trạng: ${t.condition}` : ''}
-                      </small>
-                      <em>{t.note}</em>
+                      <dt>Mã tài sản</dt>
+                      <dd>
+                        {asset.code}
+                        {copyButton('code', asset.code)}
+                      </dd>
                     </div>
-                  </div>
-                ))
+                    <div>
+                      <dt>Mã Barcode / QR</dt>
+                      <dd>
+                        {asset.barcode || asset.code}
+                        {copyButton('barcode', asset.barcode || asset.code)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Serial / Service Tag</dt>
+                      <dd className={asset.serial ? '' : 'not-set'}>
+                        {asset.serial || 'Chưa cập nhật'}
+                        {copyButton('serial', asset.serial)}
+                      </dd>
+                    </div>
+                    {overview?.systemUuid && (
+                      <div>
+                        <dt>System UUID</dt>
+                        <dd>
+                          <span className="asv-mono">{overview.systemUuid}</span>
+                          {copyButton('uuid', overview.systemUuid)}
+                        </dd>
+                      </div>
+                    )}
+                    <div>
+                      <dt>Nhóm tài sản</dt>
+                      <dd>{asset.category}</dd>
+                    </div>
+                    <div>
+                      <dt>Trạng thái</dt>
+                      <dd>
+                        <span className={`status ${statusClass[asset.status]}`}>
+                          <i />
+                          {asset.status}
+                        </span>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Tình trạng</dt>
+                      <dd>{asset.condition || 'Tốt'}</dd>
+                    </div>
+                    <div>
+                      <dt>Phòng ban</dt>
+                      <dd>{asset.department || '—'}</dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <section className="card asv-panel">
+                  <h2>Mua sắm và bảo hành</h2>
+                  <dl className="asv-list">
+                    <div>
+                      <dt>Ngày mua</dt>
+                      <dd>{dayLabel(asset.purchaseDate)}</dd>
+                    </div>
+                    <div>
+                      <dt>Nguyên giá</dt>
+                      <dd>{money(asset.purchaseCost)}</dd>
+                    </div>
+                    <div>
+                      <dt>Tuổi tài sản</dt>
+                      <dd className={overview?.age ? '' : 'not-set'}>{overview?.age || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt>Thời hạn bảo hành</dt>
+                      <dd className={overview?.warrantyMonths ? '' : 'not-set'}>
+                        {overview?.warrantyMonths ? `${overview.warrantyMonths} tháng` : 'Chưa cập nhật'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Bảo hành đến</dt>
+                      <dd className={overview?.warranty.expiry ? '' : 'not-set'}>
+                        {overview?.warranty.expiry ? dayLabel(overview.warranty.expiry) : 'Chưa cập nhật'}
+                        {overview?.warranty.expiry && (
+                          <span className={`asv-badge ${warrantyTone[overview.warranty.state]}`}>
+                            {overview.warranty.state === 'EXPIRED'
+                              ? 'Hết hạn'
+                              : overview.warranty.label.replace(' bảo hành', '')}
+                          </span>
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Chi phí bảo trì</dt>
+                      <dd>
+                        {overview ? money(overview.cost.maintenance) : '—'}
+                        {overview && overview.cost.costedJobs > 0 && (
+                          <span className="asv-sub">{overview.cost.costedJobs} phiếu</span>
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Ngày nhập hệ thống</dt>
+                      <dd>{dayLabel(overview?.createdAt)}</dd>
+                    </div>
+                    <div>
+                      <dt>Cập nhật cuối</dt>
+                      <dd>{overview?.updatedAt ? new Date(overview.updatedAt).toLocaleString('vi-VN') : '—'}</dd>
+                    </div>
+                  </dl>
+                </section>
+              </div>
+
+              <section className="card asv-panel">
+                <div className="asv-panel-head">
+                  <h2>
+                    Cấu hình kỹ thuật
+                    <span className="asset-spec-count">
+                      {filledTechnical}/{technical.length}
+                    </span>
+                  </h2>
+                  {filledTechnical < technical.length && (
+                    <button type="button" className="text-link" onClick={onEdit}>
+                      Bổ sung cấu hình
+                    </button>
+                  )}
+                </div>
+                <div className="asv-two-lists">
+                  {[technical.slice(0, 5), technical.slice(5)].map((column, index) => (
+                    <dl className="asv-list" key={index}>
+                      {column.map(row => (
+                        <div key={row.label}>
+                          <dt>{row.label}</dt>
+                          <dd className={row.value ? '' : 'not-set'}>
+                            {row.tone ? (
+                              <span className={`netmon-status ${row.tone}`}>{row.value}</span>
+                            ) : (
+                              row.value || 'Chưa cập nhật'
+                            )}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ))}
+                </div>
+              </section>
+
+              <section className="card asv-panel asv-notes">
+                <h2>Ghi chú</h2>
+                <textarea
+                  value={notes}
+                  maxLength={5000}
+                  disabled={env.demoMode || !asset.apiId}
+                  onChange={event => {
+                    setNotes(event.target.value)
+                    setNotesState('idle')
+                  }}
+                  placeholder="Thêm ghi chú về tài sản: tình trạng, lịch sử sửa chữa, lưu ý khi bàn giao…"
+                />
+                <div className="asv-notes-foot">
+                  <small>
+                    {notesState === 'saved'
+                      ? 'Đã lưu ghi chú'
+                      : notesState === 'error'
+                        ? 'Không lưu được ghi chú, thử lại'
+                        : `${notes.length}/5000 ký tự`}
+                  </small>
+                  <button
+                    className="btn primary"
+                    disabled={notesState === 'saving' || notes.trim() === (overview?.notes || '').trim()}
+                    onClick={() => void saveNotes()}
+                  >
+                    <Save size={15} />
+                    {notesState === 'saving' ? 'Đang lưu…' : 'Lưu'}
+                  </button>
+                </div>
+              </section>
+            </>
+          )}
+
+          {tab === 'history' && (
+            <section className="card asv-panel">
+              <h2>Lịch sử tài sản</h2>
+              <div className="detail-history">
+                {history.length ? (
+                  history.map(t => (
+                    <div key={t.id}>
+                      <span className={`transaction-icon ${transactionTone(t.type)}`}>
+                        <History size={16} />
+                      </span>
+                      <div>
+                        <b>{t.type}</b>
+                        <p>
+                          {t.from} <ChevronRight size={11} /> {t.to}
+                        </p>
+                        <small>
+                          {new Date(t.date).toLocaleString('vi-VN')} · {t.performedBy}
+                          {t.condition ? ` · Tình trạng: ${t.condition}` : ''}
+                        </small>
+                        {t.note && <em>{readableNote(t.note)}</em>}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="asv-empty">Chưa phát sinh giao dịch nào với tài sản này.</p>
+                )}
+              </div>
+            </section>
+          )}
+
+          {tab === 'maintenance' && (
+            <section className="card asv-panel">
+              <div className="asv-panel-head">
+                <h2>Bảo trì và sự cố</h2>
+                <button type="button" className="text-link" onClick={() => onNavigate('Bảo trì & Sự cố')}>
+                  Mở phân hệ Bảo trì & Sự cố
+                </button>
+              </div>
+              {!overview ? (
+                <p className="asv-empty">Đang tải…</p>
+              ) : overview.maintenance.length + overview.incidents.length === 0 ? (
+                <p className="asv-empty">Tài sản này chưa có phiếu bảo trì hay hồ sơ sự cố nào.</p>
               ) : (
-                <div className="empty">
-                  <History size={28} />
-                  <h3>Chưa có giao dịch</h3>
+                <table className="asv-table">
+                  <thead>
+                    <tr>
+                      <th>Loại</th>
+                      <th>Mã</th>
+                      <th>Nội dung</th>
+                      <th>Ngày</th>
+                      <th>Chi phí</th>
+                      <th>Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {overview.maintenance.map(job => (
+                      <tr key={job.id}>
+                        <td>Bảo trì</td>
+                        <td className="asv-mono">{job.maintenanceNo}</td>
+                        <td>{job.issue}</td>
+                        <td>{dayLabel(job.openedAt)}</td>
+                        <td>{job.cost === null ? '—' : money(job.cost)}</td>
+                        <td>{maintenanceStatusLabels[job.status] || job.status}</td>
+                      </tr>
+                    ))}
+                    {overview.incidents.map(incident => (
+                      <tr key={incident.id}>
+                        <td>Sự cố · {incident.priority}</td>
+                        <td className="asv-mono">{incident.incidentNo}</td>
+                        <td>{incident.title}</td>
+                        <td>{dayLabel(incident.reportedAt)}</td>
+                        <td>—</td>
+                        <td>{incidentStatusLabels[incident.status] || incident.status}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+          )}
+
+          {tab === 'related' && (
+            <section className="card asv-panel">
+              <h2>Liên quan</h2>
+              {!overview ? (
+                <p className="asv-empty">Đang tải…</p>
+              ) : overview.counts.related === 0 ? (
+                <p className="asv-empty">Chưa có license, thiết bị mạng hay rủi ro nào gắn với tài sản này.</p>
+              ) : (
+                <div className="asv-related">
+                  {overview.licences.length > 0 && (
+                    <div>
+                      <h3>
+                        <KeyRound size={15} />
+                        License đang cấp
+                      </h3>
+                      <ul>
+                        {overview.licences.map(item => (
+                          <li key={item.entitlement.code}>
+                            <b>
+                              {item.entitlement.code} · {item.entitlement.name}
+                            </b>
+                            <small>
+                              {item.quantity} seat · hết hạn {dayLabel(item.entitlement.expiryDate)}
+                            </small>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {overview.network.length > 0 && (
+                    <div>
+                      <h3>
+                        <Network size={15} />
+                        Thiết bị mạng
+                      </h3>
+                      <ul>
+                        {overview.network.map(device => (
+                          <li key={device.ipAddress}>
+                            <b>
+                              {device.ipAddress}
+                              <span className={`netmon-status ${device.status.toLowerCase()}`}>
+                                {networkStatusLabels[device.status]}
+                              </span>
+                            </b>
+                            <small>
+                              {device.subnet ? `${device.subnet.name} · ${device.subnet.cidr}` : ''}
+                              {device.responseTimeMs !== null && device.responseTimeMs !== undefined
+                                ? ` · ${device.responseTimeMs} ms`
+                                : ''}
+                            </small>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {overview.risks.length > 0 && (
+                    <div>
+                      <h3>
+                        <ShieldAlert size={15} />
+                        Rủi ro CNTT
+                      </h3>
+                      <ul>
+                        {overview.risks.map(risk => (
+                          <li key={risk.riskNo}>
+                            <b>
+                              {risk.riskNo} · {risk.title}
+                            </b>
+                            <small>
+                              Mức {riskLevelLabels[risk.residualLevel || risk.inherentLevel] || risk.inherentLevel}
+                            </small>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
+            </section>
           )}
-          <div className="detail-attachments">
-            <h3>Hồ sơ đính kèm</h3>
-            <button
-              className="attachment-row"
-              disabled={!handoverRecords.length}
-              onClick={() => handoverRecords[0] && printHandover(asset, handoverRecords[0], emailSettings, branding)}
-            >
-              <FileText size={16} />
-              <span>
-                <b>Biên bản bàn giao A4</b>
-                <small>
-                  {handoverRecords.length ? 'Bấm để xem và in biên bản gần nhất' : 'Chưa phát sinh nghiệp vụ bàn giao'}
-                </small>
-              </span>
-              <em>{handoverRecords.length} hồ sơ</em>
-            </button>
-            <div>
-              <FileSpreadsheet size={16} />
-              <span>Hóa đơn / Chứng từ mua hàng</span>
-              <b>Chưa cập nhật</b>
-            </div>
-          </div>
-        </section>
+        </div>
 
-        <aside className="asset-detail-aside">
-          <section className="card asset-photo-card">
+        <aside className="asv-aside">
+          <section className="card asv-card">
+            <div className="asv-card-head">
+              <h2>Hình ảnh tài sản</h2>
+              {showImage && (
+                <button type="button" className="icon-btn" onClick={() => setZoomed(true)} title="Phóng to">
+                  <Maximize2 size={15} />
+                </button>
+              )}
+            </div>
             {showImage ? (
               <button type="button" className="asset-photo" onClick={() => setZoomed(true)} title="Bấm để phóng to">
                 <img src={asset.imageDataUrl} alt={asset.name} onError={() => setFailedImage(asset.imageDataUrl)} />
-                <span className="asset-photo-zoom">
-                  <Search size={14} />
-                  Phóng to
-                </span>
               </button>
             ) : (
               <div className="asset-photo empty">
-                {iconFor(asset.icon, 46)}
+                {iconFor(asset.icon, 42)}
                 <b>Chưa có ảnh tài sản</b>
-                <button type="button" className="btn secondary" onClick={onEdit}>
-                  <ImageIcon size={15} />
-                  Thêm ảnh
-                </button>
               </div>
             )}
+            <button type="button" className="btn secondary asv-block" onClick={onEdit}>
+              <ImageIcon size={15} />
+              {showImage ? 'Đổi ảnh' : 'Thêm ảnh'}
+            </button>
           </section>
 
-          <section className="card asset-aside-card">
-            <h3>{custodian ? 'Người sử dụng' : 'Đang lưu kho'}</h3>
-            {custodian ? (
-              <div className="asset-owner">
-                <span className="avatar">{initials(asset.assignedTo)}</span>
-                <div>
-                  <b>{asset.assignedTo}</b>
-                  <small>{asset.department || '—'}</small>
-                  {asset.recipientEmail && <small>{asset.recipientEmail}</small>}
-                  {asset.assignmentType && <em className="asset-owner-type">{asset.assignmentType}</em>}
-                </div>
-              </div>
-            ) : (
-              <div className="asset-owner stock">
-                <span className="avatar">
-                  <Warehouse size={18} />
-                </span>
-                <div>
-                  <b>{asset.warehouse || asset.location || 'Chưa xác định kho'}</b>
-                  <small>Chưa gán người sử dụng</small>
-                </div>
-              </div>
-            )}
-            <dl className="asset-aside-facts">
+          <section className="card asv-card">
+            <h2>Mã QR / Barcode</h2>
+            <div className="asv-qr">
+              {qrUrl ? <img src={qrUrl} alt={`QR ${asset.code}`} /> : <QrCode size={48} />}
               <div>
-                <dt>Vị trí</dt>
+                <b>{asset.code}</b>
+                <small>Quét mã để tra cứu tài sản trong hệ thống</small>
+              </div>
+            </div>
+            <div className="asv-qr-actions">
+              <button type="button" className="btn secondary" onClick={downloadQr} disabled={!qrUrl}>
+                <Download size={15} />
+                Tải mã QR
+              </button>
+              <button type="button" className="btn secondary" onClick={onBarcode}>
+                <Printer size={15} />
+                In tem
+              </button>
+            </div>
+          </section>
+
+          <section className="card asv-card">
+            <h2>{custodian ? 'Vị trí sử dụng' : 'Đang lưu kho'}</h2>
+            <dl className="asv-list compact">
+              <div>
+                <dt>
+                  <MapPin size={14} />
+                  Vị trí
+                </dt>
                 <dd>{asset.location || '—'}</dd>
               </div>
+              {asset.warehouse && (
+                <div>
+                  <dt>
+                    <Warehouse size={14} />
+                    Kho
+                  </dt>
+                  <dd>{asset.warehouse}</dd>
+                </div>
+              )}
               <div>
-                <dt>Phòng ban</dt>
+                <dt>
+                  <Building2 size={14} />
+                  Phòng ban
+                </dt>
                 <dd>{asset.department || '—'}</dd>
               </div>
               {custodian && (
                 <div>
-                  <dt>Ngày dự kiến trả</dt>
+                  <dt>
+                    <CalendarDays size={14} />
+                    Hạn trả
+                  </dt>
                   <dd>{dueLabel(asset.dueDate)}</dd>
                 </div>
               )}
             </dl>
           </section>
 
-          <section className="card asset-aside-card">
-            <h3>
-              Cấu hình kỹ thuật
-              <span className="asset-spec-count">
-                {completeness.filled}/{completeness.total}
-              </span>
-            </h3>
-            <dl className="asset-spec-list">
-              {specs.map(row => (
-                <div key={row.label}>
-                  <dt>{row.label}</dt>
-                  <dd className={row.value ? '' : 'not-set'}>{row.value || 'Chưa cập nhật'}</dd>
-                </div>
-              ))}
-            </dl>
-            {completeness.filled < completeness.total && (
-              <button type="button" className="text-link asset-spec-edit" onClick={onEdit}>
-                Bổ sung cấu hình
+          <section className="card asv-card">
+            <h2>Người liên quan</h2>
+            <div className="asv-people">
+              <div>
+                <small>Người sử dụng</small>
+                {custodian ? (
+                  <div className="asv-person">
+                    <span className="avatar">{initials(asset.assignedTo)}</span>
+                    <div>
+                      <b>{asset.assignedTo}</b>
+                      <em>{overview?.custodian?.jobTitle || asset.department || '—'}</em>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="asv-empty">Chưa gán người sử dụng</p>
+                )}
+              </div>
+              <div>
+                <small>Người quản lý</small>
+                {overview?.manager ? (
+                  <div className="asv-person">
+                    <span className="avatar muted">{initials(overview.manager.fullName)}</span>
+                    <div>
+                      <b>{overview.manager.fullName}</b>
+                      <em>{overview.manager.jobTitle || 'Trưởng phòng'}</em>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="asv-empty">Phòng ban chưa khai báo trưởng phòng</p>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="card asv-card">
+            <h2>Thao tác nhanh</h2>
+            <div className="asv-quick">
+              <button type="button" onClick={onAssign}>
+                <UserPlus size={18} />
+                {custodian ? 'Thu hồi' : 'Cấp phát'}
               </button>
-            )}
+              <button type="button" onClick={onAssign}>
+                <ArrowLeftRight size={18} />
+                Điều chuyển
+              </button>
+              <button type="button" onClick={() => onNavigate('Bảo trì & Sự cố')}>
+                <Wrench size={18} />
+                Bảo trì
+              </button>
+              <button type="button" onClick={onBarcode}>
+                <Printer size={18} />
+                In tem
+              </button>
+              <button
+                type="button"
+                disabled={!handoverRecords.length}
+                onClick={() => handoverRecords[0] && printHandover(asset, handoverRecords[0], emailSettings, branding)}
+                title={handoverRecords.length ? 'In biên bản bàn giao gần nhất' : 'Chưa có nghiệp vụ bàn giao'}
+              >
+                <FileText size={18} />
+                Biên bản
+              </button>
+              <button type="button" className="danger" onClick={() => onNavigate('Thanh lý & Hủy bỏ')}>
+                <ArchiveX size={18} />
+                Thanh lý
+              </button>
+            </div>
           </section>
         </aside>
       </div>
@@ -8041,6 +8583,11 @@ export default function App() {
           setDetailAssetId(undefined)
           setModal(detailAsset)
         }}
+        onNavigate={target => {
+          setDetailAssetId(undefined)
+          setPage(target)
+        }}
+        onRefresh={() => refreshServerData()}
       />
     )
   else if (page === 'Tổng quan')

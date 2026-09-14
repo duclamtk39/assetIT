@@ -76,3 +76,11 @@ test('asset history enriches assignments with the actual receiver for handover r
   assert.equal(result.data[0].assignment?.assignedTo.fullName, 'Vũ Tuấn Anh')
   assert.equal(result.data[0].assignment?.location.name, 'TV - Hà Nội')
 })
+
+test('a return outcome is written to history as Vietnamese, not as the enum', async () => {
+  const { returnOutcomeLabel } = await import('../src/modules/lifecycle/lifecycle.service')
+  assert.equal(returnOutcomeLabel('BROKEN'), 'Hỏng')
+  assert.equal(returnOutcomeLabel('READY'), 'Sẵn sàng')
+  assert.equal(returnOutcomeLabel('MAINTENANCE'), 'Cần bảo trì')
+  assert.equal(returnOutcomeLabel('SOMETHING_NEW'), 'SOMETHING_NEW', 'mã chưa biết vẫn hiện thay vì mất')
+})
