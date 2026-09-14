@@ -57,6 +57,10 @@ export class CreateAssetDto {
   @IsOptional() @IsString() @MaxLength(64) ipAddress?: string
   @IsOptional() @IsString() @MaxLength(64) macAddress?: string
   @IsOptional() @IsString() @MaxLength(5000) notes?: string
+  /** Free text from the form, resolved to a manufacturers row. Sent empty, it clears the link. */
+  @IsOptional() @IsString() @MaxLength(150) manufacturerName?: string
+  /** Free text from the form, resolved to an asset_models row under that manufacturer. */
+  @IsOptional() @IsString() @MaxLength(150) modelName?: string
 }
 
 // Ownership and placement can only change through lifecycle commands. Status is the exception: an

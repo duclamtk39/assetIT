@@ -8,6 +8,7 @@ import {
 import { AssetAssignmentStatus, AssetHistoryAction, Prisma } from '@prisma/client'
 import { PrismaService } from '../../database/prisma.service'
 import { AssetImageStorage, type IncomingImage } from './asset-image.storage'
+import { makerIntent, resolveMaker } from './asset-maker'
 import { CreateAssetDto, ListAssetsQuery, UpdateAssetDto } from './assets.dto'
 
 type Actor = { id: string; role: string; departmentId: string | null }
@@ -167,6 +168,7 @@ export class AssetsService {
         if (!warehouse) throw new BadRequestException('Kho nhập không hợp lệ')
         if (body.locationId && body.locationId !== warehouse.locationId)
           throw new BadRequestException('Vị trí nhập phải thuộc kho đã chọn')
+        const maker = await resolveMaker(tx, makerIntent(body), body.categoryId)
         const asset = await tx.asset.create({
           data: {
             assetTag: body.assetTag.trim(),
@@ -175,8 +177,8 @@ export class AssetsService {
             systemUuid: body.systemUuid?.trim() || null,
             barcode: body.barcode.trim(),
             categoryId: body.categoryId,
-            modelId: body.modelId,
-            manufacturerId: body.manufacturerId,
+            modelId: maker ? maker.modelId : body.modelId,
+            manufacturerId: maker ? maker.manufacturerId : body.manufacturerId,
             statusId: status.id,
             warehouseId: warehouse.id,
             locationId: warehouse.locationId,
@@ -242,7 +244,9 @@ export class AssetsService {
 
   async update(id: string, body: UpdateAssetDto, actor: Actor) {
     const current = await this.get(id, actor)
-    const { statusCode, ...fields } = body
+    // manufacturerName and modelName are not columns; they are resolved to foreign keys below.
+    const { statusCode, manufacturerName, modelName, ...fields } = body
+    const intent = makerIntent({ manufacturerName, modelName })
     const status = statusCode ? await this.resolveStatus(statusCode, actor) : undefined
     const changesStatus = Boolean(status && status.id !== current.statusId)
     const normalized = {
@@ -263,7 +267,8 @@ export class AssetsService {
     }
     try {
       return await this.db.$transaction(async tx => {
-        const asset = await tx.asset.update({ where: { id }, data: normalized, include })
+        const maker = await resolveMaker(tx, intent, body.categoryId || current.categoryId)
+        const asset = await tx.asset.update({ where: { id }, data: { ...normalized, ...(maker || {}) }, include })
         await tx.assetHistory.create({
           data: {
             assetId: id,

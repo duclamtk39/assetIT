@@ -49,3 +49,17 @@ test('the network pages have stable routes of their own', () => {
 test('an unknown path still falls back to the dashboard rather than a blank screen', () => {
   assert.equal(pageForPath('/khong-ton-tai'), 'Tổng quan')
 })
+
+test('an app route that shares a name with a build directory still loads on a hard refresh', async () => {
+  // /assets is both the asset register and Vite's output folder. With `$uri/` in the SPA fallback,
+  // nginx matched the directory, redirected to /assets/ on its own :8080 port and answered 403, so
+  // reloading the most-used page in the product broke. The fallback must not try directories.
+  const { readFile } = await import('node:fs/promises')
+  const conf = await readFile(new URL('../nginx.conf', import.meta.url), 'utf8')
+  const spa = /location \/ \{([^}]*)\}/.exec(conf)
+  assert.ok(spa, 'thiếu location / trong nginx.conf')
+  assert.doesNotMatch(spa[1], /\$uri\//, 'SPA fallback không được thử thư mục')
+  assert.match(spa[1], /try_files \$uri \/index\.html;/)
+  assert.match(conf, /absolute_redirect off;/, 'redirect tuyệt đối sẽ lộ cổng nội bộ 8080')
+  assert.equal(pageForPath('/assets'), 'Sổ tài sản')
+})

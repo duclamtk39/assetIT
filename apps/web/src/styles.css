@@ -16655,3 +16655,236 @@ textarea,
   gap: 5px;
   white-space: nowrap;
 }
+
+/* --- Asset detail: record on the left, what a reader looks for on the right ---------------- */
+.asset-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  gap: 16px;
+  align-items: start;
+}
+/* The card used to be capped at 820px, which is what left the right half of the page empty. */
+.asset-detail-layout > .asset-detail {
+  width: auto;
+  min-width: 0;
+  /* It also carried a full-viewport min-height, which only moved the empty space to the bottom. */
+  min-height: 0;
+}
+.asset-facts dd.not-set,
+.asset-spec-list dd.not-set {
+  color: #98a2b3;
+  font-weight: 400;
+  font-style: italic;
+}
+.asset-detail-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.asset-photo-card {
+  padding: 0;
+  overflow: hidden;
+}
+.asset-photo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 0;
+  padding: 14px;
+  background: #f4f6f9;
+  cursor: zoom-in;
+}
+/* Contain, not cover: a photographed device must show whole, so a cropped corner never hides
+   the model label or a damaged edge someone is trying to check. */
+.asset-photo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.asset-photo-zoom {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  font-size: 11px;
+  color: #fff;
+  background: rgba(16, 24, 40, 0.62);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.asset-photo:hover .asset-photo-zoom,
+.asset-photo:focus-visible .asset-photo-zoom {
+  opacity: 1;
+}
+.asset-photo.empty {
+  cursor: default;
+  gap: 8px;
+  align-content: center;
+  color: #98a2b3;
+  background: #f8fafc;
+}
+.asset-photo.empty b {
+  font-size: 13px;
+  font-weight: 500;
+  color: #667085;
+}
+.asset-aside-card {
+  padding: 14px 16px;
+}
+.asset-aside-card h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #667085;
+}
+.asset-spec-count {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: #2861ad;
+  background: #eaf1fa;
+  padding: 2px 8px;
+}
+.asset-owner {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  padding: 11px 12px;
+  background: #f8fafc;
+  border: 1px solid #e4e7ec;
+}
+.asset-owner .avatar {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+.asset-owner.stock .avatar {
+  background: #eef3f9;
+  color: #2861ad;
+}
+/* A person's name wraps rather than being cut to "Nguyễn T…": it is the one thing on this card that
+   has to be read in full. The email, long and secondary, is the part allowed to truncate. */
+.asset-owner b {
+  display: block;
+  font-size: 14px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.asset-owner small {
+  display: block;
+  font-size: 12px;
+  color: #667085;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.asset-owner-type {
+  display: inline-block;
+  margin-top: 5px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  color: #5e49d6;
+  background: #f0edfc;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.asset-aside-facts,
+.asset-spec-list {
+  margin: 12px 0 0;
+}
+.asset-aside-facts > div,
+.asset-spec-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f2f5;
+}
+.asset-aside-facts > div:last-child,
+.asset-spec-list > div:last-child {
+  border-bottom: 0;
+}
+.asset-aside-facts dt,
+.asset-spec-list dt {
+  font-size: 12px;
+  color: #667085;
+  flex: none;
+}
+.asset-aside-facts dd,
+.asset-spec-list dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1d2939;
+  text-align: right;
+  word-break: break-word;
+}
+.asset-spec-list dd {
+  font-variant-numeric: tabular-nums;
+}
+.asset-spec-edit {
+  margin-top: 8px;
+  font-size: 12px;
+}
+.asset-photo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 48px 24px;
+  background: rgba(16, 24, 40, 0.86);
+  cursor: zoom-out;
+}
+.asset-photo-lightbox img {
+  max-width: min(1100px, 100%);
+  max-height: calc(100vh - 120px);
+  object-fit: contain;
+  background: #fff;
+  cursor: default;
+}
+.asset-photo-lightbox .icon-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+.asset-photo-lightbox p {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  margin: 0;
+  text-align: center;
+  color: #e4e7ec;
+  font-size: 13px;
+}
+@media (max-width: 1180px) {
+  .asset-detail-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Stacked, the photo and the owner lead: they are what someone opening the record came to see. */
+  .asset-detail-aside {
+    order: -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    align-items: start;
+  }
+}

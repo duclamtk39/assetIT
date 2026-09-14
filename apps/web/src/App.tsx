@@ -97,6 +97,7 @@ import type {
 import { useAppRoute } from './hooks/useAppRoute'
 import { pageForPath } from './routing/routes'
 import { navSections } from './routing/navigation'
+import { assetSpecs, dueLabel, hasCustodian, initials, specCompleteness } from './features/assets/asset-detail'
 import { api, ApiError } from './services/api-client'
 import { readApiCollection, type ApiCollectionResponse } from './services/api-response'
 import { env } from './config/env'
@@ -6428,187 +6429,268 @@ function AssetDetail({
   onBarcode: () => void
   onEdit: () => void
 }) {
-  const [tab, setTab] = useState<'Thông tin' | 'Cấu hình' | 'Lịch sử'>('Thông tin')
+  const [tab, setTab] = useState<'Thông tin' | 'Lịch sử'>('Thông tin')
+  // A stored photo can disappear from the volume while the record still points at it. The failure is
+  // keyed to the URL it happened on, so a new upload gets a fresh attempt instead of staying hidden.
+  const [failedImage, setFailedImage] = useState<string>()
+  const [zoomed, setZoomed] = useState(false)
   const history = transactions.filter(t => t.assetId === asset.id)
   const handoverRecords = history.filter(t => ['Cấp phát', 'Cho mượn', 'Thu hồi', 'Điều chuyển'].includes(t.type))
-  const specs = [
-    ['Hãng sản xuất', asset.manufacturer],
-    ['Model', asset.model],
-    ['CPU', asset.cpu],
-    ['RAM', asset.ram],
-    ['Ổ đĩa', asset.storage],
-    ['Hệ điều hành', asset.operatingSystem],
-    ['Địa chỉ IP', asset.ipAddress],
-    ['Địa chỉ MAC', asset.macAddress],
-  ]
+  const specs = assetSpecs(asset)
+  const completeness = specCompleteness(specs)
+  const showImage = Boolean(asset.imageDataUrl) && failedImage !== asset.imageDataUrl
+  const custodian = hasCustodian(asset)
   return (
     <main className="page asset-detail-page">
       <button className="back-link" onClick={onClose}>
         <ChevronLeft size={16} />
         Quay lại danh sách
       </button>
-      <section className="card asset-detail enterprise-detail">
-        <div className="detail-header">
-          <span className={`asset-icon ${asset.imageDataUrl ? 'has-image' : ''}`}>
-            {asset.imageDataUrl ? <img src={asset.imageDataUrl} alt={asset.name} /> : iconFor(asset.icon, 25)}
-          </span>
-          <div>
-            <div className="detail-title">
-              <h2>{asset.name}</h2>
-              <span className={`status ${statusClass[asset.status]}`}>
-                <i />
-                {asset.status}
-              </span>
-            </div>
-            <p>
-              {asset.code} · Serial / Service Tag: {asset.serial || 'Chưa cập nhật'}
-            </p>
-          </div>
-        </div>
-        <div className="detail-actions">
-          <button className="btn primary" onClick={onAssign}>
-            <UserPlus size={17} />
-            Xử lý tài sản
-          </button>
-          <button className="btn secondary" onClick={onBarcode}>
-            <QrCode size={17} />
-            In Barcode / QR
-          </button>
-          <button className="btn secondary" onClick={onEdit}>
-            <Pencil size={16} />
-            Chỉnh sửa
-          </button>
-        </div>
-        <div className="detail-tabs">
-          <button className={tab === 'Thông tin' ? 'active' : ''} onClick={() => setTab('Thông tin')}>
-            Thông tin & sở hữu
-          </button>
-          <button className={tab === 'Cấu hình' ? 'active' : ''} onClick={() => setTab('Cấu hình')}>
-            Cấu hình kỹ thuật
-          </button>
-          <button className={tab === 'Lịch sử' ? 'active' : ''} onClick={() => setTab('Lịch sử')}>
-            Lịch sử tài sản <span>{history.length}</span>
-          </button>
-        </div>
-        {tab === 'Thông tin' && (
-          <div className="detail-content">
-            <section>
-              <h3>Người sử dụng hiện tại</h3>
-              <div className="owner-panel">
-                <span className="avatar">
-                  {asset.assignedTo
-                    .split(' ')
-                    .slice(-2)
-                    .map(x => x[0])
-                    .join('')}
+      <div className="asset-detail-layout">
+        <section className="card asset-detail enterprise-detail">
+          <div className="detail-header">
+            <span className={`asset-icon ${showImage ? 'has-image' : ''}`}>
+              {showImage ? <img src={asset.imageDataUrl} alt={asset.name} /> : iconFor(asset.icon, 25)}
+            </span>
+            <div>
+              <div className="detail-title">
+                <h2>{asset.name}</h2>
+                <span className={`status ${statusClass[asset.status]}`}>
+                  <i />
+                  {asset.status}
                 </span>
-                <div>
-                  <b>{asset.assignedTo}</b>
-                  <small>{asset.department}</small>
-                </div>
               </div>
-              <dl>
-                <div>
-                  <dt>Vị trí</dt>
-                  <dd>{asset.location}</dd>
-                </div>
-                <div>
-                  <dt>Ngày dự kiến trả</dt>
-                  <dd>{asset.dueDate ? new Date(asset.dueDate).toLocaleDateString('vi-VN') : 'Không giới hạn'}</dd>
-                </div>
-                <div>
-                  <dt>Tình trạng bàn giao</dt>
-                  <dd>{asset.condition || 'Tốt'}</dd>
-                </div>
-              </dl>
-            </section>
-            <section>
-              <h3>Thông tin tài sản</h3>
-              <dl>
-                <div>
-                  <dt>Nhóm tài sản</dt>
-                  <dd>{asset.category}</dd>
-                </div>
-                <div>
-                  <dt>Ngày mua</dt>
-                  <dd>{new Date(asset.purchaseDate).toLocaleDateString('vi-VN')}</dd>
-                </div>
-                <div>
-                  <dt>Nguyên giá</dt>
-                  <dd>{money(asset.purchaseCost)}</dd>
-                </div>
-                <div>
-                  <dt>Mã Barcode / QR</dt>
-                  <dd>{asset.code}</dd>
-                </div>
-              </dl>
-            </section>
+              <p>
+                {asset.code} · Serial / Service Tag: {asset.serial || 'Chưa cập nhật'}
+              </p>
+            </div>
           </div>
-        )}
-        {tab === 'Cấu hình' && (
-          <div className="specs-panel">
-            {specs.map(([label, value]) => (
-              <div key={label}>
-                <span>{label}</span>
-                <b className={value ? '' : 'not-set'}>{value || 'Chưa cập nhật'}</b>
-              </div>
-            ))}
+          <div className="detail-actions">
+            <button className="btn primary" onClick={onAssign}>
+              <UserPlus size={17} />
+              Xử lý tài sản
+            </button>
+            <button className="btn secondary" onClick={onBarcode}>
+              <QrCode size={17} />
+              In Barcode / QR
+            </button>
+            <button className="btn secondary" onClick={onEdit}>
+              <Pencil size={16} />
+              Chỉnh sửa
+            </button>
           </div>
-        )}
-        {tab === 'Lịch sử' && (
-          <div className="detail-history">
-            {history.length ? (
-              history.map(t => (
-                <div key={t.id}>
-                  <span
-                    className={`transaction-icon ${t.type === 'Cấp phát' ? 'purple' : t.type === 'Thu hồi' ? 'orange' : t.type === 'Nhập kho' ? 'green' : 'blue'}`}
-                  >
-                    <History size={16} />
-                  </span>
+          <div className="detail-tabs">
+            <button className={tab === 'Thông tin' ? 'active' : ''} onClick={() => setTab('Thông tin')}>
+              Thông tin tài sản
+            </button>
+            <button className={tab === 'Lịch sử' ? 'active' : ''} onClick={() => setTab('Lịch sử')}>
+              Lịch sử tài sản <span>{history.length}</span>
+            </button>
+          </div>
+          {tab === 'Thông tin' && (
+            <div className="detail-content asset-facts">
+              <section>
+                <h3>Định danh</h3>
+                <dl>
                   <div>
-                    <b>{t.type}</b>
-                    <p>
-                      {t.from} <ChevronRight size={11} /> {t.to}
-                    </p>
-                    <small>
-                      {new Date(t.date).toLocaleString('vi-VN')} · {t.performedBy}
-                      {t.condition ? ` · Tình trạng: ${t.condition}` : ''}
-                    </small>
-                    <em>{t.note}</em>
+                    <dt>Mã tài sản</dt>
+                    <dd>{asset.code}</dd>
                   </div>
+                  <div>
+                    <dt>Mã Barcode / QR</dt>
+                    <dd>{asset.barcode || asset.code}</dd>
+                  </div>
+                  <div>
+                    <dt>Serial / Service Tag</dt>
+                    <dd className={asset.serial ? '' : 'not-set'}>{asset.serial || 'Chưa cập nhật'}</dd>
+                  </div>
+                  <div>
+                    <dt>Nhóm tài sản</dt>
+                    <dd>{asset.category}</dd>
+                  </div>
+                </dl>
+              </section>
+              <section>
+                <h3>Mua sắm và tình trạng</h3>
+                <dl>
+                  <div>
+                    <dt>Ngày mua</dt>
+                    <dd>{new Date(asset.purchaseDate).toLocaleDateString('vi-VN')}</dd>
+                  </div>
+                  <div>
+                    <dt>Nguyên giá</dt>
+                    <dd>{money(asset.purchaseCost)}</dd>
+                  </div>
+                  <div>
+                    <dt>Trạng thái</dt>
+                    <dd>{asset.status}</dd>
+                  </div>
+                  <div>
+                    <dt>Tình trạng bàn giao</dt>
+                    <dd>{asset.condition || 'Tốt'}</dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
+          )}
+          {tab === 'Lịch sử' && (
+            <div className="detail-history">
+              {history.length ? (
+                history.map(t => (
+                  <div key={t.id}>
+                    <span
+                      className={`transaction-icon ${t.type === 'Cấp phát' ? 'purple' : t.type === 'Thu hồi' ? 'orange' : t.type === 'Nhập kho' ? 'green' : 'blue'}`}
+                    >
+                      <History size={16} />
+                    </span>
+                    <div>
+                      <b>{t.type}</b>
+                      <p>
+                        {t.from} <ChevronRight size={11} /> {t.to}
+                      </p>
+                      <small>
+                        {new Date(t.date).toLocaleString('vi-VN')} · {t.performedBy}
+                        {t.condition ? ` · Tình trạng: ${t.condition}` : ''}
+                      </small>
+                      <em>{t.note}</em>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty">
+                  <History size={28} />
+                  <h3>Chưa có giao dịch</h3>
                 </div>
-              ))
+              )}
+            </div>
+          )}
+          <div className="detail-attachments">
+            <h3>Hồ sơ đính kèm</h3>
+            <button
+              className="attachment-row"
+              disabled={!handoverRecords.length}
+              onClick={() => handoverRecords[0] && printHandover(asset, handoverRecords[0], emailSettings, branding)}
+            >
+              <FileText size={16} />
+              <span>
+                <b>Biên bản bàn giao A4</b>
+                <small>
+                  {handoverRecords.length ? 'Bấm để xem và in biên bản gần nhất' : 'Chưa phát sinh nghiệp vụ bàn giao'}
+                </small>
+              </span>
+              <em>{handoverRecords.length} hồ sơ</em>
+            </button>
+            <div>
+              <FileSpreadsheet size={16} />
+              <span>Hóa đơn / Chứng từ mua hàng</span>
+              <b>Chưa cập nhật</b>
+            </div>
+          </div>
+        </section>
+
+        <aside className="asset-detail-aside">
+          <section className="card asset-photo-card">
+            {showImage ? (
+              <button type="button" className="asset-photo" onClick={() => setZoomed(true)} title="Bấm để phóng to">
+                <img src={asset.imageDataUrl} alt={asset.name} onError={() => setFailedImage(asset.imageDataUrl)} />
+                <span className="asset-photo-zoom">
+                  <Search size={14} />
+                  Phóng to
+                </span>
+              </button>
             ) : (
-              <div className="empty">
-                <History size={28} />
-                <h3>Chưa có giao dịch</h3>
+              <div className="asset-photo empty">
+                {iconFor(asset.icon, 46)}
+                <b>Chưa có ảnh tài sản</b>
+                <button type="button" className="btn secondary" onClick={onEdit}>
+                  <ImageIcon size={15} />
+                  Thêm ảnh
+                </button>
               </div>
             )}
-          </div>
-        )}
-        <div className="detail-attachments">
-          <h3>Hồ sơ đính kèm</h3>
-          <button
-            className="attachment-row"
-            disabled={!handoverRecords.length}
-            onClick={() => handoverRecords[0] && printHandover(asset, handoverRecords[0], emailSettings, branding)}
-          >
-            <FileText size={16} />
-            <span>
-              <b>Biên bản bàn giao A4</b>
-              <small>
-                {handoverRecords.length ? 'Bấm để xem và in biên bản gần nhất' : 'Chưa phát sinh nghiệp vụ bàn giao'}
-              </small>
-            </span>
-            <em>{handoverRecords.length} hồ sơ</em>
+          </section>
+
+          <section className="card asset-aside-card">
+            <h3>{custodian ? 'Người sử dụng' : 'Đang lưu kho'}</h3>
+            {custodian ? (
+              <div className="asset-owner">
+                <span className="avatar">{initials(asset.assignedTo)}</span>
+                <div>
+                  <b>{asset.assignedTo}</b>
+                  <small>{asset.department || '—'}</small>
+                  {asset.recipientEmail && <small>{asset.recipientEmail}</small>}
+                  {asset.assignmentType && <em className="asset-owner-type">{asset.assignmentType}</em>}
+                </div>
+              </div>
+            ) : (
+              <div className="asset-owner stock">
+                <span className="avatar">
+                  <Warehouse size={18} />
+                </span>
+                <div>
+                  <b>{asset.warehouse || asset.location || 'Chưa xác định kho'}</b>
+                  <small>Chưa gán người sử dụng</small>
+                </div>
+              </div>
+            )}
+            <dl className="asset-aside-facts">
+              <div>
+                <dt>Vị trí</dt>
+                <dd>{asset.location || '—'}</dd>
+              </div>
+              <div>
+                <dt>Phòng ban</dt>
+                <dd>{asset.department || '—'}</dd>
+              </div>
+              {custodian && (
+                <div>
+                  <dt>Ngày dự kiến trả</dt>
+                  <dd>{dueLabel(asset.dueDate)}</dd>
+                </div>
+              )}
+            </dl>
+          </section>
+
+          <section className="card asset-aside-card">
+            <h3>
+              Cấu hình kỹ thuật
+              <span className="asset-spec-count">
+                {completeness.filled}/{completeness.total}
+              </span>
+            </h3>
+            <dl className="asset-spec-list">
+              {specs.map(row => (
+                <div key={row.label}>
+                  <dt>{row.label}</dt>
+                  <dd className={row.value ? '' : 'not-set'}>{row.value || 'Chưa cập nhật'}</dd>
+                </div>
+              ))}
+            </dl>
+            {completeness.filled < completeness.total && (
+              <button type="button" className="text-link asset-spec-edit" onClick={onEdit}>
+                Bổ sung cấu hình
+              </button>
+            )}
+          </section>
+        </aside>
+      </div>
+
+      {zoomed && showImage && (
+        <div
+          className="asset-photo-lightbox"
+          onMouseDown={() => setZoomed(false)}
+          role="dialog"
+          aria-label={asset.name}
+        >
+          <img src={asset.imageDataUrl} alt={asset.name} onMouseDown={event => event.stopPropagation()} />
+          <button type="button" className="icon-btn" onClick={() => setZoomed(false)} aria-label="Đóng">
+            <X size={20} />
           </button>
-          <div>
-            <FileSpreadsheet size={16} />
-            <span>Hóa đơn / Chứng từ mua hàng</span>
-            <b>Chưa cập nhật</b>
-          </div>
+          <p>
+            {asset.code} · {asset.name}
+          </p>
         </div>
-      </section>
+      )}
     </main>
   )
 }
@@ -7541,6 +7623,11 @@ export default function App() {
         operatingSystem: secured.operatingSystem || undefined,
         ipAddress: secured.ipAddress || undefined,
         macAddress: secured.macAddress || undefined,
+        // Sent as names and resolved to manufacturer and model rows on the server. They used to be
+        // left out of this payload entirely, so anything typed into those two fields was discarded.
+        // An empty string is sent rather than undefined so clearing the field actually clears it.
+        manufacturerName: secured.manufacturer?.trim() ?? '',
+        modelName: secured.model?.trim() ?? '',
       }
       let assetId = secured.apiId
       if (secured.apiId)
