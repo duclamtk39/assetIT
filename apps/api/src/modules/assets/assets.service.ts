@@ -190,7 +190,15 @@ export class AssetsService {
       }),
       this.db.maintenanceRecord.findMany({
         where: { assetId: id },
-        select: { id: true, maintenanceNo: true, status: true, issue: true, cost: true, openedAt: true, completedAt: true },
+        select: {
+          id: true,
+          maintenanceNo: true,
+          status: true,
+          issue: true,
+          cost: true,
+          openedAt: true,
+          completedAt: true,
+        },
         orderBy: { openedAt: 'desc' },
       }),
       this.db.incident.findMany({
@@ -225,7 +233,9 @@ export class AssetsService {
       }),
       this.db.riskAsset.findMany({
         where: { assetId: id },
-        select: { risk: { select: { riskNo: true, title: true, inherentLevel: true, residualLevel: true, status: true } } },
+        select: {
+          risk: { select: { riskNo: true, title: true, inherentLevel: true, residualLevel: true, status: true } },
+        },
       }),
       this.db.assetHistory.count({ where: { assetId: id } }),
     ])
@@ -259,7 +269,8 @@ export class AssetsService {
           }
         : null,
       manager,
-      hostname: network.find(device => device.hostname)?.hostname || agents.find(agent => agent.hostname)?.hostname || null,
+      hostname:
+        network.find(device => device.hostname)?.hostname || agents.find(agent => agent.hostname)?.hostname || null,
       network,
       agents,
       counts: {
