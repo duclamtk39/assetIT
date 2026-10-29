@@ -140,3 +140,24 @@ test('a duplicate asset tag is rejected by the database, not only by the service
   await createReadyAsset(fixtures, 'TS-0009')
   await assert.rejects(() => createReadyAsset(fixtures, 'TS-0009'), /Unique constraint|P2002/)
 })
+
+test('a batch handover issues all assets to one person, or none of them when one is not in stock', async () => {
+  const first = await createReadyAsset(fixtures, 'TS-0101')
+  const second = await createReadyAsset(fixtures, 'TS-0102')
+  const result = await lifecycle.assignMany(
+    { ...assignBody(fixtures), assetIds: [first.id, second.id] } as never,
+    fixtures.adminActor,
+  )
+  assert.equal(result?.assignments.length, 2)
+  assert.equal(await statusCodeOf(first.id), 'IN_USE')
+  assert.equal(await statusCodeOf(second.id), 'IN_USE')
+
+  const third = await createReadyAsset(fixtures, 'TS-0103')
+  await assert.rejects(
+    () =>
+      lifecycle.assignMany({ ...assignBody(fixtures), assetIds: [third.id, first.id] } as never, fixtures.adminActor),
+    /TS-0101/,
+  )
+  assert.equal(await statusCodeOf(third.id), 'READY', 'the stock asset in a refused batch stays in stock')
+  assert.equal(await db.assetAssignment.count({ where: { assetId: third.id } }), 0)
+})

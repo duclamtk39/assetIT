@@ -3,6 +3,7 @@ import { ApiTags } from '@nestjs/swagger'
 import type { Request } from 'express'
 import {
   AssignAssetDto,
+  BulkAssignAssetsDto,
   CompleteMaintenanceDto,
   OpenMaintenanceDto,
   ReturnAssetDto,
@@ -27,6 +28,9 @@ export class LifecycleController {
     @Req() req: AuthRequest,
   ) {
     return this.lifecycle.assign(id, body, req.authUser)
+  }
+  @Post('assignments/bulk') assignMany(@Body() body: BulkAssignAssetsDto, @Req() req: AuthRequest) {
+    return this.lifecycle.assignMany(body, req.authUser)
   }
   @Post('assets/:id/returns') returnAsset(
     @Param('id', ParseUUIDPipe) id: string,

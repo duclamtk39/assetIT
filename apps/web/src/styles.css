@@ -3588,6 +3588,56 @@ tbody tr:hover {
   color: #fff;
   border-color: #6653df;
 }
+.bulk-assignment-list {
+  margin: 16px 24px 0;
+  max-height: 210px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+.bulk-assignment-list > div {
+  display: grid;
+  grid-template-columns: 18px 26px minmax(80px, auto) 1fr auto 26px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+}
+.bulk-assignment-list > div:last-child {
+  border-bottom: 0;
+}
+.bulk-assignment-list > div > span:first-child {
+  color: #92929d;
+  text-align: right;
+}
+.bulk-assignment-list em {
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bulk-assignment-list small {
+  color: #92929d;
+}
+.bulk-assignment-list .icon-btn {
+  width: 24px;
+  height: 24px;
+}
+.bulk-assignment-list > p {
+  margin: 0;
+  padding: 12px;
+  font-size: 9px;
+}
+@media (max-width: 640px) {
+  .bulk-assignment-list > div {
+    grid-template-columns: 18px minmax(70px, auto) 1fr 26px;
+  }
+  .bulk-assignment-list .asset-icon,
+  .bulk-assignment-list small {
+    display: none;
+  }
+}
 .barcode-modal {
   max-width: 510px;
 }

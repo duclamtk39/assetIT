@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto'
 import { PrismaService } from '../../database/prisma.service'
 import {
   AssignAssetDto,
+  BulkAssignAssetsDto,
   CompleteMaintenanceDto,
   OpenMaintenanceDto,
   ReturnAssetDto,
@@ -19,6 +20,7 @@ import {
   assignmentTarget,
   assertMaintenanceOpenAllowed,
   assertTransferAllowed,
+  bulkAssignmentBlockers,
   maintenanceTarget,
   returnTarget,
 } from './lifecycle.rules'
@@ -92,77 +94,161 @@ export class LifecycleService {
     throw error
   }
 
+  /** Recipient, location and return date are shared by a single handover and by a batch one. */
+  private async issueTerms(tx: Prisma.TransactionClient, body: AssignAssetDto, actor: Actor) {
+    const person = await tx.person.findFirst({ where: { id: body.assignedToId, status: 'ACTIVE' } })
+    if (!person) throw new BadRequestException('Người nhận không tồn tại hoặc đã ngừng hoạt động')
+    this.assertDepartmentScope(actor, person.departmentId)
+    const location = await tx.location.findFirst({ where: { id: body.locationId, status: 'ACTIVE' } })
+    if (!location) throw new BadRequestException('Vị trí bàn giao không hợp lệ')
+    const expected = body.expectedReturnDate ? new Date(body.expectedReturnDate) : null
+    if (body.type === 'LOAN' && (!expected || expected <= new Date()))
+      throw new BadRequestException('Cho mượn bắt buộc có ngày trả dự kiến trong tương lai')
+    return { person, location, expected }
+  }
+
+  /**
+   * Writes one assignment and moves the asset to its holder. A batch calls this once per asset, so
+   * every asset keeps its own assignment row and can later be returned on its own.
+   */
+  private async issue(
+    tx: Prisma.TransactionClient,
+    asset: Awaited<ReturnType<LifecycleService['asset']>>,
+    terms: Awaited<ReturnType<LifecycleService['issueTerms']>>,
+    body: AssignAssetDto,
+    actor: Actor,
+    assignmentNo: string,
+    batch?: { batchNo: string; size: number },
+  ) {
+    const { person, location, expected } = terms
+    const target = this.rule(() => assignmentTarget(asset.status.code, body.type)) as string
+    if (asset.currentCustodianId)
+      throw new BadRequestException('Tài sản đang có người sử dụng; phải thu hồi trước khi cấp cho người khác')
+    const targetStatus = await this.status(tx, target)
+    const assignment = await tx.assetAssignment.create({
+      data: {
+        assignmentNo,
+        assetId: asset.id,
+        type: body.type,
+        assignedToId: person.id,
+        departmentId: person.departmentId,
+        locationId: location.id,
+        expectedReturnDate: expected,
+        conditionOut: body.conditionOut.trim(),
+        note: body.note?.trim(),
+        assignedBy: actor.id,
+      },
+    })
+    await tx.asset.update({
+      where: { id: asset.id },
+      data: {
+        statusId: targetStatus.id,
+        currentCustodianId: person.id,
+        assignedUserId: person.linkedUserId,
+        departmentId: person.departmentId,
+        locationId: location.id,
+        warehouseId: null,
+      },
+    })
+    await tx.assetHistory.create({
+      data: {
+        assetId: asset.id,
+        action: AssetHistoryAction.ASSIGNED,
+        toUserId: person.linkedUserId,
+        toLocationId: location.id,
+        referenceType: 'AssetAssignment',
+        referenceId: assignment.id,
+        description: `${body.type === 'LOAN' ? 'Cho mượn' : 'Cấp phát'} cho ${person.fullName}${
+          batch ? ` (lô ${batch.batchNo}, ${batch.size} tài sản)` : ''
+        }`,
+        performedBy: actor.id,
+      },
+    })
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        action: body.type === 'LOAN' ? 'ASSET_LOANED' : 'ASSET_ASSIGNED',
+        entityType: 'Asset',
+        entityId: asset.id,
+        newValues: {
+          assignmentId: assignment.id,
+          assignedToId: person.id,
+          status: target,
+          ...(batch ? { batchNo: batch.batchNo } : {}),
+        } as Prisma.InputJsonValue,
+      },
+    })
+    return assignment
+  }
+
   async assign(assetId: string, body: AssignAssetDto, actor: Actor) {
     this.assertOperator(actor)
     try {
       return await this.db.$transaction(
         async tx => {
           const asset = await this.asset(tx, assetId)
-          const person = await tx.person.findFirst({ where: { id: body.assignedToId, status: 'ACTIVE' } })
-          if (!person) throw new BadRequestException('Người nhận không tồn tại hoặc đã ngừng hoạt động')
-          this.assertDepartmentScope(actor, person.departmentId)
-          const location = await tx.location.findFirst({ where: { id: body.locationId, status: 'ACTIVE' } })
-          if (!location) throw new BadRequestException('Vị trí bàn giao không hợp lệ')
-          const target = this.rule(() => assignmentTarget(asset.status.code, body.type)) as string
-          if (asset.currentCustodianId)
-            throw new BadRequestException('Tài sản đang có người sử dụng; phải thu hồi trước khi cấp cho người khác')
-          const expected = body.expectedReturnDate ? new Date(body.expectedReturnDate) : null
-          if (body.type === 'LOAN' && (!expected || expected <= new Date()))
-            throw new BadRequestException('Cho mượn bắt buộc có ngày trả dự kiến trong tương lai')
-          const targetStatus = await this.status(tx, target)
-          const assignment = await tx.assetAssignment.create({
-            data: {
-              assignmentNo: this.reference(body.type === 'LOAN' ? 'PM' : 'PCP'),
-              assetId,
-              type: body.type,
-              assignedToId: person.id,
-              departmentId: person.departmentId,
-              locationId: location.id,
-              expectedReturnDate: expected,
-              conditionOut: body.conditionOut.trim(),
-              note: body.note?.trim(),
-              assignedBy: actor.id,
-            },
-          })
-          await tx.asset.update({
-            where: { id: assetId },
-            data: {
-              statusId: targetStatus.id,
-              currentCustodianId: person.id,
-              assignedUserId: person.linkedUserId,
-              departmentId: person.departmentId,
-              locationId: location.id,
-              warehouseId: null,
-            },
-          })
-          await tx.assetHistory.create({
-            data: {
-              assetId,
-              action: AssetHistoryAction.ASSIGNED,
-              toUserId: person.linkedUserId,
-              toLocationId: location.id,
-              referenceType: 'AssetAssignment',
-              referenceId: assignment.id,
-              description: `${body.type === 'LOAN' ? 'Cho mượn' : 'Cấp phát'} cho ${person.fullName}`,
-              performedBy: actor.id,
-            },
-          })
-          await tx.auditLog.create({
-            data: {
-              userId: actor.id,
-              action: body.type === 'LOAN' ? 'ASSET_LOANED' : 'ASSET_ASSIGNED',
-              entityType: 'Asset',
-              entityId: assetId,
-              newValues: {
-                assignmentId: assignment.id,
-                assignedToId: person.id,
-                status: target,
-              } as Prisma.InputJsonValue,
-            },
-          })
-          return assignment
+          const terms = await this.issueTerms(tx, body, actor)
+          return this.issue(tx, asset, terms, body, actor, this.reference(body.type === 'LOAN' ? 'PM' : 'PCP'))
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      )
+    } catch (error) {
+      this.conflict(error)
+    }
+  }
+
+  /**
+   * Hands several assets to one person in a single transaction: either every asset is issued or
+   * none is, so a printed handover never lists a device that did not actually change hands.
+   */
+  async assignMany(body: BulkAssignAssetsDto, actor: Actor) {
+    this.assertOperator(actor)
+    try {
+      return await this.db.$transaction(
+        async tx => {
+          const found = await tx.asset.findMany({
+            where: { id: { in: body.assetIds }, deletedAt: null },
+            include: lifecycleInclude,
+          })
+          const byId = new Map(found.map(asset => [asset.id, asset]))
+          const missing = body.assetIds.filter(id => !byId.has(id))
+          if (missing.length)
+            throw new NotFoundException(`Không tìm thấy ${missing.length} tài sản trong danh sách cấp phát`)
+          const assets = body.assetIds.map(id => byId.get(id)!)
+          const terms = await this.issueTerms(tx, body, actor)
+          const blockers = bulkAssignmentBlockers(
+            assets.map(asset => ({
+              assetTag: asset.assetTag,
+              statusCode: asset.status.code,
+              hasCustodian: Boolean(asset.currentCustodianId),
+            })),
+          )
+          if (blockers.length) {
+            const reasons = { ASSET_NOT_READY: 'không ở trạng thái Sẵn sàng', ASSET_HELD: 'đang có người sử dụng' }
+            throw new BadRequestException(
+              `Không thể cấp phát hàng loạt: ${blockers
+                .map(item => `${item.assetTag} (${reasons[item.reason]})`)
+                .join(', ')}. Hãy bỏ các tài sản này khỏi danh sách rồi thử lại.`,
+            )
+          }
+          const batchNo = this.reference(body.type === 'LOAN' ? 'PM' : 'PCP')
+          const batch = { batchNo, size: assets.length }
+          const assignments = []
+          for (const [index, asset] of assets.entries())
+            assignments.push(
+              await this.issue(
+                tx,
+                asset,
+                terms,
+                body,
+                actor,
+                `${batchNo}-${String(index + 1).padStart(2, '0')}`,
+                batch,
+              ),
+            )
+          return { batchNo, assignments }
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30_000 },
       )
     } catch (error) {
       this.conflict(error)

@@ -1,5 +1,9 @@
 import { Type } from 'class-transformer'
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
   IsDateString,
   IsEnum,
   IsNumber,
@@ -20,6 +24,10 @@ export class AssignAssetDto {
   @ValidateIf(value => value.type === AssetAssignmentType.LOAN) @IsDateString() expectedReturnDate?: string
   @IsString() @MinLength(1) @MaxLength(100) conditionOut!: string
   @IsOptional() @IsString() @MaxLength(5000) note?: string
+}
+/** Hands several stock assets to one person under one batch number, with the same terms for each. */
+export class BulkAssignAssetsDto extends AssignAssetDto {
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @ArrayUnique() @IsUUID('all', { each: true }) assetIds!: string[]
 }
 export class ReturnAssetDto {
   @IsOptional() @IsUUID() warehouseId?: string

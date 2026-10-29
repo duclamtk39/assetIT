@@ -396,55 +396,74 @@ const escapeHtml = (value: string | number | undefined) =>
     /[&<>'"]/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[c] || c,
   )
+/**
+ * One handover sheet lists every device that changed hands together, so a batch issue prints a
+ * single document the recipient signs once instead of one sheet per device.
+ */
 const handoverHtml = (
-  asset: Asset,
+  handed: Asset | Asset[],
   transaction: AssetTransaction,
   email: EmailSettings,
   branding: BrandingSettings,
 ) => {
+  const devices = Array.isArray(handed) ? handed : [handed],
+    asset = devices[0]
   const occurred = new Date(transaction.date),
     date = occurred.toLocaleDateString('vi-VN'),
     documentNo = `BB-${occurred.getFullYear()}-${String(transaction.id).slice(-6)}`
-  const configuration =
+  const configuration = (item: Asset) =>
     [
-      asset.manufacturer && `Hãng: ${asset.manufacturer}`,
-      asset.model && `Model: ${asset.model}`,
-      asset.cpu && `CPU: ${asset.cpu}`,
-      asset.ram && `RAM: ${asset.ram}`,
-      asset.storage && `Ổ đĩa: ${asset.storage}`,
-      asset.operatingSystem && `HĐH: ${asset.operatingSystem}`,
+      item.manufacturer && `Hãng: ${item.manufacturer}`,
+      item.model && `Model: ${item.model}`,
+      item.cpu && `CPU: ${item.cpu}`,
+      item.ram && `RAM: ${item.ram}`,
+      item.storage && `Ổ đĩa: ${item.storage}`,
+      item.operatingSystem && `HĐH: ${item.operatingSystem}`,
     ]
       .filter(Boolean)
       .join(' · ') || 'Không áp dụng / Chưa cập nhật'
+  const deviceRows = devices
+    .map(
+      (item, index) =>
+        `<tr><td class="center">${index + 1}</td><td>${escapeHtml(item.code)}</td><td><b>${escapeHtml(item.name)}</b><br>${escapeHtml(item.category)}</td><td>${escapeHtml(item.serial || '—')}</td><td>${escapeHtml(configuration(item))}</td><td>${escapeHtml(transaction.condition || item.condition || 'Tốt')}</td><td class="center">1</td></tr>`,
+    )
+    .join('')
+  const titleCode = devices.length > 1 ? `${asset.code} và ${devices.length - 1} tài sản khác` : asset.code
   const logo = branding.logoDataUrl
     ? `<img src="${escapeHtml(branding.logoDataUrl)}" alt="Logo">`
     : '<span class="logo-placeholder">AF</span>'
-  return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Biên bản ${escapeHtml(asset.code)}</title><style>@page{size:A4;margin:0}*{box-sizing:border-box}body{margin:0;background:#e8ebef;color:#111;font:12.5px "Times New Roman",serif;line-height:1.4}.sheet{width:210mm;min-height:297mm;margin:12px auto;padding:15mm 17mm 13mm;background:#fff;box-shadow:0 3px 18px #0002}.toolbar{position:fixed;right:20px;top:20px}.toolbar button{border:0;background:#174f91;color:#fff;padding:10px 16px;font:600 13px Arial;cursor:pointer}.document-head{display:grid;grid-template-columns:1.35fr .65fr;gap:20px;padding-bottom:10px;border-bottom:2px solid #222}.company{display:grid;grid-template-columns:48px 1fr;gap:10px;align-items:center}.company img,.logo-placeholder{width:44px;height:44px;object-fit:contain;border:1px solid #777;display:grid;place-items:center;font:bold 16px Arial}.company b{display:block;font:700 14px Arial;text-transform:uppercase}.company small{display:block;margin-top:4px;font-size:11px}.form-meta{text-align:right;font:11px Arial}.form-meta b{display:block;font-size:12px;margin-bottom:4px}.title{text-align:center;margin:20px 0 17px}.title h1{font-size:20px;margin:0 0 5px}.title p{margin:0;font-style:italic}.section-title{margin:14px 0 7px;padding:5px 7px;background:#edf1f5;border-left:3px solid #174f91;font:bold 12px Arial}.info{display:grid;grid-template-columns:145px 1fr;border:1px solid #555;border-bottom:0}.info div{min-height:29px;padding:6px 8px;border-bottom:1px solid #777}.info div:nth-child(odd){font-weight:bold;background:#f7f7f7;border-right:1px solid #777}.device-table{width:100%;border-collapse:collapse}.device-table th,.device-table td{border:1px solid #555;padding:7px 6px;vertical-align:top}.device-table th{background:#edf1f5;font:700 10.5px Arial;text-align:center}.device-table .center{text-align:center}.notes{min-height:48px;border:1px solid #555;padding:7px}.commitment{margin:14px 0 0;text-align:justify}.signatures{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:24px;text-align:center}.signatures b{font:700 11px Arial}.signatures small{display:block;font-style:italic;margin-top:3px}.signature-space{height:74px}.signature-name{font-weight:bold}.document-footer{margin-top:16px;padding-top:6px;border-top:1px solid #aaa;display:flex;justify-content:space-between;color:#666;font:9.5px Arial}@media print{body{background:#fff}.sheet{margin:0;box-shadow:none}.toolbar{display:none}}</style></head><body><div class="toolbar"><button onclick="window.print()">In / Lưu PDF</button></div><main class="sheet"><header class="document-head"><div class="company">${logo}<div><b>${escapeHtml(branding.companyName)}</b><small>${escapeHtml(branding.companyAddress)}</small></div></div><div class="form-meta"><b>MẪU: ${escapeHtml(branding.handoverFormCode)}</b><span>Số biên bản: ${escapeHtml(documentNo)}</span><br><span>Ngày lập: ${escapeHtml(date)}</span></div></header><section class="title"><h1>BIÊN BẢN ${escapeHtml(transaction.type.toUpperCase())} TÀI SẢN</h1><p>Ngày ${occurred.getDate()} tháng ${occurred.getMonth() + 1} năm ${occurred.getFullYear()}</p></section><h2 class="section-title">I. THÔNG TIN BÀN GIAO</h2><div class="info"><div>Đơn vị / Công ty</div><div>${escapeHtml(branding.companyName)}</div><div>Bộ phận quản lý tài sản</div><div>${escapeHtml(branding.handoverDepartment)}</div><div>Người giao / Người thực hiện</div><div>${escapeHtml(transaction.performedBy)}</div><div>Người nhận bàn giao</div><div>${escapeHtml(transaction.to)}</div><div>Bộ phận người nhận</div><div>${escapeHtml(transaction.recipientDepartment || asset.department)}</div><div>Email người nhận</div><div>${escapeHtml(transaction.recipientEmail || 'Chưa cập nhật')}</div><div>Địa điểm bàn giao</div><div>${escapeHtml(transaction.handoverLocation || asset.location)}</div><div>Ngày giờ bàn giao</div><div>${escapeHtml(occurred.toLocaleString('vi-VN'))}</div><div>Ngày dự kiến trả</div><div>${transaction.dueDate ? escapeHtml(new Date(transaction.dueDate).toLocaleDateString('vi-VN')) : 'Không giới hạn'}</div></div><h2 class="section-title">II. DANH SÁCH THIẾT BỊ</h2><table class="device-table"><thead><tr><th style="width:28px">STT</th><th style="width:88px">Mã tài sản</th><th>Tên / Loại tài sản</th><th style="width:105px">Serial / Service Tag</th><th>Cấu hình kỹ thuật</th><th style="width:75px">Tình trạng</th><th style="width:34px">SL</th></tr></thead><tbody><tr><td class="center">1</td><td>${escapeHtml(asset.code)}</td><td><b>${escapeHtml(asset.name)}</b><br>${escapeHtml(asset.category)}</td><td>${escapeHtml(asset.serial || '—')}</td><td>${escapeHtml(configuration)}</td><td>${escapeHtml(transaction.condition || asset.condition || 'Tốt')}</td><td class="center">1</td></tr></tbody></table><h2 class="section-title">III. GHI CHÚ VÀ CAM KẾT</h2><div class="notes"><b>Ghi chú:</b> ${escapeHtml(transaction.note || 'Không có')}<br><b>Phạm vi bàn giao:</b> ${escapeHtml(transaction.from)} → ${escapeHtml(transaction.to)}</div><p class="commitment">Hai bên đã kiểm tra tài sản, cấu hình và tình trạng thực tế. Người nhận xác nhận tiếp nhận đúng thông tin nêu trên, cam kết sử dụng đúng mục đích, bảo quản tài sản và thông báo kịp thời cho ${escapeHtml(branding.handoverDepartment)} khi phát sinh hư hỏng, mất mát hoặc nhu cầu thu hồi.</p><section class="signatures"><div><b>ĐẠI DIỆN BỘ PHẬN</b><small>(Ký, ghi rõ họ tên)</small><div class="signature-space"></div><span>${escapeHtml(branding.handoverDepartment)}</span></div><div><b>NGƯỜI GIAO</b><small>(Ký, ghi rõ họ tên)</small><div class="signature-space"></div><span class="signature-name">${escapeHtml(transaction.performedBy)}</span></div><div><b>NGƯỜI NHẬN</b><small>(Ký, ghi rõ họ tên)</small><div class="signature-space"></div><span class="signature-name">${escapeHtml(transaction.to)}</span></div></section><footer class="document-footer"><span>Tạo bởi ${escapeHtml(branding.appName)} · ${escapeHtml(email.senderName)}</span><span>${escapeHtml(email.replyTo)}</span></footer></main></body></html>`
+  return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Biên bản ${escapeHtml(titleCode)}</title><style>@page{size:A4;margin:0}*{box-sizing:border-box}body{margin:0;background:#e8ebef;color:#111;font:12.5px "Times New Roman",serif;line-height:1.4}.sheet{width:210mm;min-height:297mm;margin:12px auto;padding:15mm 17mm 13mm;background:#fff;box-shadow:0 3px 18px #0002}.toolbar{position:fixed;right:20px;top:20px}.toolbar button{border:0;background:#174f91;color:#fff;padding:10px 16px;font:600 13px Arial;cursor:pointer}.document-head{display:grid;grid-template-columns:1.35fr .65fr;gap:20px;padding-bottom:10px;border-bottom:2px solid #222}.company{display:grid;grid-template-columns:48px 1fr;gap:10px;align-items:center}.company img,.logo-placeholder{width:44px;height:44px;object-fit:contain;border:1px solid #777;display:grid;place-items:center;font:bold 16px Arial}.company b{display:block;font:700 14px Arial;text-transform:uppercase}.company small{display:block;margin-top:4px;font-size:11px}.form-meta{text-align:right;font:11px Arial}.form-meta b{display:block;font-size:12px;margin-bottom:4px}.title{text-align:center;margin:20px 0 17px}.title h1{font-size:20px;margin:0 0 5px}.title p{margin:0;font-style:italic}.section-title{margin:14px 0 7px;padding:5px 7px;background:#edf1f5;border-left:3px solid #174f91;font:bold 12px Arial}.info{display:grid;grid-template-columns:145px 1fr;border:1px solid #555;border-bottom:0}.info div{min-height:29px;padding:6px 8px;border-bottom:1px solid #777}.info div:nth-child(odd){font-weight:bold;background:#f7f7f7;border-right:1px solid #777}.device-table{width:100%;border-collapse:collapse}.device-table th,.device-table td{border:1px solid #555;padding:7px 6px;vertical-align:top}.device-table th{background:#edf1f5;font:700 10.5px Arial;text-align:center}.device-table .center{text-align:center}.notes{min-height:48px;border:1px solid #555;padding:7px}.commitment{margin:14px 0 0;text-align:justify}.signatures{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:24px;text-align:center}.signatures b{font:700 11px Arial}.signatures small{display:block;font-style:italic;margin-top:3px}.signature-space{height:74px}.signature-name{font-weight:bold}.document-footer{margin-top:16px;padding-top:6px;border-top:1px solid #aaa;display:flex;justify-content:space-between;color:#666;font:9.5px Arial}@media print{body{background:#fff}.sheet{margin:0;box-shadow:none}.toolbar{display:none}}</style></head><body><div class="toolbar"><button onclick="window.print()">In / Lưu PDF</button></div><main class="sheet"><header class="document-head"><div class="company">${logo}<div><b>${escapeHtml(branding.companyName)}</b><small>${escapeHtml(branding.companyAddress)}</small></div></div><div class="form-meta"><b>MẪU: ${escapeHtml(branding.handoverFormCode)}</b><span>Số biên bản: ${escapeHtml(documentNo)}</span><br><span>Ngày lập: ${escapeHtml(date)}</span></div></header><section class="title"><h1>BIÊN BẢN ${escapeHtml(transaction.type.toUpperCase())} TÀI SẢN</h1><p>Ngày ${occurred.getDate()} tháng ${occurred.getMonth() + 1} năm ${occurred.getFullYear()}</p></section><h2 class="section-title">I. THÔNG TIN BÀN GIAO</h2><div class="info"><div>Đơn vị / Công ty</div><div>${escapeHtml(branding.companyName)}</div><div>Bộ phận quản lý tài sản</div><div>${escapeHtml(branding.handoverDepartment)}</div><div>Người giao / Người thực hiện</div><div>${escapeHtml(transaction.performedBy)}</div><div>Người nhận bàn giao</div><div>${escapeHtml(transaction.to)}</div><div>Bộ phận người nhận</div><div>${escapeHtml(transaction.recipientDepartment || asset.department)}</div><div>Email người nhận</div><div>${escapeHtml(transaction.recipientEmail || 'Chưa cập nhật')}</div><div>Địa điểm bàn giao</div><div>${escapeHtml(transaction.handoverLocation || asset.location)}</div><div>Ngày giờ bàn giao</div><div>${escapeHtml(occurred.toLocaleString('vi-VN'))}</div><div>Ngày dự kiến trả</div><div>${transaction.dueDate ? escapeHtml(new Date(transaction.dueDate).toLocaleDateString('vi-VN')) : 'Không giới hạn'}</div></div><h2 class="section-title">II. DANH SÁCH THIẾT BỊ</h2><table class="device-table"><thead><tr><th style="width:28px">STT</th><th style="width:88px">Mã tài sản</th><th>Tên / Loại tài sản</th><th style="width:105px">Serial / Service Tag</th><th>Cấu hình kỹ thuật</th><th style="width:75px">Tình trạng</th><th style="width:34px">SL</th></tr></thead><tbody>${deviceRows}</tbody></table><h2 class="section-title">III. GHI CHÚ VÀ CAM KẾT</h2><div class="notes"><b>Ghi chú:</b> ${escapeHtml(transaction.note || 'Không có')}<br><b>Phạm vi bàn giao:</b> ${escapeHtml(transaction.from)} → ${escapeHtml(transaction.to)}</div><p class="commitment">Hai bên đã kiểm tra tài sản, cấu hình và tình trạng thực tế. Người nhận xác nhận tiếp nhận đúng thông tin nêu trên, cam kết sử dụng đúng mục đích, bảo quản tài sản và thông báo kịp thời cho ${escapeHtml(branding.handoverDepartment)} khi phát sinh hư hỏng, mất mát hoặc nhu cầu thu hồi.</p><section class="signatures"><div><b>ĐẠI DIỆN BỘ PHẬN</b><small>(Ký, ghi rõ họ tên)</small><div class="signature-space"></div><span>${escapeHtml(branding.handoverDepartment)}</span></div><div><b>NGƯỜI GIAO</b><small>(Ký, ghi rõ họ tên)</small><div class="signature-space"></div><span class="signature-name">${escapeHtml(transaction.performedBy)}</span></div><div><b>NGƯỜI NHẬN</b><small>(Ký, ghi rõ họ tên)</small><div class="signature-space"></div><span class="signature-name">${escapeHtml(transaction.to)}</span></div></section><footer class="document-footer"><span>Tạo bởi ${escapeHtml(branding.appName)} · ${escapeHtml(email.senderName)}</span><span>${escapeHtml(email.replyTo)}</span></footer></main></body></html>`
 }
 const printHandover = (
-  asset: Asset,
+  handed: Asset | Asset[],
   transaction: AssetTransaction,
   email: EmailSettings,
   branding: BrandingSettings,
 ) => {
   const w = window.open('', '_blank', 'width=1100,height=900')
   if (!w) return
-  w.document.write(handoverHtml(asset, transaction, email, branding))
+  w.document.write(handoverHtml(handed, transaction, email, branding))
   w.document.close()
 }
 const downloadHandover = (
-  asset: Asset,
+  handed: Asset | Asset[],
   transaction: AssetTransaction,
   email: EmailSettings,
   branding: BrandingSettings,
 ) =>
   downloadBlob(
-    new Blob([handoverHtml(asset, transaction, email, branding)], { type: 'text/html;charset=utf-8' }),
-    `bien-ban-A4-${asset.code}-${transaction.id}.html`,
+    new Blob([handoverHtml(handed, transaction, email, branding)], { type: 'text/html;charset=utf-8' }),
+    `bien-ban-A4-${(Array.isArray(handed) ? handed[0] : handed).code}-${transaction.id}.html`,
   )
-const emailHandover = (asset: Asset, transaction: AssetTransaction, email: EmailSettings) => {
+const emailHandover = (handed: Asset | Asset[], transaction: AssetTransaction, email: EmailSettings) => {
+  const devices = Array.isArray(handed) ? handed : [handed],
+    asset = devices[0]
   const subject = email.subjectTemplate.replace('{{asset_code}}', asset.code)
-  const body = `Kính gửi ${transaction.to},\n\n${email.senderName} gửi biên bản ${transaction.type.toLowerCase()} tài sản ${asset.name} (${asset.code}).\nTình trạng: ${transaction.condition || 'Tốt'}\nNgày bàn giao: ${new Date(transaction.date).toLocaleString('vi-VN')}\n\nVui lòng xác nhận đã nhận tài sản.\nLiên hệ: ${email.replyTo}`
+  const deviceText =
+    devices.length > 1
+      ? `${devices.length} tài sản:\n${devices.map(item => `- ${item.name} (${item.code})`).join('\n')}`
+      : `tài sản ${asset.name} (${asset.code})`
+  const body = `Kính gửi ${transaction.to},\n\n${email.senderName} gửi biên bản ${transaction.type.toLowerCase()} ${deviceText}.\nTình trạng: ${transaction.condition || 'Tốt'}\nNgày bàn giao: ${new Date(transaction.date).toLocaleString('vi-VN')}\n\nVui lòng xác nhận đã nhận tài sản.\nLiên hệ: ${email.replyTo}`
   window.location.href = `mailto:${encodeURIComponent(transaction.recipientEmail || '')}?cc=${encodeURIComponent(email.cc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 const iconFor = (type: string, size = 20) => {
@@ -1903,6 +1922,7 @@ function OperationsDashboard({
   assets,
   transactions,
   onAssign,
+  onBulkAssign,
   onBarcode,
   onView,
   openHistory,
@@ -1911,6 +1931,8 @@ function OperationsDashboard({
   assets: Asset[]
   transactions: AssetTransaction[]
   onAssign: (a: Asset) => void
+  /** `done` clears the selection once the batch is issued, so it is not offered again. */
+  onBulkAssign: (assets: Asset[], done: () => void) => void
   onBarcode: (a: Asset) => void
   onView: (a: Asset) => void
   openHistory: () => void
@@ -1962,6 +1984,7 @@ function OperationsDashboard({
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize)),
     visible = filtered.slice((page - 1) * pageSize, page * pageSize)
   const selectedAssets = assets.filter(a => selectedIds.includes(a.id)),
+    selectedStock = selectedAssets.filter(isInStock),
     allVisibleSelected = visible.length > 0 && visible.every(a => selectedIds.includes(a.id))
   const toggleVisible = () =>
     setSelectedIds(current =>
@@ -2114,16 +2137,25 @@ function OperationsDashboard({
           <div className="bulk-action-bar">
             <b>{selectedAssets.length} tài sản đã chọn</b>
             <button
-              disabled={selectedAssets.length !== 1}
-              onClick={() => selectedAssets[0] && onAssign(selectedAssets[0])}
+              disabled={!selectedStock.length}
+              title={
+                selectedStock.length < selectedAssets.length
+                  ? `${selectedAssets.length - selectedStock.length} tài sản không sẵn sàng trong kho sẽ được bỏ qua`
+                  : undefined
+              }
+              onClick={() =>
+                selectedStock.length === 1 && selectedAssets.length === 1
+                  ? onAssign(selectedStock[0])
+                  : onBulkAssign(selectedStock, () => setSelectedIds([]))
+              }
             >
-              Cấp phát / Thu hồi
+              Cấp phát / Cho mượn{selectedStock.length > 1 ? ` (${selectedStock.length})` : ''}
             </button>
             <button
               disabled={selectedAssets.length !== 1}
               onClick={() => selectedAssets[0] && onAssign(selectedAssets[0])}
             >
-              Điều chuyển
+              Thu hồi / Điều chuyển
             </button>
             <button onClick={() => selectedAssets.forEach(onBarcode)}>In barcode</button>
             <button onClick={() => setSelectedIds([])}>Bỏ chọn</button>
@@ -7237,6 +7269,273 @@ function AssetDetail({
   )
 }
 
+/** The people an asset can be handed to; demo mode derives them from the seeded holders. */
+function useRecipientDirectory() {
+  const [recipientDirectory, setRecipientDirectory] = useState<AssetPerson[]>(() =>
+    env.demoMode
+      ? Array.from(
+          new Map(
+            seedAssets
+              .filter(item => item.assignedTo && item.assignedTo !== 'Chưa gán')
+              .map((item, index) => [
+                item.assignedTo,
+                {
+                  id: `demo-${index}`,
+                  employeeCode: `DEMO-${index + 1}`,
+                  fullName: item.assignedTo,
+                  email: item.recipientEmail,
+                  departmentId: 'demo',
+                  department: { id: 'demo', code: 'DEMO', name: item.department },
+                  source: 'LOCAL' as const,
+                  status: 'ACTIVE' as const,
+                },
+              ]),
+          ).values(),
+        )
+      : [],
+  )
+  useEffect(() => {
+    if (env.demoMode) return
+    const controller = new AbortController()
+    api
+      .get<{ items: AssetPerson[] }>('/people?limit=200', controller.signal)
+      .then(result => setRecipientDirectory(result.items))
+      .catch(() => setRecipientDirectory([]))
+    return () => controller.abort()
+  }, [])
+  return recipientDirectory
+}
+
+/**
+ * Issues several stock assets to one person in one step. Every asset gets the same recipient,
+ * location, condition and return date, and the server records them as one batch: all of them are
+ * issued or none is.
+ */
+function BulkAssignmentModal({
+  assets: initialAssets,
+  departmentOptions,
+  siteOptions,
+  onClose,
+  onSave,
+}: {
+  assets: Asset[]
+  departmentOptions: string[]
+  siteOptions: string[]
+  onClose: () => void
+  onSave: (assets: Asset[], transaction: AssetTransaction) => void | Promise<void>
+}) {
+  const [assets, setAssets] = useState(initialAssets)
+  const [type, setType] = useState<'Cấp phát' | 'Cho mượn'>('Cấp phát')
+  const [person, setPerson] = useState('')
+  const [department, setDepartment] = useState(departmentOptions[0] || '')
+  const [recipientEmail, setRecipientEmail] = useState('')
+  const [location, setLocation] = useState('')
+  const [condition, setCondition] = useState('Tốt')
+  const [dueDate, setDueDate] = useState('')
+  const [note, setNote] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const recipientDirectory = useRecipientDirectory()
+  const recipient = recipientDirectory.find(
+    item => item.fullName.toLocaleLowerCase('vi') === person.trim().toLocaleLowerCase('vi'),
+  )
+  const choosePerson = (value: string) => {
+    setPerson(value)
+    const selected = recipientDirectory.find(
+      item => item.fullName.toLocaleLowerCase('vi') === value.trim().toLocaleLowerCase('vi'),
+    )
+    if (selected) {
+      setDepartment(selected.department.name)
+      setRecipientEmail(selected.email || '')
+    }
+  }
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (submitting) return
+    if (!assets.length) {
+      alert('Danh sách cấp phát đang trống.')
+      return
+    }
+    if (!recipient) {
+      alert('Vui lòng chọn người nhận có trong danh bạ nhân sự.')
+      return
+    }
+    if (type === 'Cho mượn' && (!dueDate || dueDate <= new Date().toISOString().slice(0, 10))) {
+      alert('Cho mượn bắt buộc có ngày phải trả sau hôm nay.')
+      return
+    }
+    setSubmitting(true)
+    const now = Date.now()
+    try {
+      await onSave(
+        assets.map(asset => ({
+          ...asset,
+          assignedTo: recipient.fullName,
+          department,
+          location: location.trim(),
+          status: 'Đang sử dụng',
+          condition: condition as Asset['condition'],
+          dueDate: type === 'Cho mượn' ? dueDate : '',
+          recipientEmail,
+          assignmentType: type,
+        })),
+        {
+          id: now,
+          assetId: assets[0].id,
+          assetCode: assets[0].code,
+          assetName: assets[0].name,
+          type,
+          from: 'Kho',
+          to: recipient.fullName,
+          performedBy: 'Hệ thống',
+          date: new Date(now).toISOString(),
+          note: note.trim() || `${type} ${assets.length} tài sản`,
+          condition,
+          dueDate: type === 'Cho mượn' ? dueDate : '',
+          recipientEmail,
+          recipientDepartment: department,
+          handoverLocation: location.trim(),
+        },
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+  return (
+    <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <form className="modal assignment-modal bulk-assignment-modal" onSubmit={submit}>
+        <div className="modal-head">
+          <div>
+            <h2>Cấp phát nhiều tài sản</h2>
+            <p>{assets.length} tài sản · cùng một người nhận, một biên bản bàn giao</p>
+          </div>
+          <button type="button" className="icon-btn" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="bulk-assignment-list">
+          {assets.map((asset, index) => (
+            <div key={asset.id}>
+              <span>{index + 1}</span>
+              <span className="asset-icon">{iconFor(asset.icon, 16)}</span>
+              <b>{asset.code}</b>
+              <em>{asset.name}</em>
+              <small>{asset.location}</small>
+              <button
+                type="button"
+                className="icon-btn"
+                title="Bỏ khỏi danh sách"
+                aria-label={`Bỏ ${asset.code} khỏi danh sách`}
+                onClick={() => setAssets(list => list.filter(item => item.id !== asset.id))}
+              >
+                <X size={15} />
+              </button>
+            </div>
+          ))}
+          {!assets.length && <p className="muted">Không còn tài sản nào trong danh sách.</p>}
+        </div>
+        <div className="transaction-tabs">
+          {(['Cấp phát', 'Cho mượn'] as const).map(x => (
+            <button
+              type="button"
+              className={type === x ? 'active' : ''}
+              onClick={() => {
+                setType(x)
+                if (x !== 'Cho mượn') setDueDate('')
+              }}
+              key={x}
+            >
+              {x}
+            </button>
+          ))}
+        </div>
+        <div className="form-grid">
+          <label className="span-2">
+            Người nhận / Người sử dụng
+            <input
+              required
+              list="bulk-person-directory"
+              value={person}
+              onChange={e => choosePerson(e.target.value)}
+              placeholder="Nhập họ tên người nhận"
+            />
+            <datalist id="bulk-person-directory">
+              {recipientDirectory.map(item => (
+                <option
+                  key={item.id}
+                  value={item.fullName}
+                  label={`${item.employeeCode} · ${item.department.name}${item.email ? ` · ${item.email}` : ''}`}
+                />
+              ))}
+            </datalist>
+          </label>
+          <label>
+            Email người nhận
+            <input
+              type="email"
+              value={recipientEmail}
+              onChange={e => setRecipientEmail(e.target.value)}
+              placeholder="nguoinhan@company.vn"
+            />
+          </label>
+          <label>
+            Phòng ban
+            <select value={department} onChange={e => setDepartment(e.target.value)}>
+              {departmentOptions.map(d => (
+                <option key={d}>{d}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Site / Vị trí sử dụng
+            <input list="bulk-assignment-sites" required value={location} onChange={e => setLocation(e.target.value)} />
+            <datalist id="bulk-assignment-sites">
+              {siteOptions.map(s => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+          </label>
+          <label>
+            Tình trạng khi bàn giao
+            <select value={condition} onChange={e => setCondition(e.target.value)}>
+              {['Tốt', 'Trầy xước nhẹ', 'Cần kiểm tra'].map(x => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </label>
+          {type === 'Cho mượn' && (
+            <label>
+              Ngày phải trả
+              <input type="date" required value={dueDate} onChange={e => setDueDate(e.target.value)} />
+            </label>
+          )}
+          <label className="span-2">
+            Ghi chú / Biên bản
+            <input
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="Lý do và tình trạng khi bàn giao"
+            />
+          </label>
+        </div>
+        <div className="modal-actions">
+          <span className="document-code">
+            Một biên bản cho <b>{assets.length}</b> tài sản
+          </span>
+          <button type="button" className="btn secondary" onClick={onClose}>
+            Hủy
+          </button>
+          <button className="btn primary" disabled={submitting || !assets.length}>
+            <Check size={18} />
+            {submitting
+              ? 'Đang ghi nhận...'
+              : `Xác nhận ${type === 'Cho mượn' ? 'cho mượn' : 'cấp phát'} ${assets.length} tài sản`}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 function AssignmentModal({
   asset,
   departmentOptions,
@@ -7271,38 +7570,7 @@ function AssignmentModal({
   const isIssue = type === 'Cấp phát' || type === 'Cho mượn',
     isReturn = type === 'Thu hồi',
     isTransfer = type === 'Điều chuyển'
-  const [recipientDirectory, setRecipientDirectory] = useState<AssetPerson[]>(() =>
-    env.demoMode
-      ? Array.from(
-          new Map(
-            seedAssets
-              .filter(item => item.assignedTo && item.assignedTo !== 'Chưa gán')
-              .map((item, index) => [
-                item.assignedTo,
-                {
-                  id: `demo-${index}`,
-                  employeeCode: `DEMO-${index + 1}`,
-                  fullName: item.assignedTo,
-                  email: item.recipientEmail,
-                  departmentId: 'demo',
-                  department: { id: 'demo', code: 'DEMO', name: item.department },
-                  source: 'LOCAL' as const,
-                  status: 'ACTIVE' as const,
-                },
-              ]),
-          ).values(),
-        )
-      : [],
-  )
-  useEffect(() => {
-    if (env.demoMode) return
-    const controller = new AbortController()
-    api
-      .get<{ items: AssetPerson[] }>('/people?limit=200', controller.signal)
-      .then(result => setRecipientDirectory(result.items))
-      .catch(() => setRecipientDirectory([]))
-    return () => controller.abort()
-  }, [])
+  const recipientDirectory = useRecipientDirectory()
   useEffect(() => {
     if (!isIssue) return
     const input = document.querySelector<HTMLInputElement>(
@@ -7758,20 +8026,27 @@ function ExportExcelModal({ assets, onClose }: { assets: Asset[]; onClose: () =>
 }
 
 function HandoverModal({
-  asset: rawAsset,
+  assets: rawAssets,
   transaction,
   emailSettings,
   branding,
   onClose,
 }: {
-  asset: Asset
+  assets: Asset[]
   transaction: AssetTransaction
   emailSettings: EmailSettings
   branding: BrandingSettings
   onClose: () => void
 }) {
-  const asset = { ...rawAsset, department: transaction.recipientDepartment || rawAsset.department }
-  const config = [asset.cpu, asset.ram, asset.storage].filter(Boolean).join(' · ') || 'Không áp dụng / Chưa cập nhật'
+  const handed = rawAssets.map(item => ({
+    ...item,
+    department: transaction.recipientDepartment || item.department,
+  }))
+  const asset = handed[0]
+  const config =
+    handed.length > 1
+      ? handed.map(item => item.code).join(', ')
+      : [asset.cpu, asset.ram, asset.storage].filter(Boolean).join(' · ') || 'Không áp dụng / Chưa cập nhật'
   return (
     <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="modal handover-modal">
@@ -7779,7 +8054,7 @@ function HandoverModal({
           <div>
             <h2>Biên bản A4 đã sẵn sàng</h2>
             <p>
-              {transaction.type} · {asset.name} · {asset.code}
+              {transaction.type} · {handed.length > 1 ? `${handed.length} tài sản` : `${asset.name} · ${asset.code}`}
             </p>
           </div>
           <button className="icon-btn" onClick={onClose}>
@@ -7806,10 +8081,8 @@ function HandoverModal({
               </b>
             </div>
             <div>
-              <small>Thiết bị / Cấu hình</small>
-              <b>
-                {asset.name} · {config}
-              </b>
+              <small>{handed.length > 1 ? `Thiết bị (${handed.length})` : 'Thiết bị / Cấu hình'}</small>
+              <b>{handed.length > 1 ? config : `${asset.name} · ${config}`}</b>
             </div>
             <div>
               <small>Tình trạng / Ngày bàn giao</small>
@@ -7822,7 +8095,7 @@ function HandoverModal({
         <div className="handover-actions">
           <button
             className="action-tile print"
-            onClick={() => printHandover(asset, transaction, emailSettings, branding)}
+            onClick={() => printHandover(handed, transaction, emailSettings, branding)}
           >
             <Printer size={22} />
             <span>
@@ -7832,7 +8105,7 @@ function HandoverModal({
           </button>
           <button
             className="action-tile file"
-            onClick={() => downloadHandover(asset, transaction, emailSettings, branding)}
+            onClick={() => downloadHandover(handed, transaction, emailSettings, branding)}
           >
             <Download size={22} />
             <span>
@@ -7843,7 +8116,7 @@ function HandoverModal({
           <button
             className="action-tile mail"
             disabled={!transaction.recipientEmail}
-            onClick={() => emailHandover(asset, transaction, emailSettings)}
+            onClick={() => emailHandover(handed, transaction, emailSettings)}
           >
             <Send size={22} />
             <span>
@@ -7885,7 +8158,8 @@ export default function App() {
   const [barcodeAsset, setBarcodeAsset] = useState<Asset | undefined>()
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
   const [detailAssetId, setDetailAssetId] = useState<number | undefined>()
-  const [handover, setHandover] = useState<{ asset: Asset; transaction: AssetTransaction } | undefined>()
+  const [bulkAssignment, setBulkAssignment] = useState<{ assets: Asset[]; done: () => void } | undefined>()
+  const [handover, setHandover] = useState<{ assets: Asset[]; transaction: AssetTransaction } | undefined>()
   const [assets, setAssets] = useState<Asset[]>(() => {
     if (!env.demoMode) return []
     try {
@@ -8221,7 +8495,7 @@ export default function App() {
       setAssets(list => list.map(a => (a.id === asset.id ? asset : a)))
       setTransactions(list => [securedTransaction, ...list])
       setAssignmentAsset(undefined)
-      setHandover({ asset, transaction: securedTransaction })
+      setHandover({ assets: [asset], transaction: securedTransaction })
       return
     }
     if (!current.apiId) {
@@ -8273,10 +8547,72 @@ export default function App() {
       const serverAsset = fromApiAsset(await api.get<any>(`/assets/${current.apiId}`))
       await refreshServerData()
       setAssignmentAsset(undefined)
-      setHandover({ asset: serverAsset, transaction: securedTransaction })
+      setHandover({ assets: [serverAsset], transaction: securedTransaction })
     } catch (error) {
       alert(apiErrorMessage(error))
       throw error
+    }
+  }
+  const saveBulkAssignment = async (issued: Asset[], transaction: AssetTransaction) => {
+    const current = issued.map(item => assets.find(a => a.id === item.id))
+    const blocked = issued.filter((_, index) => !current[index] || !isInStock(current[index]!))
+    if (blocked.length) {
+      alert(
+        `Không thể cấp phát: ${blocked.map(item => item.code).join(', ')} không còn Sẵn sàng trong kho. Hãy bỏ khỏi danh sách.`,
+      )
+      return
+    }
+    const securedTransaction = { ...transaction, performedBy: currentUser?.name || transaction.performedBy }
+    const finish = (handed: Asset[]) => {
+      bulkAssignment?.done()
+      setBulkAssignment(undefined)
+      setHandover({ assets: handed, transaction: securedTransaction })
+    }
+    if (env.demoMode) {
+      const byId = new Map(issued.map(item => [item.id, item]))
+      setAssets(list => list.map(a => byId.get(a.id) || a))
+      setTransactions(list => [
+        ...issued.map((item, index) => ({
+          ...securedTransaction,
+          id: securedTransaction.id + index,
+          assetId: item.id,
+          assetCode: item.code,
+          assetName: item.name,
+          from: current[index]!.location,
+        })),
+        ...list,
+      ])
+      finish(issued)
+      return
+    }
+    if (current.some(item => !item?.apiId)) {
+      alert('Có tài sản chưa được đồng bộ với máy chủ.')
+      return
+    }
+    try {
+      const person = referenceData.people.find(
+        item => item.fullName.toLocaleLowerCase('vi') === transaction.to.toLocaleLowerCase('vi'),
+      )
+      if (!person) throw new Error('Người nhận không tồn tại trong danh bạ người nhận tài sản.')
+      const location =
+        referenceData.locations.find(item => item.name === transaction.handoverLocation) ||
+        referenceData.warehouses.find(
+          item => item.name === transaction.handoverLocation || item.location?.name === transaction.handoverLocation,
+        )?.location
+      if (!location?.id) throw new Error('Vị trí bàn giao chưa được cấu hình.')
+      await api.post('/assignments/bulk', {
+        assetIds: current.map(item => item!.apiId),
+        type: transaction.type === 'Cho mượn' ? 'LOAN' : 'ASSIGNMENT',
+        assignedToId: person.id,
+        locationId: location.id,
+        expectedReturnDate: transaction.dueDate || undefined,
+        conditionOut: transaction.condition || 'Tốt',
+        note: transaction.note,
+      })
+      await refreshServerData()
+      finish(issued)
+    } catch (error) {
+      alert(apiErrorMessage(error))
     }
   }
   const importAssets = async (items: Asset[]) => {
@@ -8556,6 +8892,7 @@ export default function App() {
       assets={scopedAssets}
       transactions={scopedTransactions}
       onAssign={setAssignmentAsset}
+      onBulkAssign={(selected, done) => setBulkAssignment({ assets: selected, done })}
       onBarcode={setBarcodeAsset}
       onView={a => setDetailAssetId(a.id)}
       openHistory={() => setPage('Lịch sử / Audit')}
@@ -8775,9 +9112,18 @@ export default function App() {
       {barcodeAsset && scopedAssetIds.has(barcodeAsset.id) && (
         <BarcodeModal asset={barcodeAsset} onClose={() => setBarcodeAsset(undefined)} />
       )}
-      {handover && scopedAssetIds.has(handover.asset.id) && (
+      {bulkAssignment && (
+        <BulkAssignmentModal
+          assets={bulkAssignment.assets.filter(a => scopedAssetIds.has(a.id))}
+          departmentOptions={departmentOptions}
+          siteOptions={siteOptions}
+          onClose={() => setBulkAssignment(undefined)}
+          onSave={saveBulkAssignment}
+        />
+      )}
+      {handover && handover.assets.every(a => scopedAssetIds.has(a.id)) && (
         <HandoverModal
-          asset={handover.asset}
+          assets={handover.assets}
           transaction={handover.transaction}
           emailSettings={emailSettings}
           branding={branding}
