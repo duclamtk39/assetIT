@@ -46,7 +46,7 @@
     "typescript-eslint": "^8.69.0"
   },
   "overrides": {
-    "multer": "2.3.0",
+    "multer": "2.5.0",
     "cosmiconfig": {
       "js-yaml": "^4.3.2"
     }
